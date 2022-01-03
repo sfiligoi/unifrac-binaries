@@ -1,3 +1,5 @@
+.PHONY: make api test test_binaries install clean
+
 CXX := h5c++
 
 PLATFORM := $(shell uname -s)
