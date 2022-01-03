@@ -101,22 +101,6 @@ main: tree.o biom.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	cp ssu ${PREFIX}/bin/
 	cp faithpd ${PREFIX}/bin/
 
-rapi_test: main
-	mkdir -p ~/.R
-	if [ -e ~/.R/Makevars ] ; \
-	then \
-		echo "WARNING: OVERWRITING ~/.R/Makevars" ; \
-		echo "The original Makevars file has been copied to ~/.R/Makevars" ;\
-		cp ~/.R/Makevars Makevars-original ; \
-	fi;
-	echo CXX1X=h5c++ > ~/.R/Makevars
-	echo CXX=h5c++ >> ~/.R/Makevars 
-	echo CC=h5c++ >> ~/.R/Makevars
-	echo LDFLAGS= -llz4 $(BLASLIB) >> ~/.R/Makevars
-	rm -f *.o
-	Rscript R_interface/rapi_test.R
-	rm -f *.o
-	
 api: tree.o biom.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -lhdf5_cpp -llz4 $(BLASLIB) -L$(PREFIX)/lib
 	cp libssu.so ${PREFIX}/lib/
