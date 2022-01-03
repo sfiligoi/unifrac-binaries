@@ -8,7 +8,7 @@
 #
 
 if [ "x${SYSROOT_DIR}" == "x" ]; then
-  SYSROOT_DIR = ${CONDA_PREFIX}/x86_64-conda-linux-gnu/sysroot/usr/lib64
+  SYSROOT_DIR=${CONDA_PREFIX}/x86_64-conda-linux-gnu/sysroot/usr/lib64
 fi
 
 # Create GCC symbolic links
@@ -41,17 +41,24 @@ if [ "x${NV_URL}" == "x" ]; then
   NV_URL=https://developer.download.nvidia.com/hpc-sdk/21.7/nvhpc_2021_217_Linux_x86_64_cuda_multi.tar.gz
 fi
 
+# Defaults to using curl
+# set USE_CURL=N if you want to use aria2 or wget
 if [ "x${USE_CURL}" == "x" ]; then
-  if [ "x${INLINE_CURL}" == "x" ]; then
+  # defaults to using inline untarrring
+  # set INLINE_CURL=N if you want a temp copy of file on disk
+  if [ "x${INLINE_CURL}" == "xN" ]; then
     curl "${NV_URL}" -o nvhpc.tgz
     tar xpzf nvhpc.tgz
     rm -f nvhpc.tgz
   else
     curl "${NV_URL}" | tar xpzf -
   fi
-
+elif [ "x${USE_ARIA2}" == "x" ]; then
+  aria2c "${NV_URL}"
+  tar xpzf nvhpc_*.tar.gz
+  rm -f nvhpc_*.tar.gz
 else
-  wget -q "${NV_URL}"
+  wget "${NV_URL}"
   tar xpzf nvhpc_*.tar.gz
   rm -f nvhpc_*.tar.gz
 fi
@@ -99,7 +106,7 @@ sed -i \
   's#H5BLD_CPPFLAGS=".*"#H5BLD_CPPFLAGS=" -I${includedir} -DNDEBUG -D_FORTIFY_SOURCE=2 -O2"#g' \
   conda_h5/h5c++
 sed -i \
-  's#H5BLD_LDFLAGS=".*"#H5BLD_LDFLAGS=" -L${prefix}/x86_64-conda-linux-gnu/sysroot/usr/lib64/ -L${libdir} -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,-rpath,\\\\\\$ORIGIN/../x86_64-conda-linux-gnu/sysroot/usr/lib64/ -Wl,-rpath,\\\\\\$ORIGIN/../lib -Wl,-rpath,${prefix}/x86_64-conda-linux-gnu/sysroot/usr/lib64/ -Wl,-rpath,${libdir}"#g' \
+  's#H5BLD_LDFLAGS=".*"#H5BLD_LDFLAGS=" -L${prefix}/x86_64-conda-linux-gnu/sysroot/usr/lib64/ -L${libdir} -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,-rpath,\\\\\\$ORIGIN/../x86_64-conda-linux-gnu/sysroot/usr/lib64/ -Wl,-rpath,\\\\\\$ORIGIN -Wl,-rpath,\\\\\\$ORIGIN/../lib -Wl,-rpath,${prefix}/x86_64-conda-linux-gnu/sysroot/usr/lib64/ -Wl,-rpath,${libdir}"#g' \
  conda_h5/h5c++
 
 # patch localrc to find crt1.o
