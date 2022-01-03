@@ -100,7 +100,7 @@ test_su: test_su.cpp tree.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNI
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 test_ska: test_ska.cpp tree.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o $(UNIFRAC_FILES) unifrac.o api.o -llz4 $(BLASLIB) -lpthread
-test_su: test_api.cpp tree.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
+test_api: test_api.cpp tree.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 
 ssu: su.cpp tree.o biom.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
