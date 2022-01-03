@@ -2,6 +2,8 @@ ifeq ($(PREFIX),)
 	PREFIX := $(CONDA_PREFIX)
 endif
 
+test: capi_test
+
 capi_test: capi_test
 
 capi_test: capi_test.c
