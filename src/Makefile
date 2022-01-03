@@ -88,7 +88,7 @@ else
 endif
 
 
-CPPFLAGS += -Wall  -std=c++11 -pedantic -I. $(OPT) -fPIC -L$(CONDA_PREFIX)/lib
+CPPFLAGS += -Wall  -std=c++11 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
 test: tree.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
@@ -105,10 +105,6 @@ api: tree.o biom.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -lhdf5_cpp -llz4 $(BLASLIB) -L$(PREFIX)/lib
 	cp libssu.so ${PREFIX}/lib/
 
-capi_test: api
-	gcc -std=c99 capi_test.c -lssu -L${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib -o capi_test
-	export LD_LIBRARY_PATH="${PREFIX}/lib":"./capi_test"
-
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp tree.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
 
@@ -123,5 +119,5 @@ unifrac_cmp_acc.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.
 	$(CXX) $(CPPFLAGS) -c $< -o $@
 
 clean:
-	-rm -f *.o ssu
+	-rm -f *.o ssu faithpd test_su test_ska test_api libssu.so
 
