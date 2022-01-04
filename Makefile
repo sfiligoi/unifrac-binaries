@@ -1,4 +1,6 @@
-.PHONY: main api test install clean
+.PHONY: all main api test install clean
+
+all: api main install
 
 main:
 	cd src && make main

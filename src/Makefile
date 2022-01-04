@@ -1,4 +1,4 @@
-.PHONY: make api test test_binaries install clean
+.PHONY: all make api test test_binaries install clean
 
 CXX := h5c++
 
@@ -87,6 +87,8 @@ BLASLIB=-llapacke -lcblas
 
 
 CPPFLAGS += -Wall  -std=c++11 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
+
+all: api main install
 
 main: ssu faithpd
 
