@@ -1,4 +1,4 @@
-.PHONY: all main api test install clean
+.PHONY: all main api test_binaries test install clean
 
 all: api main install
 
@@ -7,6 +7,10 @@ main:
 
 api:
 	cd src && make api
+
+test_binaries:
+	cd src && make test_binaries
+	cd test && make test_binaries
 
 test:
 	cd src && make test
