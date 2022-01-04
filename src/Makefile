@@ -83,11 +83,7 @@ ifeq (,$(findstring pgi,$(COMPILER)))
 	CPPFLAGS += -Wextra -Wno-unused-parameter
 endif
 
-ifeq ($(PLATFORM),Darwin)
-        BLASLIB=-llapacke -lcblas
-else
-        BLASLIB=-lcblas
-endif
+BLASLIB=-llapacke -lcblas
 
 
 CPPFLAGS += -Wall  -std=c++11 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
@@ -134,6 +130,9 @@ test: test_binaries
 install: libssu.so ssu faithpd
 	cp libssu.so ${PREFIX}/lib/
 	cp ssu faithpd ${PREFIX}/bin/
+	mkdir -p ${PREFIX}/include/unifrac
+	cp task_parameters.hpp ${PREFIX}/include/unifrac/
+	cp api.hpp ${PREFIX}/include/unifrac/
 
 clean:
 	-rm -f *.o ssu faithpd test_su test_ska test_api libssu.so
