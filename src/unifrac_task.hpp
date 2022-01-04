@@ -90,7 +90,7 @@ namespace SUCMP_NM {
       const TFloat * operator[](unsigned int idx) const { return buf+((idx-start_idx)*n_samples_r);}
 
 
-      virtual ~UnifracTaskVector()
+      ~UnifracTaskVector()
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
@@ -150,8 +150,7 @@ namespace SUCMP_NM {
         virtual ~UnifracTaskBase()
         {
 #ifdef _OPENACC
-          const uint64_t  n_samples_r = dm_stripes.n_samples_r;
-          const uint64_t bsize = n_samples_r * get_emb_els(max_embs);
+          const uint64_t bsize = get_embedded_bsize(dm_stripes.n_samples_r,max_embs);
 #pragma acc exit data delete(embedded_proportions_alt[:bsize])
 #pragma acc exit data delete(embedded_proportions[:bsize])
           free(embedded_proportions_alt);
@@ -170,8 +169,13 @@ namespace SUCMP_NM {
 
         static unsigned int get_emb_els(unsigned int max_embs);
 
+        static uint64_t get_embedded_bsize(const uint64_t  n_samples_r, unsigned int max_embs) {
+          const uint64_t bsize = n_samples_r * get_emb_els(max_embs);
+          return bsize;
+        }
+
         static TEmb *initialize_embedded(const uint64_t  n_samples_r, unsigned int max_embs) {
-          uint64_t bsize = n_samples_r * get_emb_els(max_embs);
+          const uint64_t bsize = get_embedded_bsize(n_samples_r, max_embs);
 
           TEmb* buf = NULL;
           int err = posix_memalign((void **)&buf, 4096, sizeof(TEmb) * bsize);
@@ -501,7 +505,14 @@ namespace SUCMP_NM {
         */
 
 
-       virtual ~UnifracVawTask() {}
+       virtual ~UnifracVawTask() 
+       {
+#ifdef _OPENACC
+          const uint64_t bsize = UnifracTaskBase<TFloat,TFloat>::get_embedded_bsize(this->dm_stripes.n_samples_r,this->max_embs);
+#pragma acc exit data delete(embedded_counts[:bsize])
+#endif
+          free(embedded_counts);
+       }
 
        void sync_embedded_counts(unsigned int filled_embs)
        {
