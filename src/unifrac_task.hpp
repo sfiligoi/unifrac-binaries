@@ -90,7 +90,7 @@ namespace SUCMP_NM {
       const TFloat * operator[](unsigned int idx) const { return buf+((idx-start_idx)*n_samples_r);}
 
 
-      ~UnifracTaskVector()
+      virtual ~UnifracTaskVector()
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
