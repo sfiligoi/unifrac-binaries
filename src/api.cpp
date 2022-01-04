@@ -427,15 +427,7 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
 
     initialize_mat(*result, table, true);  // true -> is_upper_triangle
     for(unsigned int tid = 0; tid < threads.size(); tid++) {
-        threads[tid] = std::thread(su::stripes_to_condensed_form,
-                                   std::ref(dm_stripes),
-                                   table.n_samples,
-                                   std::ref((*result)->condensed_form),
-                                   tasks[tid].start,
-                                   tasks[tid].stop);
-    }
-    for(unsigned int tid = 0; tid < threads.size(); tid++) {
-        threads[tid].join();
+        su::stripes_to_condensed_form(dm_stripes,table.n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
     }
 
     destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
