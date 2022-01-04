@@ -1,0 +1,83 @@
+name: unifrac-binaries CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: conda-incubator/setup-miniconda@v2
+      with:        
+        auto-update-conda: true
+    - name: Install 
+      shell: bash -l {0}
+      run: |
+        if [[ "$(uname -s)" != "Linux" ]];
+        then
+          ls -l /Applications/
+          # coonda clang does not like xcode 12
+          sudo xcode-select --switch /Applications/Xcode_11.7.app
+          # the system tools are unusable, hide them
+          sudo mv -f /Library/Developer/CommandLineTools /Library/Developer/CommandLineTools.org
+        fi
+
+        if [[ "$(uname -s)" == "Linux" ]];
+        then
+          conda create --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
+        else
+          conda create --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
+        fi 
+        conda activate unifrac
+        echo "$(uname -s)"
+        if [[ "$(uname -s)" == "Linux" ]];
+        then
+          which x86_64-conda-linux-gnu-gcc
+          x86_64-conda-linux-gnu-gcc -v
+          x86_64-conda-linux-gnu-g++ -v
+        else
+          which clang
+          clang -v
+        fi
+        which h5c++
+        if [[ "$(uname -s)" == "Linux" ]];
+        then
+          ./scripts/install_hpc_sdk.sh
+          source setup_nv_h5.sh
+        fi
+        make api && \
+        make main && \
+        make install && \
+        make test_binaries
+            
+    - name: Tests
+      shell: bash -l {0}
+      run: |
+        conda activate unifrac
+        export UNIFRAC_GPU_INFO=Y
+        pushd src
+        ./test_su
+        ./test_api
+        ./test_ska
+        popd
+        pushd test
+        ./capi_test 1
+        popd
+        
+    - name: Sanity checks
+      shell: bash -l {0}
+      run: |
+        conda activate unifrac
+        pushd ci
+        ./crawford_test.sh
+        popd
