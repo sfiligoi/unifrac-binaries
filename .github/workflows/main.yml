@@ -52,8 +52,6 @@ jobs:
         which h5c++
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          # use a version that has a relatively small tgz
-          export NV_URL=https://developer.download.nvidia.com/hpc-sdk/20.9/nvhpc_2020_209_Linux_x86_64_cuda_11.0.tar.gz
           ./scripts/install_hpc_sdk.sh
           source setup_nv_h5.sh
         fi
