@@ -1,4 +1,4 @@
-.PHONY: all make api test test_binaries install clean
+.PHONY: all make api test test_binaries install clean rapi_test
 
 CXX := h5c++
 
@@ -135,6 +135,22 @@ install: libssu.so ssu faithpd
 	mkdir -p ${PREFIX}/include/unifrac
 	cp task_parameters.hpp ${PREFIX}/include/unifrac/
 	cp api.hpp ${PREFIX}/include/unifrac/
+
+rapi_test: main
+	mkdir -p ~/.R
+	if [ -e ~/.R/Makevars ] ; \
+	then \
+		echo "WARNING: OVERWRITING ~/.R/Makevars" ; \
+		echo "The original Makevars file has been copied to ~/.R/Makevars" ;\
+		cp ~/.R/Makevars Makevars-original ; \
+	fi;
+	echo CXX1X=h5c++ > ~/.R/Makevars
+	echo CXX=h5c++ >> ~/.R/Makevars 
+	echo CC=h5c++ >> ~/.R/Makevars
+	echo LDFLAGS= -llz4 $(BLASLIB) >> ~/.R/Makevars
+	rm -f *.o
+	Rscript R_interface/rapi_test.R
+	rm -f *.o
 
 clean:
 	-rm -f *.o ssu faithpd test_su test_ska test_api libssu.so
