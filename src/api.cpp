@@ -48,22 +48,25 @@
                                               return err;                                                      \
                                           }
 
-#define PARSE_SYNC_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
-                                                             std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
-                                                                                               std::istreambuf_iterator<char>());     \
-                                                             su::BPTree tree = su::BPTree(content);                                   \
-                                                             su::biom table = su::biom(biom_filename);                                \
-                                                             if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
-                                                                 return table_empty;                                                  \
-                                                             }                                                                        \
-                                                             std::string bad_id = su::test_table_ids_are_subset_of_tree(table, tree); \
-                                                             if(bad_id != "") {                                                       \
-                                                                 return table_and_tree_do_not_overlap;                                \
-                                                             }                                                                        \
-                                                             std::unordered_set<std::string> to_keep(table.obs_ids.begin(),           \
-                                                                                                     table.obs_ids.end());            \
-                                                             su::BPTree tree_sheared = tree.shear(to_keep).collapse();
+#define SYNC_TREE_TABLE(tree, table) std::unordered_set<std::string> to_keep(table.obs_ids.begin(),           \
+                                                                             table.obs_ids.end());            \
+                                     su::BPTree tree_sheared = tree.shear(to_keep).collapse();
 
+#define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
+                                                        std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
+                                                                                          std::istreambuf_iterator<char>());     \
+                                                        su::BPTree tree = su::BPTree(content);                                   \
+                                                        su::biom table = su::biom(biom_filename);                                \
+                                                        if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
+                                                            return table_empty;                                                  \
+                                                        }                                                                        \
+                                                        std::string bad_id = su::test_table_ids_are_subset_of_tree(table, tree); \
+                                                        if(bad_id != "") {                                                       \
+                                                            return table_and_tree_do_not_overlap;                                \
+                                                        }   
+
+#define PARSE_SYNC_TREE_TABLE(tree_filename, table_filename) PARSE_TREE_TABLE(tree_filename, table_filename) \
+                                                             SYNC_TREE_TABLE(tree, table)
 
 using namespace su;
 using namespace std;
@@ -98,7 +101,7 @@ void destroy_stripes(vector<double*> &dm_stripes, vector<double*> &dm_stripes_to
 }
 
 
-void initialize_mat(mat_t* &result, biom &table, bool is_upper_triangle) {
+void initialize_mat(mat_t* &result, biom_interface &table, bool is_upper_triangle) {
     result = (mat_t*)malloc(sizeof(mat));
     result->n_samples = table.n_samples;
 
@@ -115,7 +118,7 @@ void initialize_mat(mat_t* &result, biom &table, bool is_upper_triangle) {
     }
 }
 
-void initialize_results_vec(r_vec* &result, biom& table){
+void initialize_results_vec(r_vec* &result, biom &table){
     // Stores results for Faith PD
     result = (r_vec*)malloc(sizeof(results_vec));
     result->n_samples = table.n_samples;
@@ -401,14 +404,11 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
-compute_status one_off(const char* biom_filename, const char* tree_filename,
-                       const char* unifrac_method, bool variance_adjust, double alpha,
-                       bool bypass_tips, unsigned int nthreads, mat_t** result) {
-
-    CHECK_FILE(biom_filename, table_missing)
-    CHECK_FILE(tree_filename, tree_missing)
+compute_status one_off_inmem(su::biom_interface &table, su::BPTree &tree,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SET_METHOD(unifrac_method, unknown_method)
-    PARSE_SYNC_TREE_TABLE(tree_filename, table_filename)
+    SYNC_TREE_TABLE(tree, table)
 
     const unsigned int stripe_stop = (table.n_samples + 1) / 2;
     std::vector<double*> dm_stripes(stripe_stop);
@@ -433,6 +433,15 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
     destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
 
     return okay;
+}
+
+compute_status one_off(const char* biom_filename, const char* tree_filename,
+                       const char* unifrac_method, bool variance_adjust, double alpha,
+                       bool bypass_tips, unsigned int nthreads, mat_t** result) {
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, table_filename)
+    return one_off_inmem(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
 // TMat mat_full_fp32_t

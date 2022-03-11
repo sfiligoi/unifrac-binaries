@@ -1,4 +1,6 @@
 #include "task_parameters.hpp"
+#include "biom_interface.hpp"
+#include "tree.hpp"
 
 #ifdef __cplusplus
 #include <vector>
@@ -153,6 +155,27 @@ void destroy_results_vec(r_vec** result);
 EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int threads, mat_t** result);
+
+/* Compute UniFrac - condensed form, in-memory
+ *
+ * table <biom> a constructed BIOM object
+ * tree <BPTree> a constructed BPTree object
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * threads <uint> the number of threads to use.
+ * result <mat_t**> the resulting distance matrix in condensed form, this is initialized within the method so using **
+ *
+ * one_off_inmem returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * unknown_method : the requested method is unknown.
+ * table_empty    : the table does not have any entries
+ */
+EXTERN ComputeStatus one_off_inmem(su::biom_interface &table, su::BPTree &tree,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int threads, mat_t** result);
 
 /* Compute UniFrac - matrix form
  *
