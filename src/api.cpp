@@ -101,7 +101,7 @@ void destroy_stripes(vector<double*> &dm_stripes, vector<double*> &dm_stripes_to
 }
 
 
-void initialize_mat(mat_t* &result, biom_interface &table, bool is_upper_triangle) {
+void initialize_mat(mat_t* &result, biom &table, bool is_upper_triangle) {
     result = (mat_t*)malloc(sizeof(mat));
     result->n_samples = table.n_samples;
 
@@ -404,7 +404,7 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
-compute_status one_off_inmem(su::biom_interface &table, su::BPTree &tree,
+compute_status one_off_inmem(su::biom &table, su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SET_METHOD(unifrac_method, unknown_method)
