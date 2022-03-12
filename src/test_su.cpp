@@ -467,10 +467,7 @@ void test_biom_constructor() {
     SUITE_END();
 }
 
-void test_biom_get_obs_data() {
-    SUITE_START("biom get obs data");
-
-    su::biom table = su::biom("test.biom");
+void _exercise_get_obs_data(su::biom &table) {
     double exp0[] = {0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
     std::vector<double> exp0_vec = _double_array_to_vector(exp0, 6);
     double exp1[] = {5.0, 1.0, 0.0, 2.0, 3.0, 1.0};
@@ -506,8 +503,29 @@ void test_biom_get_obs_data() {
     ASSERT(vec_almost_equal(obs_vec, exp4_vec));
 
     free(out);
+}
+
+void test_biom_constructor_from_sparse() {
+    SUITE_START("biom from sparse constructor");
+    std::vector<uint32_t> index = {2, 0, 1, 3, 4, 5, 2, 3, 5, 0, 1, 2, 5, 1, 2};
+    std::vector<uint32_t> indptr = {0,  1,  6,  9, 13, 15};
+    std::vector<double> data = {1., 5., 1., 2., 3., 1., 1., 4., 2., 2., 1., 1., 1., 1., 1.};
+    std::vector<std::string> obs_ids = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
+    std::vector<std::string> samp_ids = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
+
+    su::biom table = su::biom(obs_ids, samp_ids, index, indptr, data);
+    _exercise_get_obs_data(table);
     SUITE_END();
 }
+
+void test_biom_get_obs_data() {
+    SUITE_START("biom get obs data");
+
+    su::biom table = su::biom("test.biom");
+    _exercise_get_obs_data(table);
+    SUITE_END();
+}
+
 
 void test_bptree_leftchild() {
     SUITE_START("test bptree left child");
@@ -1832,6 +1850,7 @@ int main(int argc, char** argv) {
     test_bptree_collapse_edge();
 
     test_biom_constructor();
+    test_biom_constructor_from_sparse();
     test_biom_get_obs_data();
 
     test_propstack_constructor();

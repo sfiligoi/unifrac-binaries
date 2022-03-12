@@ -27,6 +27,8 @@ const std::string SAMPLE_DATA = std::string("/sample/matrix/data");
 const std::string SAMPLE_IDS = std::string("/sample/ids");
 
 biom::biom(std::string filename) {
+    has_hdf5_backing = true;
+
     file = H5File(filename.c_str(), H5F_ACC_RDONLY);
 
     /* establish the datasets */
@@ -58,25 +60,7 @@ biom::biom(std::string filename) {
     create_id_index(obs_ids, obs_id_index);
     create_id_index(sample_ids, sample_id_index);
 
-    /* load obs sparse data */
-    obs_indices_resident = (uint32_t**)malloc(sizeof(uint32_t**) * n_obs);
-    if(obs_indices_resident == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(uint32_t**) * n_obs, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
-    obs_data_resident = (double**)malloc(sizeof(double**) * n_obs);
-    if(obs_data_resident == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(double**) * n_obs, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
-    obs_counts_resident = (unsigned int*)malloc(sizeof(unsigned int) * n_obs);
-    if(obs_counts_resident == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(unsigned int) * n_obs, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
+    malloc_resident(n_obs);
 
     uint32_t *current_indices = NULL;
     double *current_data = NULL;
@@ -100,7 +84,66 @@ biom::~biom() {
     free(obs_counts_resident);
 }
 
+void biom::malloc_resident(uint32_t n_obs) { 
+    /* load obs sparse data */
+    obs_indices_resident = (uint32_t**)malloc(sizeof(uint32_t**) * n_obs);
+    if(obs_indices_resident == NULL) {
+        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+                sizeof(uint32_t**) * n_obs, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    obs_data_resident = (double**)malloc(sizeof(double**) * n_obs);
+    if(obs_data_resident == NULL) {
+        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+                sizeof(double**) * n_obs, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    obs_counts_resident = (unsigned int*)malloc(sizeof(unsigned int) * n_obs);
+    if(obs_counts_resident == NULL) {
+        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+                sizeof(unsigned int) * n_obs, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+biom::biom(const std::vector<std::string> &obs_ids,
+           const std::vector<std::string> &samp_ids,
+           const std::vector<uint32_t> &index,
+           const std::vector<uint32_t> &indptr,
+           const std::vector<double> &data) {
+    nnz = data.size();
+    n_samples = samp_ids.size();
+    n_obs = obs_ids.size();
+
+    /* define a mapping between an ID and its corresponding offset */
+    obs_id_index = std::unordered_map<std::string, uint32_t>();
+    sample_id_index = std::unordered_map<std::string, uint32_t>();
+
+    create_id_index(obs_ids, obs_id_index);
+    create_id_index(samp_ids, sample_id_index);
+  
+    malloc_resident(n_obs);
+
+    uint32_t *current_indices = NULL;
+    double *current_data = NULL;
+    for(unsigned int i = 0; i < obs_ids.size(); i++)  {
+        std::string id_ = obs_ids[i];
+        unsigned int n = get_obs_data_from_sparse(id_, index, indptr, data, current_indices, current_data);
+        obs_counts_resident[i] = n;
+        obs_indices_resident[i] = current_indices;
+        obs_data_resident[i] = current_data;
+    }
+    sample_counts = get_sample_counts();
+}
+
 void biom::set_nnz() {
+    if(!has_hdf5_backing) {
+        fprintf(stderr, "Lacks HDF5 backing; [%s]:%d\n", 
+                __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
     // should these be cached?
     DataType dtype = obs_data.getDataType();
     DataSpace dataspace = obs_data.getSpace();
@@ -111,6 +154,12 @@ void biom::set_nnz() {
 }
 
 void biom::load_ids(const char *path, std::vector<std::string> &ids) {
+    if(!has_hdf5_backing) {
+        fprintf(stderr, "Lacks HDF5 backing; [%s]:%d\n", 
+                __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
     DataSet ds_ids = file.openDataSet(path);
     DataType dtype = ds_ids.getDataType();
     DataSpace dataspace = ds_ids.getSpace();
@@ -138,6 +187,12 @@ void biom::load_ids(const char *path, std::vector<std::string> &ids) {
 }
 
 void biom::load_indptr(const char *path, std::vector<uint32_t> &indptr) {
+    if(!has_hdf5_backing) {
+        fprintf(stderr, "Lacks HDF5 backing; [%s]:%d\n", 
+                __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
     DataSet ds = file.openDataSet(path);
     DataType dtype = ds.getDataType();
     DataSpace dataspace = ds.getSpace();
@@ -159,7 +214,7 @@ void biom::load_indptr(const char *path, std::vector<uint32_t> &indptr) {
     free(dataout);
 }
 
-void biom::create_id_index(std::vector<std::string> &ids, 
+void biom::create_id_index(const std::vector<std::string> &ids, 
                            std::unordered_map<std::string, uint32_t> &map) {
     uint32_t count = 0;
     map.reserve(ids.size());
@@ -168,7 +223,46 @@ void biom::create_id_index(std::vector<std::string> &ids,
     }
 }
 
+unsigned int biom::get_obs_data_from_sparse(const std::string &id_, 
+                                            const std::vector<uint32_t> &index, 
+                                            const std::vector<uint32_t> &indptr, 
+                                            const std::vector<double> &data, 
+                                            uint32_t *& current_indices_out, 
+                                            double *& current_data_out) {
+    uint32_t idx = obs_id_index.at(id_);
+    uint32_t start = indptr[idx];
+    uint32_t end = indptr[idx + 1];
+    unsigned int count = end - start;
+    
+    current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count);
+    if(current_indices_out == NULL) {
+        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+                sizeof(uint32_t) * count, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
+    current_data_out = (double*)malloc(sizeof(double) * count);
+    if(current_data_out == NULL) {
+        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+                sizeof(double) * count, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
+    for(int i = 0, offset = start ; offset < end; i++, offset++) {
+        current_indices_out[i] = index[offset];
+        current_data_out[i] = data[offset];
+    }
+    
+    return count;
+}
+
 unsigned int biom::get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out) {
+    if(!has_hdf5_backing) {
+        fprintf(stderr, "Lacks HDF5 backing; [%s]:%d\n", 
+                __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
     uint32_t idx = obs_id_index.at(id);
     uint32_t start = obs_indptr[idx];
     uint32_t end = obs_indptr[idx + 1];
@@ -270,6 +364,12 @@ void biom::get_obs_data_range(const std::string &id, unsigned int start, unsigne
 }
 
 unsigned int biom::get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out) {
+    if(!has_hdf5_backing) {
+        fprintf(stderr, "Lacks HDF5 backing; [%s]:%d\n", 
+                __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
     uint32_t idx = sample_id_index.at(id);
     uint32_t start = sample_indptr[idx];
     uint32_t end = sample_indptr[idx + 1];
