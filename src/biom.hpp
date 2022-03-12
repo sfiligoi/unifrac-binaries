@@ -85,6 +85,9 @@ namespace su {
             
             void malloc_resident(uint32_t n_obs);
 
+            /* allow load from scipy.sparse like data
+             * WARNING: assumes data are CSR, with observations as rows
+             */
             unsigned int get_obs_data_from_sparse(const std::string &id_, 
                                                   const std::vector<uint32_t> &index, 
                                                   const std::vector<uint32_t> &indptr, 
