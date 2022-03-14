@@ -1,9 +1,9 @@
 #include "task_parameters.hpp"
-#include "tree.hpp"
-#include "biom.hpp"
 
 #ifdef __cplusplus
 #include <vector>
+#include "tree.hpp"
+#include "biom.hpp"
 #define EXTERN extern "C"
 
 
@@ -156,6 +156,7 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int threads, mat_t** result);
 
+
 /* Compute UniFrac - condensed form, in-memory
  *
  * table <biom> a constructed BIOM object
@@ -173,9 +174,11 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+#ifdef __cplusplus
 EXTERN ComputeStatus one_off_inmem(su::biom &table, su::BPTree &tree,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
                                    bool bypass_tips, unsigned int threads, mat_t** result);
+#endif
 
 /* Compute UniFrac - matrix form
  *
