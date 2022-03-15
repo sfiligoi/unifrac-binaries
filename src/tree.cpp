@@ -199,7 +199,7 @@ void BPTree::index_and_cache() {
     }
 }
 
-uint32_t BPTree::postorderselect(uint32_t k) const { 
+uint32_t BPTree::postorderselect(uint32_t k) const {
     return open(select_0_index[k]);
 }
 

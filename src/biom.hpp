@@ -72,10 +72,9 @@ namespace su {
              */
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const;
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const;
-
         private:
             bool has_hdf5_backing = false;
-
+            
             /* retain DataSet handles within the HDF5 file */
             H5::DataSet obs_indices;
             H5::DataSet sample_indices;

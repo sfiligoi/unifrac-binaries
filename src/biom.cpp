@@ -119,21 +119,26 @@ biom::biom() {
     malloc_resident(0);
 }
 
-biom::biom(const std::vector<std::string> &obs_ids,
-           const std::vector<std::string> &samp_ids,
+biom::biom(const std::vector<std::string> &obs_ids_in,
+           const std::vector<std::string> &samp_ids_in,
            const std::vector<uint32_t> &index,
            const std::vector<uint32_t> &indptr,
            const std::vector<double> &data) {
     nnz = data.size();
-    n_samples = samp_ids.size();
-    n_obs = obs_ids.size();
+    n_samples = samp_ids_in.size();
+    n_obs = obs_ids_in.size();
+
+    sample_ids = std::vector<std::string>();
+    obs_ids = std::vector<std::string>();
+    sample_ids.assign(samp_ids_in.begin(), samp_ids_in.end());
+    obs_ids.assign(obs_ids_in.begin(), obs_ids_in.end());
 
     /* define a mapping between an ID and its corresponding offset */
     obs_id_index = std::unordered_map<std::string, uint32_t>();
     sample_id_index = std::unordered_map<std::string, uint32_t>();
 
     create_id_index(obs_ids, obs_id_index);
-    create_id_index(samp_ids, sample_id_index);
+    create_id_index(sample_ids, sample_id_index);
   
     malloc_resident(n_obs);
 
