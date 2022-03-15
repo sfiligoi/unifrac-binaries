@@ -4,6 +4,8 @@
 
 using namespace su;
 
+BPTree::BPTree() { }
+
 BPTree::BPTree(std::string newick) {
     openclose = std::vector<uint32_t>();
     lengths = std::vector<double>();

@@ -19,6 +19,9 @@
 namespace su {
     class BPTree {
         public:
+            /* nullary constructor */
+            BPTree();
+
             /* tracked attributes */
             std::vector<double> lengths;
             std::vector<std::string> names;

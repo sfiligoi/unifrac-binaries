@@ -106,6 +106,9 @@ void biom::malloc_resident(uint32_t n_obs) {
     }
 }
 
+biom::biom() { 
+    malloc_resident(0);
+}
 
 biom::biom(const std::vector<std::string> &obs_ids,
            const std::vector<std::string> &samp_ids,

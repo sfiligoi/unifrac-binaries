@@ -21,6 +21,9 @@
 namespace su {
     class biom : public biom_interface {
         public:
+            /* nullary constructor */
+            biom();
+
             /* default constructor
              *
              * @param filename The path to the BIOM table to read
