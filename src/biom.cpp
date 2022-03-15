@@ -75,13 +75,21 @@ biom::biom(std::string filename) {
 }
 
 biom::~biom() {
-    for(unsigned int i = 0; i < n_obs; i++) {
-        free(obs_indices_resident[i]);
-        free(obs_data_resident[i]);
+    if(obs_indices_resident != NULL && obs_data_resident != NULL) {
+        for(unsigned int i = 0; i < n_obs; i++) {
+            if(obs_indices_resident[i] != NULL)
+                free(obs_indices_resident[i]);
+            if(obs_data_resident[i] != NULL)
+                free(obs_data_resident[i]);
+        }
     }
-    free(obs_indices_resident);
-    free(obs_data_resident);
-    free(obs_counts_resident);
+    
+    if(obs_indices_resident != NULL)
+        free(obs_indices_resident);
+    if(obs_data_resident != NULL)
+        free(obs_data_resident);
+    if(obs_counts_resident != NULL)
+        free(obs_counts_resident);
 }
 
 void biom::malloc_resident(uint32_t n_obs) { 
@@ -107,6 +115,7 @@ void biom::malloc_resident(uint32_t n_obs) {
 }
 
 biom::biom() { 
+    n_obs = 0;
     malloc_resident(0);
 }
 

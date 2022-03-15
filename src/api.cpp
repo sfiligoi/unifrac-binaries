@@ -404,13 +404,13 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
-compute_status one_off_inmem(su::biom &table, su::BPTree &tree,
+compute_status one_off_inmem(su::biom *table, su::BPTree *tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SET_METHOD(unifrac_method, unknown_method)
-    SYNC_TREE_TABLE(tree, table)
+    SYNC_TREE_TABLE((*tree), (*table))
 
-    const unsigned int stripe_stop = (table.n_samples + 1) / 2;
+    const unsigned int stripe_stop = (table->n_samples + 1) / 2;
     std::vector<double*> dm_stripes(stripe_stop);
     std::vector<double*> dm_stripes_total(stripe_stop);
 
@@ -422,15 +422,15 @@ compute_status one_off_inmem(su::biom &table, su::BPTree &tree,
     std::vector<su::task_parameters> tasks(nthreads);
     std::vector<std::thread> threads(nthreads);
 
-    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
-    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
+    set_tasks(tasks, alpha, table->n_samples, 0, stripe_stop, bypass_tips, nthreads);
+    su::process_stripes(*table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
-    initialize_mat(*result, table, true);  // true -> is_upper_triangle
+    initialize_mat(*result, *table, true);  // true -> is_upper_triangle
     for(unsigned int tid = 0; tid < threads.size(); tid++) {
-        su::stripes_to_condensed_form(dm_stripes,table.n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
+        su::stripes_to_condensed_form(dm_stripes,table->n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
     }
 
-    destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
+    destroy_stripes(dm_stripes, dm_stripes_total, table->n_samples, 0, 0);
 
     return okay;
 }
@@ -441,7 +441,7 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, table_filename)
-    return one_off_inmem(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
+    return one_off_inmem(&table, &tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
 // TMat mat_full_fp32_t

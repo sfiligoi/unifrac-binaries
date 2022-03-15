@@ -463,7 +463,7 @@ void test_biom_constructor() {
     ASSERT(table.obs_ids == exp_oids);
     ASSERT(table.sample_indptr == exp_s_indptr);
     ASSERT(table.obs_indptr == exp_o_indptr);
-
+    
     SUITE_END();
 }
 
@@ -515,6 +515,18 @@ void test_biom_constructor_from_sparse() {
 
     su::biom table = su::biom(obs_ids, samp_ids, index, indptr, data);
     _exercise_get_obs_data(table);
+    SUITE_END();
+}
+
+void test_biom_nullary() {
+    SUITE_START("biom nullary");
+    su::biom table = su::biom();
+    SUITE_END();
+}
+
+void test_bptree_nullary() {
+    SUITE_START("bptree nullary");
+    su::BPTree tree = su::BPTree();
     SUITE_END();
 }
 
@@ -1836,6 +1848,7 @@ int main(int argc, char** argv) {
     test_bptree_constructor_edgecases();
     test_bptree_constructor_quoted_comma();
     test_bptree_constructor_quoted_parens();
+    test_bptree_nullary();
     test_bptree_postorder();
     test_bptree_preorder();
     test_bptree_parent();
@@ -1851,6 +1864,7 @@ int main(int argc, char** argv) {
 
     test_biom_constructor();
     test_biom_constructor_from_sparse();
+    test_biom_nullary();
     test_biom_get_obs_data();
 
     test_propstack_constructor();
