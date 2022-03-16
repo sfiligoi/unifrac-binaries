@@ -208,12 +208,6 @@ EXTERN ComputeStatus one_off_inmem(support_biom_t *table_data, support_bptree_t 
                                    const char* unifrac_method, bool variance_adjust, double alpha,
                                    bool bypass_tips, unsigned int threads, mat_t** result);
 
-/* define this thing... */
-
-//compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
-//                             const char* unifrac_method, bool variance_adjust, double alpha,
-//                             bool bypass_tips, unsigned int nthreads, mat_t** result);
-
 /* Compute UniFrac - matrix form
  *
  * biom_filename <const char*> the filename to the biom table.
