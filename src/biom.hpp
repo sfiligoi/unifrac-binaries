@@ -39,14 +39,16 @@ namespace su {
              * @param data vector of observation counts
              * @param n_obs number of observations
              * @param n_samples number of samples
+             * @param nnz number of data points
              */
-            biom(const char** obs_ids,
-                 const char** samp_ids,
+            biom(char** obs_ids,
+                 char** samp_ids,
                  const int32_t* index,
                  const int32_t* indptr,
                  const double* data,
                  const int n_obs,
-                 const int n_samples);
+                 const int n_samples,
+                 const int nnz);
 
             /* default destructor
              *

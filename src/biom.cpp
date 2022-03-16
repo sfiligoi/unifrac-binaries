@@ -26,8 +26,7 @@ const std::string SAMPLE_INDICES = std::string("/sample/matrix/indices");
 const std::string SAMPLE_DATA = std::string("/sample/matrix/data");
 const std::string SAMPLE_IDS = std::string("/sample/ids");
 
-biom::biom(std::string filename) : has_hdf5_backing = true {
-
+biom::biom(std::string filename) : has_hdf5_backing(true) {
     file = H5File(filename.c_str(), H5F_ACC_RDONLY);
 
     /* establish the datasets */
@@ -113,19 +112,19 @@ void biom::malloc_resident(uint32_t n_obs) {
     }
 }
 
-biom::biom() : has_hdf5_backing = false { 
+biom::biom() : has_hdf5_backing(false) { 
     n_obs = 0;
     malloc_resident(0);
 }
 
-biom::biom(const char** obs_ids_in,
-           const char** samp_ids_in,
-           const int32_t* indices
+biom::biom(char** obs_ids_in,
+           char** samp_ids_in,
+           const int32_t* indices,
            const int32_t* indptr,
            const double* data,
            const int n_obs,
            const int n_samples,
-           const int nnz) : has_hdf5_backing = false {
+           const int nnz) : has_hdf5_backing(false) {
     this->nnz = nnz;
     this->n_samples = n_samples;
     this->n_obs = n_obs;
@@ -155,7 +154,7 @@ biom::biom(const char** obs_ids_in,
     double *current_data = NULL;
     for(unsigned int i = 0; i < n_obs; i++)  {
         std::string id_ = obs_ids[i];
-        unsigned int n = get_obs_data_from_sparse(id_, index, indptr, data, current_indices, current_data);
+        unsigned int n = get_obs_data_from_sparse(id_, indices, indptr, data, current_indices, current_data);
         obs_counts_resident[i] = n;
         obs_indices_resident[i] = current_indices;
         obs_data_resident[i] = current_data;
