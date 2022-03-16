@@ -204,7 +204,7 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
-EXTERN ComputeStatus one_off_inmem(support_biom_t *table_data, support_bptree_t *tree_data,
+EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
                                    bool bypass_tips, unsigned int threads, mat_t** result);
 
