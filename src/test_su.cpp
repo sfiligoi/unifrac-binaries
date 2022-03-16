@@ -153,7 +153,6 @@ void test_bptree_constructor_from_existing() {
                                 //11101000
     su::BPTree existing = su::BPTree("(('123:foo; bar':1,b:2)c);");
     su::BPTree tree = su::BPTree(existing.get_structure(), existing.lengths, existing.names);
-
     unsigned int exp_nparens = 8;
 
     std::vector<bool> exp_structure;
@@ -1837,7 +1836,6 @@ void test_bptree_cstyle_constructor() {
     SUITE_START("test bptree constructor from c-style data");
                                 //01234567
                                 //11101000
-    su::BPTree existing = su::BPTree("(('123:foo; bar':1,b:2)c);");
     bool structure[] = {true, true, true, false, true, false, false, false};
     double lengths[] = {0, 0, 1, 0, 2, 0, 0, 0};
     char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};

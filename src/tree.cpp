@@ -57,9 +57,9 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, char** 
     lengths = std::vector<double>();
     names = std::vector<std::string>();
 
-    structure.resize(n_parens);
-    lengths.resize(n_parens);
-    names.resize(n_parens);
+    structure.reserve(n_parens);
+    lengths.reserve(n_parens);
+    names.reserve(n_parens);
 
     nparens = n_parens;
 
