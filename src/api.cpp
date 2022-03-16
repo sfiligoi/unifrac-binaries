@@ -351,6 +351,37 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
     }
 }
 
+compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int nthreads, mat_t** result) {
+    SYNC_TREE_TABLE(tree, table)
+    SET_METHOD(unifrac_method, unknown_method)
+
+    const unsigned int stripe_stop = (table.n_samples + 1) / 2;
+    std::vector<double*> dm_stripes(stripe_stop);
+    std::vector<double*> dm_stripes_total(stripe_stop);
+
+    if(nthreads > dm_stripes.size()) {
+        fprintf(stderr, "More threads were requested than stripes. Using %d threads.\n", dm_stripes.size());
+        nthreads = dm_stripes.size();
+    }
+
+    std::vector<su::task_parameters> tasks(nthreads);
+    std::vector<std::thread> threads(nthreads);
+
+    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
+    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
+
+    initialize_mat(*result, table, true);  // true -> is_upper_triangle
+    for(unsigned int tid = 0; tid < threads.size(); tid++) {
+        su::stripes_to_condensed_form(dm_stripes,table.n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
+    }
+
+    destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
+
+    return okay;
+}
+
 compute_status partial(const char* biom_filename, const char* tree_filename,
                        const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
                        unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
@@ -422,38 +453,6 @@ compute_status one_off_inmem(const support_biom_t *table_data, const support_bpt
                     tree_data->n_parens);
 
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
-}
-
-
-compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int nthreads, mat_t** result) {
-    SYNC_TREE_TABLE(tree, table)
-    SET_METHOD(unifrac_method, unknown_method)
-
-    const unsigned int stripe_stop = (table.n_samples + 1) / 2;
-    std::vector<double*> dm_stripes(stripe_stop);
-    std::vector<double*> dm_stripes_total(stripe_stop);
-
-    if(nthreads > dm_stripes.size()) {
-        fprintf(stderr, "More threads were requested than stripes. Using %d threads.\n", dm_stripes.size());
-        nthreads = dm_stripes.size();
-    }
-
-    std::vector<su::task_parameters> tasks(nthreads);
-    std::vector<std::thread> threads(nthreads);
-
-    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
-    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
-
-    initialize_mat(*result, table, true);  // true -> is_upper_triangle
-    for(unsigned int tid = 0; tid < threads.size(); tid++) {
-        su::stripes_to_condensed_form(dm_stripes,table.n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
-    }
-
-    destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
-
-    return okay;
 }
 
 compute_status one_off(const char* biom_filename, const char* tree_filename,
