@@ -515,7 +515,7 @@ void test_biom_constructor_from_sparse() {
 
     su::biom table = su::biom(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
     _exercise_get_obs_data(table);
-    ASSERT(1 != 1);
+   
     SUITE_END();
 }
 
@@ -1835,7 +1835,62 @@ void test_set_tasks() {
 
 void test_bptree_cstyle_constructor() {
     SUITE_START("test bptree constructor from c-style data");
-    ASSERT(1 != 1);
+                                //01234567
+                                //11101000
+    su::BPTree existing = su::BPTree("(('123:foo; bar':1,b:2)c);");
+    bool structure[] = {true, true, true, false, true, false, false, false};
+    double lengths[] = {0, 0, 1, 0, 2, 0, 0, 0};
+    char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};
+    su::BPTree tree = su::BPTree(structure, lengths, names, 8);
+
+    unsigned int exp_nparens = 8;
+
+    std::vector<bool> exp_structure;
+    exp_structure.push_back(true);
+    exp_structure.push_back(true);
+    exp_structure.push_back(true);
+    exp_structure.push_back(false);
+    exp_structure.push_back(true);
+    exp_structure.push_back(false);
+    exp_structure.push_back(false);
+    exp_structure.push_back(false);
+
+    std::vector<uint32_t> exp_openclose;
+    exp_openclose.push_back(7);
+    exp_openclose.push_back(6);
+    exp_openclose.push_back(3);
+    exp_openclose.push_back(2);
+    exp_openclose.push_back(5);
+    exp_openclose.push_back(4);
+    exp_openclose.push_back(1);
+    exp_openclose.push_back(0);
+
+    std::vector<std::string> exp_names;
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string("c"));
+    exp_names.push_back(std::string("123:foo; bar"));
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string("b"));
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string());
+
+    std::vector<double> exp_lengths;
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(1.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(2.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(0.0);
+
+    ASSERT(tree.nparens == exp_nparens);
+    ASSERT(tree.get_structure() == exp_structure);
+    ASSERT(tree.get_openclose() == exp_openclose);
+    ASSERT(tree.lengths == exp_lengths);
+    ASSERT(tree.names == exp_names);
+
     SUITE_END();
 }
 
@@ -1855,6 +1910,7 @@ int main(int argc, char** argv) {
     test_bptree_constructor_edgecases();
     test_bptree_constructor_quoted_comma();
     test_bptree_constructor_quoted_parens();
+    test_bptree_cstyle_constructor();
     test_bptree_nullary();
     test_bptree_postorder();
     test_bptree_preorder();
