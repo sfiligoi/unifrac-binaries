@@ -3,8 +3,6 @@
 
 #ifdef __cplusplus
 #include <vector>
-#include "biom.hpp"
-#include "tree.hpp"
 #define EXTERN extern "C"
 
 
