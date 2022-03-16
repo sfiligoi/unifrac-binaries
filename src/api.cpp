@@ -404,13 +404,28 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
-compute_status one_off_inmem(su::biom *table, su::BPTree *tree,
+compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SET_METHOD(unifrac_method, unknown_method)
-    SYNC_TREE_TABLE((*tree), (*table))
 
-    const unsigned int stripe_stop = (table->n_samples + 1) / 2;
+    table = su::biom(table_data->obs_ids, 
+                     table_data->sample_ids, 
+                     table_data->indices,
+                     table_data->indptr,
+                     table_data->data
+                     table_data->n_obs,
+                     table_data->n_samples,
+                     table_data->nnz);
+
+    tree = su::BPTree(tree_data->structure,
+                      tree_data->lengths,
+                      tree_data->names,
+                      tree_data->n_parens);
+
+    SYNC_TREE_TABLE(tree, table)
+
+    const unsigned int stripe_stop = (table.n_samples + 1) / 2;
     std::vector<double*> dm_stripes(stripe_stop);
     std::vector<double*> dm_stripes_total(stripe_stop);
 
@@ -422,15 +437,15 @@ compute_status one_off_inmem(su::biom *table, su::BPTree *tree,
     std::vector<su::task_parameters> tasks(nthreads);
     std::vector<std::thread> threads(nthreads);
 
-    set_tasks(tasks, alpha, table->n_samples, 0, stripe_stop, bypass_tips, nthreads);
+    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
     su::process_stripes(*table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
-    initialize_mat(*result, *table, true);  // true -> is_upper_triangle
+    initialize_mat(*result, table, true);  // true -> is_upper_triangle
     for(unsigned int tid = 0; tid < threads.size(); tid++) {
-        su::stripes_to_condensed_form(dm_stripes,table->n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
+        su::stripes_to_condensed_form(dm_stripes,tablen_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
     }
 
-    destroy_stripes(dm_stripes, dm_stripes_total, table->n_samples, 0, 0);
+    destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
 
     return okay;
 }

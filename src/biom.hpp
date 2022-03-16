@@ -37,12 +37,16 @@ namespace su {
              * @param index vector of index positions
              * @param indptr vector of indptr positions
              * @param data vector of observation counts
+             * @param n_obs number of observations
+             * @param n_samples number of samples
              */
-            biom(const std::vector<std::string> &obs_ids,
-                 const std::vector<std::string> &samp_ids,
-                 const std::vector<uint32_t> &index,
-                 const std::vector<uint32_t> &indptr,
-                 const std::vector<double> &data);
+            biom(const char** obs_ids,
+                 const char** samp_ids,
+                 const int32_t* index,
+                 const int32_t* indptr,
+                 const double* data,
+                 const int n_obs,
+                 const int n_samples);
 
             /* default destructor
              *
@@ -91,9 +95,9 @@ namespace su {
              * WARNING: assumes data are CSR, with observations as rows
              */
             unsigned int get_obs_data_from_sparse(const std::string &id_, 
-                                                  const std::vector<uint32_t> &index, 
-                                                  const std::vector<uint32_t> &indptr, 
-                                                  const std::vector<double> &data, 
+                                                  const int32_t* index, 
+                                                  const int32_t* indptr, 
+                                                  const double* data, 
                                                   uint32_t *& current_indices_out, 
                                                   double *& current_data_out);
             unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);

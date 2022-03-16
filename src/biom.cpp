@@ -26,8 +26,7 @@ const std::string SAMPLE_INDICES = std::string("/sample/matrix/indices");
 const std::string SAMPLE_DATA = std::string("/sample/matrix/data");
 const std::string SAMPLE_IDS = std::string("/sample/ids");
 
-biom::biom(std::string filename) {
-    has_hdf5_backing = true;
+biom::biom(std::string filename) : has_hdf5_backing = true {
 
     file = H5File(filename.c_str(), H5F_ACC_RDONLY);
 
@@ -114,24 +113,34 @@ void biom::malloc_resident(uint32_t n_obs) {
     }
 }
 
-biom::biom() { 
+biom::biom() : has_hdf5_backing = false { 
     n_obs = 0;
     malloc_resident(0);
 }
 
-biom::biom(const std::vector<std::string> &obs_ids_in,
-           const std::vector<std::string> &samp_ids_in,
-           const std::vector<uint32_t> &index,
-           const std::vector<uint32_t> &indptr,
-           const std::vector<double> &data) {
-    nnz = data.size();
-    n_samples = samp_ids_in.size();
-    n_obs = obs_ids_in.size();
+biom::biom(const char** obs_ids_in,
+           const char** samp_ids_in,
+           const int32_t* indices
+           const int32_t* indptr,
+           const double* data,
+           const int n_obs,
+           const int n_samples,
+           const int nnz) : has_hdf5_backing = false {
+    this->nnz = nnz;
+    this->n_samples = n_samples;
+    this->n_obs = n_obs;
 
     sample_ids = std::vector<std::string>();
+    sample_ids.reserve(n_samples);
     obs_ids = std::vector<std::string>();
-    sample_ids.assign(samp_ids_in.begin(), samp_ids_in.end());
-    obs_ids.assign(obs_ids_in.begin(), obs_ids_in.end());
+    obs_ids.reserve(n_obs);
+
+    for(int i = 0; i < n_obs; i++) {
+        obs_ids.push_back(std::string(obs_ids_in[i]));
+    }
+    for(int i = 0; i < n_samples; i++) {
+        sample_ids.push_back(std::string(samp_ids_in[i]));
+    }
 
     /* define a mapping between an ID and its corresponding offset */
     obs_id_index = std::unordered_map<std::string, uint32_t>();
@@ -144,7 +153,7 @@ biom::biom(const std::vector<std::string> &obs_ids_in,
 
     uint32_t *current_indices = NULL;
     double *current_data = NULL;
-    for(unsigned int i = 0; i < obs_ids.size(); i++)  {
+    for(unsigned int i = 0; i < n_obs; i++)  {
         std::string id_ = obs_ids[i];
         unsigned int n = get_obs_data_from_sparse(id_, index, indptr, data, current_indices, current_data);
         obs_counts_resident[i] = n;
@@ -241,14 +250,14 @@ void biom::create_id_index(const std::vector<std::string> &ids,
 }
 
 unsigned int biom::get_obs_data_from_sparse(const std::string &id_, 
-                                            const std::vector<uint32_t> &index, 
-                                            const std::vector<uint32_t> &indptr, 
-                                            const std::vector<double> &data, 
+                                            const int32_t* index, 
+                                            const int32_t* indptr, 
+                                            const double* data, 
                                             uint32_t *& current_indices_out, 
                                             double *& current_data_out) {
     uint32_t idx = obs_id_index.at(id_);
-    uint32_t start = indptr[idx];
-    uint32_t end = indptr[idx + 1];
+    int32_t start = indptr[idx];
+    int32_t end = indptr[idx + 1];
     unsigned int count = end - start;
     
     current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count);

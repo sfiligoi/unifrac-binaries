@@ -52,6 +52,35 @@ BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_leng
     index_and_cache();
 }
 
+BPTree::BPTree(const bool* input_structure, const double* input_lengths, const char** input_names, const int n_parens) {
+    structure = std::vector<bool>();
+    lengths = std::vector<double>();
+    names = std::vector<std::string>();
+
+    structure.resize(n_parens);
+    lengths.resize(n_parens);
+    names.resize(n_parens);
+
+    nparens = n_parens;
+
+    for(int i = 0; i < n_parens; i++) {
+        structure.push_back(input_structure[i]);
+        lengths.push_back(input_lengths[i]);
+        names.push_back(std::string(input_names[i]));
+    }
+
+    openclose = std::vector<uint32_t>();
+    select_0_index = std::vector<uint32_t>();
+    select_1_index = std::vector<uint32_t>();
+    openclose.resize(nparens);
+    select_0_index.resize(nparens / 2);
+    select_1_index.resize(nparens / 2);
+    excess.resize(nparens);
+
+    structure_to_openclose();
+    index_and_cache();
+}
+
 BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) {
     
     std::vector<bool> new_structure = std::vector<bool>();

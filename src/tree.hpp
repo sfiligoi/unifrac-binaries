@@ -44,6 +44,15 @@ namespace su {
             BPTree(std::vector<bool> input_structure, std::vector<double> input_lengths, std::vector<std::string> input_names);
             ~BPTree();
 
+            /* constructor from a defined topology using c-types
+             *
+             * @param input_structure A boolean array defining the topology
+             * @param input_lengths A double array of the branch lengths
+             * @param input_names A char* array of the names
+             * @param n_parens The length of the topology
+             */
+            BPTree(const bool* input_structure, const double* input_lengths, const char** input_names, const int n_parens);
+
             /* postorder tree traversal
              *
              * Get the index position of the ith node in a postorder tree

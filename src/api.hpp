@@ -124,6 +124,41 @@ typedef struct partial_dyn_mat {
     char* filename;
 } partial_dyn_mat_t;
 
+/* support structure to carry in biom table information 
+ *
+ * obs_ids <char**> the observation IDs
+ * sample_ids <char**> the sample IDs
+ * indices <int32_t*> the indices of the data values
+ * indptr <int32_t*> the row offset of the data values
+ * data <double*> the actual matrix values
+ * n_obs <int> the number of observations, corresponding to length of obs_ids
+ * n_samples <int> the number of samples, corresponding to the length of sample_ids
+ * nnz <int> the number of nonzero values, corresponding to the length of data and indices
+ */
+typedef struct support_biom {
+    char** obs_ids;
+    char** sample_ids;
+    int32_t* indices;
+    int32_t* indptr;
+    double* data;
+    int n_obs;
+    int n_samples;
+    int nnz;
+} support_biom_t;
+
+/* support structure to carry in bptree information
+ *
+ * structure <bool*> the topology of the tree
+ * lengths <double*> the branch lengths of the tree
+ * names <char**> the names of the tips and internal nodes of hte tree
+ * n_parens <int> the length of the structure array
+ */
+typedef struct support_bptree {
+    bool* structure;
+    double* lengths;
+    char** names;
+    int n_parens;
+} support_bptree_t;
 
 
 void destroy_mat(mat_t** result);
@@ -174,11 +209,9 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
-#ifdef __cplusplus
-ComputeStatus one_off_inmem(su::biom *table, su::BPTree *tree,
-                            const char* unifrac_method, bool variance_adjust, double alpha,
-                            bool bypass_tips, unsigned int threads, mat_t** result);
-#endif
+EXTERN ComputeStatus one_off_inmem(support_biom_t *table_data, support_bptree_t *tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int threads, mat_t** result);
 
 /* Compute UniFrac - matrix form
  *
