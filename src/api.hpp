@@ -1,9 +1,10 @@
 #include "task_parameters.hpp"
+#include "status_enum.hpp"
 
 #ifdef __cplusplus
 #include <vector>
-#include "tree.hpp"
 #include "biom.hpp"
+#include "tree.hpp"
 #define EXTERN extern "C"
 
 
@@ -15,10 +16,6 @@
 #define PARTIAL_MAGIC "SSU-PARTIAL-01"
 #define PARTIAL_MAGIC_V2 0x088ABA02
 
-
-typedef enum compute_status {okay=0, tree_missing, table_missing, table_empty, unknown_method, table_and_tree_do_not_overlap, output_error} ComputeStatus;
-typedef enum io_status {read_okay=0, write_okay, open_error, read_error, magic_incompatible, bad_header, unexpected_end, write_error} IOStatus;
-typedef enum merge_status {merge_okay=0, incomplete_stripe_set, sample_id_consistency, square_mismatch, partials_mismatch, stripes_overlap} MergeStatus;
 
 /* a result matrix
  *
@@ -214,6 +211,7 @@ EXTERN ComputeStatus one_off_inmem(support_biom_t *table_data, support_bptree_t 
                                    bool bypass_tips, unsigned int threads, mat_t** result);
 
 /* define this thing... */
+
 compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result);
