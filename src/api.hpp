@@ -156,12 +156,12 @@ typedef struct support_bptree {
 } support_bptree_t;
 
 
-void destroy_mat(mat_t** result);
-void destroy_mat_full_fp64(mat_full_fp64_t** result);
-void destroy_mat_full_fp32(mat_full_fp32_t** result);
-void destroy_partial_mat(partial_mat_t** result);
-void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
-void destroy_results_vec(r_vec** result);
+EXTERN void destroy_mat(mat_t** result);
+EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
+EXTERN void destroy_mat_full_fp32(mat_full_fp32_t** result);
+EXTERN void destroy_partial_mat(partial_mat_t** result);
+EXTERN void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
+EXTERN void destroy_results_vec(r_vec** result);
 
 /* Compute UniFrac - condensed form
  *
