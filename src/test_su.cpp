@@ -153,8 +153,8 @@ void test_bptree_constructor_from_existing() {
                                 //11101000
     su::BPTree existing = su::BPTree("(('123:foo; bar':1,b:2)c);");
     su::BPTree tree = su::BPTree(existing.get_structure(), existing.lengths, existing.names);
+    
     unsigned int exp_nparens = 8;
-
     std::vector<bool> exp_structure;
     exp_structure.push_back(true);
     exp_structure.push_back(true);
