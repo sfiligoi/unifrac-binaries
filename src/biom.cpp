@@ -452,16 +452,25 @@ unsigned int biom::get_sample_data_direct(const std::string &id, uint32_t *& cur
 }
 
 double* biom::get_sample_counts() {
-    double *sample_counts = (double*)calloc(sizeof(double), n_samples);
+    double *sample_counts = (double*)malloc(sizeof(double) * n_samples);
 
-    for(unsigned int i = 0; i < n_obs; i++) {
-        unsigned int count = obs_counts_resident[i];
-        uint32_t *indices = obs_indices_resident[i];
-        double *data = obs_data_resident[i];
-        for(unsigned int j = 0; j < count; j++) {
-            uint32_t index = indices[j];
-            double datum = data[j];
-            sample_counts[index] += datum;
+    #pragma omp parallel
+    { 
+        #pragma omp for
+        for(int i = 0; i < n_samples; i++) {
+            sample_counts[i] = 0;
+        }
+
+        #pragma omp for reduction(+ : sample_counts[:n_samples])
+        for(unsigned int i = 0; i < n_obs; i++) {
+            unsigned int count = obs_counts_resident[i];
+            uint32_t *indices = obs_indices_resident[i];
+            double *data = obs_data_resident[i];
+            for(unsigned int j = 0; j < count; j++) {
+                uint32_t index = indices[j];
+                double datum = data[j];
+                sample_counts[index] += datum;
+            }
         }
     }
     return sample_counts;
