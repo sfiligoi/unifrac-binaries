@@ -55,10 +55,15 @@ biom::biom(std::string filename) : has_hdf5_backing(true) {
     obs_id_index = std::unordered_map<std::string, uint32_t>();
     sample_id_index = std::unordered_map<std::string, uint32_t>();
 
-    create_id_index(obs_ids, obs_id_index);
-    create_id_index(sample_ids, sample_id_index);
-
-    malloc_resident(n_obs);
+    #pragma omp parallel for schedule(static)
+    for(int i = 0; i < 3; i++) {
+        if(i == 0)
+            create_id_index(obs_ids, obs_id_index);
+        else if(i == 1)
+            create_id_index(sample_ids, sample_id_index);
+        else if(i == 2)
+            malloc_resident(n_obs);
+    }
 
     uint32_t *current_indices = NULL;
     double *current_data = NULL;
@@ -133,25 +138,38 @@ biom::biom(char** obs_ids_in,
     sample_ids.reserve(n_samples);
     obs_ids = std::vector<std::string>();
     obs_ids.reserve(n_obs);
-
-    for(int i = 0; i < n_obs; i++) {
-        obs_ids.push_back(std::string(obs_ids_in[i]));
-    }
-    for(int i = 0; i < n_samples; i++) {
-        sample_ids.push_back(std::string(samp_ids_in[i]));
+    
+    #pragma omp parallel for schedule(static)
+    for(int x = 0; x < 2; x++) {
+        if(x == 0) {
+            for(int i = 0; i < n_obs; i++) {
+                obs_ids.push_back(std::string(obs_ids_in[i]));
+            }
+        } else {
+            for(int i = 0; i < n_samples; i++) {
+                sample_ids.push_back(std::string(samp_ids_in[i]));
+            }
+        }
     }
 
     /* define a mapping between an ID and its corresponding offset */
     obs_id_index = std::unordered_map<std::string, uint32_t>();
     sample_id_index = std::unordered_map<std::string, uint32_t>();
 
-    create_id_index(obs_ids, obs_id_index);
-    create_id_index(sample_ids, sample_id_index);
-  
-    malloc_resident(n_obs);
+    #pragma omp parallel for schedule(static)
+    for(int i = 0; i < 3; i++) {
+        if(i == 0)
+            create_id_index(obs_ids, obs_id_index);
+        else if(i == 1)
+            create_id_index(sample_ids, sample_id_index);
+        else if(i == 2)
+            malloc_resident(n_obs);
+    }
 
     uint32_t *current_indices = NULL;
     double *current_data = NULL;
+    
+    #pragma omp parallel for schedule(static)
     for(unsigned int i = 0; i < n_obs; i++)  {
         std::string id_ = obs_ids[i];
         unsigned int n = get_obs_data_from_sparse(id_, indices, indptr, data, current_indices, current_data);
@@ -435,6 +453,7 @@ unsigned int biom::get_sample_data_direct(const std::string &id, uint32_t *& cur
 
 double* biom::get_sample_counts() {
     double *sample_counts = (double*)calloc(sizeof(double), n_samples);
+
     for(unsigned int i = 0; i < n_obs; i++) {
         unsigned int count = obs_counts_resident[i];
         uint32_t *indices = obs_indices_resident[i];
