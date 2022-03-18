@@ -506,8 +506,8 @@ void _exercise_get_obs_data(su::biom &table) {
 
 void test_biom_constructor_from_sparse() {
     SUITE_START("biom from sparse constructor");
-    int32_t index[] = {2, 0, 1, 3, 4, 5, 2, 3, 5, 0, 1, 2, 5, 1, 2};
-    int32_t indptr[] = {0,  1,  6,  9, 13, 15};
+    uint32_t index[] = {2, 0, 1, 3, 4, 5, 2, 3, 5, 0, 1, 2, 5, 1, 2};
+    uint32_t indptr[] = {0,  1,  6,  9, 13, 15};
     double data[] = {1., 5., 1., 2., 3., 1., 1., 4., 2., 2., 1., 1., 1., 1., 1.};
     char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};

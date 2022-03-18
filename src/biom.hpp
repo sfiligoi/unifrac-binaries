@@ -43,9 +43,9 @@ namespace su {
              */
             biom(char** obs_ids,
                  char** samp_ids,
-                 const int32_t* index,
-                 const int32_t* indptr,
-                 const double* data,
+                 uint32_t* index,
+                 uint32_t* indptr,
+                 double* data,
                  const int n_obs,
                  const int n_samples,
                  const int nnz);
@@ -99,9 +99,7 @@ namespace su {
             unsigned int get_obs_data_from_sparse(const std::string &id_, 
                                                   const int32_t* index, 
                                                   const int32_t* indptr, 
-                                                  const double* data, 
-                                                  uint32_t *& current_indices_out, 
-                                                  double *& current_data_out);
+                                                  const double* data);
             unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             unsigned int get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             double* get_sample_counts();

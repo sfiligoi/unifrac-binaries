@@ -149,6 +149,34 @@ void initialize_mat_no_biom(mat_t* &result, char** sample_ids, unsigned int n_sa
     }
 }
 
+inline compute_status is_fp64_method(const std::string &method_string, bool &fp64) {
+    if ((method_string=="unweighted_fp32") || (method_string=="weighted_normalized_fp32") || (method_string=="weighted_unnormalized_fp32") || (method_string=="generalized_fp32")) {
+        fp64 = false;
+    } else if ((method_string=="unweighted") || (method_string=="weighted_normalized") || (method_string=="weighted_unnormalized") || (method_string=="generalized")) {
+       fp64 = true;
+    } else {
+        return unknown_method;
+    }
+
+    return okay;
+}
+
+
+inline compute_status is_fp64(const std::string &method_string, const std::string &format_string, bool &fp64) {
+  if (format_string == "hdf5_fp32") {
+    fp64 = false;
+  } else if (format_string == "hdf5_fp64") {
+    fp64 = true;
+  } else if (format_string == "hdf5") {
+    return is_fp64_method(method_string, fp64);
+  } else {
+    return unknown_method; 
+  }
+
+  return okay;
+}
+
+
 template<class TReal, class TMat>
 void initialize_mat_full_no_biom_T(TMat* &result, const char* const * sample_ids, unsigned int n_samples, 
                                    const char *mmap_dir /* if NULL or "", use malloc */) {
@@ -435,38 +463,20 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
-compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int nthreads, mat_t** result) {
-    su::biom table(table_data->obs_ids, 
-                   table_data->sample_ids, 
-                   table_data->indices,
-                   table_data->indptr,
-                   table_data->data,
-                   table_data->n_obs,
-                   table_data->n_samples,
-                   table_data->nnz);
-
-    su::BPTree tree(tree_data->structure,
-                    tree_data->lengths,
-                    tree_data->names,
-                    tree_data->n_parens);
-
-    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
-}
-
 compute_status one_off(const char* biom_filename, const char* tree_filename,
                        const char* unifrac_method, bool variance_adjust, double alpha,
                        bool bypass_tips, unsigned int nthreads, mat_t** result) {
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, table_filename)
+
+    // condensed form
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
 // TMat mat_full_fp32_t
 template<class TReal, class TMat>
-compute_status one_off_matrix_T(const char* biom_filename, const char* tree_filename,
+compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
                                 const char* unifrac_method, bool variance_adjust, double alpha,
                                 bool bypass_tips, unsigned int nthreads,
                                 const char *mmap_dir,  
@@ -475,10 +485,8 @@ compute_status one_off_matrix_T(const char* biom_filename, const char* tree_file
      if (mmap_dir[0]==0) mmap_dir = NULL; // easier to have a simple test going on
     }
 
-    CHECK_FILE(biom_filename, table_missing)
-    CHECK_FILE(tree_filename, tree_missing)
     SET_METHOD(unifrac_method, unknown_method)
-    PARSE_SYNC_TREE_TABLE(tree_filename, table_filename)
+    SYNC_TREE_TABLE(tree, table)
 
     const unsigned int stripe_stop = (table.n_samples + 1) / 2;
     partial_mat_t *partial_mat = NULL;
@@ -527,7 +535,10 @@ compute_status one_off_matrix(const char* biom_filename, const char* tree_filena
                               bool bypass_tips, unsigned int nthreads,
                               const char *mmap_dir,
                               mat_full_fp64_t** result) {
- return one_off_matrix_T<double,mat_full_fp64_t>(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, biom_filename)
+    return one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
 }
 
 compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
@@ -535,29 +546,89 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
                                    bool bypass_tips, unsigned int nthreads,
                                    const char *mmap_dir,
                                    mat_full_fp32_t** result) {
- return one_off_matrix_T<float,mat_full_fp32_t>(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, biom_filename)
+    return one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
 }
 
-inline compute_status is_fp64(const std::string &method_string, const std::string &format_string, bool &fp64) {
-  if (format_string == "hdf5_fp32") {
-    fp64 = false;
-  } else if (format_string == "hdf5_fp64") {
-    fp64 = true;
-  } else if (format_string == "hdf5") {
-    if ((method_string=="unweighted_fp32") || (method_string=="weighted_normalized_fp32") || (method_string=="weighted_unnormalized_fp32") || (method_string=="generalized_fp32")) {
-       fp64 = false;
-    } else if ((method_string=="unweighted") || (method_string=="weighted_normalized") || (method_string=="weighted_unnormalized") || (method_string=="generalized")) {
-       fp64 = true;
+compute_status one_off_inmem_matrix(su::biom &table, su::BPTree &tree,
+                                    const char* unifrac_method, bool variance_adjust, double alpha,
+                                    bool bypass_tips, unsigned int nthreads,
+                                    mat_full_fp64_t** result) {
+    // NULL -> mmap_dir, we're doing full in memory here
+    return one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,NULL,result);
+}
+
+compute_status one_off_inmem_matrix_fp32(su::biom &table, su::BPTree &tree,
+                                         const char* unifrac_method, bool variance_adjust, double alpha,
+                                         bool bypass_tips, unsigned int nthreads,
+                                         mat_full_fp32_t** result) {
+    // NULL -> mmap_dir, we're doing full in memory here
+    return one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,NULL,result);
+}
+
+compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int nthreads, mat_full_fp64_t** result) {
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc == okay) {
+        if (!fp64) {
+            return invalid_method;
+        }
     } else {
-      return unknown_method;
+        return rc;
     }
-  } else {
-    return unknown_method; 
-  }
 
-  return okay;
+    su::biom table(table_data->obs_ids, 
+                   table_data->sample_ids, 
+                   table_data->indices,
+                   table_data->indptr,
+                   table_data->data,
+                   table_data->n_obs,
+                   table_data->n_samples,
+                   table_data->nnz);
+
+    su::BPTree tree(tree_data->structure,
+                    tree_data->lengths,
+                    tree_data->names,
+                    tree_data->n_parens);
+
+    return one_off_inmem_matrix(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
+compute_status one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, unsigned int nthreads, mat_full_fp32_t** result) {
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc == okay) {
+        if (fp64) {
+            return invalid_method;
+        }
+    } else {
+        return rc;
+    }
+
+    su::biom table(table_data->obs_ids, 
+                   table_data->sample_ids, 
+                   table_data->indices,
+                   table_data->indptr,
+                   table_data->data,
+                   table_data->n_obs,
+                   table_data->n_samples,
+                   table_data->nnz);
+
+    su::BPTree tree(tree_data->structure,
+                    tree_data->lengths,
+                    tree_data->names,
+                    tree_data->n_parens);
+
+    return one_off_inmem_matrix_fp32(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
+}
 
 compute_status unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                const char* unifrac_method, bool variance_adjust, double alpha,

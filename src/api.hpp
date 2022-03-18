@@ -133,8 +133,8 @@ typedef struct partial_dyn_mat {
 typedef struct support_biom {
     char** obs_ids;
     char** sample_ids;
-    int32_t* indices;
-    int32_t* indptr;
+    uint32_t* indices;
+    uint32_t* indptr;
     double* data;
     int n_obs;
     int n_samples;
@@ -187,7 +187,7 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
                              bool bypass_tips, unsigned int threads, mat_t** result);
 
 
-/* Compute UniFrac - condensed form, in-memory
+/* Compute UniFrac - against in-memory objects returning full form matrix
  *
  * table <biom> a constructed BIOM object
  * tree <BPTree> a constructed BPTree object
@@ -196,7 +196,7 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
  * threads <uint> the number of threads to use.
- * result <mat_t**> the resulting distance matrix in condensed form, this is initialized within the method so using **
+ * result <mat_full_fp64_t**> the resulting distance matrix in full form, this is initialized within the method so using **
  *
  * one_off_inmem returns the following error codes:
  *
@@ -206,7 +206,28 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  */
 EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
-                                   bool bypass_tips, unsigned int threads, mat_t** result);
+                                   bool bypass_tips, unsigned int threads, mat_full_fp64_t** result);
+
+/* Compute UniFrac - against in-memory objects returning full form matrix, fp32
+ *
+ * table <biom> a constructed BIOM object
+ * tree <BPTree> a constructed BPTree object
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * threads <uint> the number of threads to use.
+ * result <mat_full_fp32_t**> the resulting distance matrix in full form, this is initialized within the method so using **
+ *
+ * one_off_inmem returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * unknown_method : the requested method is unknown.
+ * table_empty    : the table does not have any entries
+ */
+EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int threads, mat_full_fp32_t** result);
 
 /* Compute UniFrac - matrix form
  *

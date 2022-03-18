@@ -126,11 +126,12 @@ biom::biom() : has_hdf5_backing(false) {
     malloc_resident(0);
 }
 
+// not using const on indices/indptr/data as the pointers are being borrowed
 biom::biom(char** obs_ids_in,
            char** samp_ids_in,
-           const int32_t* indices,
-           const int32_t* indptr,
-           const double* data,
+           uint32_t* indices,
+           uint32_t* indptr,
+           double* data,
            const int n_obs,
            const int n_samples,
            const int nnz) : has_hdf5_backing(false) {
@@ -170,16 +171,18 @@ biom::biom(char** obs_ids_in,
             malloc_resident(n_obs);
     }
 
-    uint32_t *current_indices = NULL;
-    double *current_data = NULL;
-
     #pragma omp parallel for schedule(static)
     for(unsigned int i = 0; i < n_obs; i++)  {
-        std::string id_ = obs_ids[i];
-        unsigned int n = get_obs_data_from_sparse(id_, indices, indptr, data, current_indices, current_data);
-        obs_counts_resident[i] = n;
-        //obs_indices_resident[i] = current_indices;
-        //obs_data_resident[i] = current_data;
+        int32_t start = indptr[i];
+        int32_t end = indptr[i + 1];
+        unsigned int count = end - start;
+
+        uint32_t* index_ptr = (indices + start);
+        double* data_ptr = (data + start);
+        
+        obs_indices_resident[i] = index_ptr;
+        obs_data_resident[i] = data_ptr;
+        obs_counts_resident[i] = count;
     }
     sample_counts = get_sample_counts();
 }
@@ -268,51 +271,6 @@ void biom::create_id_index(const std::vector<std::string> &ids,
     for(auto i = ids.begin(); i != ids.end(); i++, count++) {
         map[*i] = count;
     }
-}
-
-unsigned int biom::get_obs_data_from_sparse(const std::string &id_, 
-                                            const int32_t* index, 
-                                            const int32_t* indptr, 
-                                            const double* data, 
-                                            uint32_t *& current_indices_out, 
-                                            double *& current_data_out) {
-    uint32_t idx = obs_id_index.at(id_);
-    int32_t start = indptr[idx];
-    int32_t end = indptr[idx + 1];
-    unsigned int count = end - start;
-
-    //////////////
-    // dont actually do this, but remove const upstream as we are no longer 
-    // copying but adopting?
-    //
-    // this "works" but we need to correct typing upstream as well
-    ////////////////////
-    uint32_t* index_ptr = (uint32_t*)(const_cast<int32_t*>(index + start));
-    double* data_ptr = const_cast<double*>(data + start);
-    
-    this->obs_indices_resident[idx] = index_ptr;
-    this->obs_data_resident[idx] = data_ptr;
-
-    //current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count);
-    //if(current_indices_out == NULL) {
-    //    fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-    //            sizeof(uint32_t) * count, __FILE__, __LINE__);
-    //    exit(EXIT_FAILURE);
-    //}
-
-    //current_data_out = (double*)malloc(sizeof(double) * count);
-    //if(current_data_out == NULL) {
-    //    fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-    //            sizeof(double) * count, __FILE__, __LINE__);
-    //    exit(EXIT_FAILURE);
-    //}
-
-    //for(int i = 0, offset = start ; offset < end; i++, offset++) {
-    //    current_indices_out[i] = index[offset];
-    //    current_data_out[i] = data[offset];
-    //}
-    
-    return count;
 }
 
 unsigned int biom::get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out) {
