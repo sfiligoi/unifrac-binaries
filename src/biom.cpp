@@ -78,21 +78,25 @@ biom::biom(std::string filename) : has_hdf5_backing(true) {
 }
 
 biom::~biom() {
-    if(obs_indices_resident != NULL && obs_data_resident != NULL) {
-        for(unsigned int i = 0; i < n_obs; i++) {
-            if(obs_indices_resident[i] != NULL)
-                free(obs_indices_resident[i]);
-            if(obs_data_resident[i] != NULL)
-                free(obs_data_resident[i]);
+    if(has_hdf5_backing) {
+        if(obs_indices_resident != NULL && obs_data_resident != NULL) {
+            for(unsigned int i = 0; i < n_obs; i++) {
+                if(obs_indices_resident[i] != NULL)
+                    free(obs_indices_resident[i]);
+                if(obs_data_resident[i] != NULL)
+                    free(obs_data_resident[i]);
+            }
         }
-    }
-    
-    if(obs_indices_resident != NULL)
-        free(obs_indices_resident);
-    if(obs_data_resident != NULL)
-        free(obs_data_resident);
-    if(obs_counts_resident != NULL)
-        free(obs_counts_resident);
+        
+        if(obs_indices_resident != NULL)
+            free(obs_indices_resident);
+        if(obs_data_resident != NULL)
+            free(obs_data_resident);
+        if(obs_counts_resident != NULL)
+            free(obs_counts_resident);
+    } 
+    // else, it is the responsibility of the entity constructing this object
+    // to clean itself up
 }
 
 void biom::malloc_resident(uint32_t n_obs) { 
@@ -138,7 +142,7 @@ biom::biom(char** obs_ids_in,
     sample_ids.reserve(n_samples);
     obs_ids = std::vector<std::string>();
     obs_ids.reserve(n_obs);
-    
+   
     #pragma omp parallel for schedule(static)
     for(int x = 0; x < 2; x++) {
         if(x == 0) {
@@ -168,14 +172,14 @@ biom::biom(char** obs_ids_in,
 
     uint32_t *current_indices = NULL;
     double *current_data = NULL;
-    
+
     #pragma omp parallel for schedule(static)
     for(unsigned int i = 0; i < n_obs; i++)  {
         std::string id_ = obs_ids[i];
         unsigned int n = get_obs_data_from_sparse(id_, indices, indptr, data, current_indices, current_data);
         obs_counts_resident[i] = n;
-        obs_indices_resident[i] = current_indices;
-        obs_data_resident[i] = current_data;
+        //obs_indices_resident[i] = current_indices;
+        //obs_data_resident[i] = current_data;
     }
     sample_counts = get_sample_counts();
 }
@@ -276,25 +280,37 @@ unsigned int biom::get_obs_data_from_sparse(const std::string &id_,
     int32_t start = indptr[idx];
     int32_t end = indptr[idx + 1];
     unsigned int count = end - start;
+
+    //////////////
+    // dont actually do this, but remove const upstream as we are no longer 
+    // copying but adopting?
+    //
+    // this "works" but we need to correct typing upstream as well
+    ////////////////////
+    uint32_t* index_ptr = (uint32_t*)(const_cast<int32_t*>(index + start));
+    double* data_ptr = const_cast<double*>(data + start);
     
-    current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count);
-    if(current_indices_out == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(uint32_t) * count, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
+    this->obs_indices_resident[idx] = index_ptr;
+    this->obs_data_resident[idx] = data_ptr;
 
-    current_data_out = (double*)malloc(sizeof(double) * count);
-    if(current_data_out == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(double) * count, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
+    //current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count);
+    //if(current_indices_out == NULL) {
+    //    fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+    //            sizeof(uint32_t) * count, __FILE__, __LINE__);
+    //    exit(EXIT_FAILURE);
+    //}
 
-    for(int i = 0, offset = start ; offset < end; i++, offset++) {
-        current_indices_out[i] = index[offset];
-        current_data_out[i] = data[offset];
-    }
+    //current_data_out = (double*)malloc(sizeof(double) * count);
+    //if(current_data_out == NULL) {
+    //    fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
+    //            sizeof(double) * count, __FILE__, __LINE__);
+    //    exit(EXIT_FAILURE);
+    //}
+
+    //for(int i = 0, offset = start ; offset < end; i++, offset++) {
+    //    current_indices_out[i] = index[offset];
+    //    current_data_out[i] = data[offset];
+    //}
     
     return count;
 }
