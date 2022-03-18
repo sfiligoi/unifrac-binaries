@@ -57,16 +57,17 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, char** 
     lengths = std::vector<double>();
     names = std::vector<std::string>();
 
-    structure.reserve(n_parens);
-    lengths.reserve(n_parens);
-    names.reserve(n_parens);
+    structure.resize(n_parens);
+    lengths.resize(n_parens);
+    names.resize(n_parens);
 
     nparens = n_parens;
 
+    #pragma omp parallel for schedule(static)
     for(int i = 0; i < n_parens; i++) {
-        structure.push_back(input_structure[i]);
-        lengths.push_back(input_lengths[i]);
-        names.push_back(std::string(input_names[i]));
+        structure[i] = input_structure[i];
+        lengths[i] = input_lengths[i];
+        names[i] = std::string(input_names[i]);
     }
 
     openclose = std::vector<uint32_t>();

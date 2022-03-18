@@ -135,24 +135,25 @@ biom::biom(char** obs_ids_in,
            const int n_obs,
            const int n_samples,
            const int nnz) : has_hdf5_backing(false) {
+
     this->nnz = nnz;
     this->n_samples = n_samples;
     this->n_obs = n_obs;
 
     sample_ids = std::vector<std::string>();
-    sample_ids.reserve(n_samples);
+    sample_ids.resize(n_samples);
     obs_ids = std::vector<std::string>();
-    obs_ids.reserve(n_obs);
+    obs_ids.resize(n_obs);
    
     #pragma omp parallel for schedule(static)
     for(int x = 0; x < 2; x++) {
         if(x == 0) {
             for(int i = 0; i < n_obs; i++) {
-                obs_ids.push_back(std::string(obs_ids_in[i]));
+                obs_ids[i] = std::string(obs_ids_in[i]);
             }
         } else {
             for(int i = 0; i < n_samples; i++) {
-                sample_ids.push_back(std::string(samp_ids_in[i]));
+                sample_ids[i] = std::string(samp_ids_in[i]);
             }
         }
     }
