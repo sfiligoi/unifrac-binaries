@@ -63,7 +63,7 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, char** 
 
     nparens = n_parens;
 
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
     for(int i = 0; i < n_parens; i++) {
         structure[i] = input_structure[i];
         lengths[i] = input_lengths[i];
