@@ -509,7 +509,10 @@ compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
       destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, stripe_stop);
     }
 
-    initialize_mat_full_no_biom_T<TReal,TMat>(*result, partial_mat->sample_ids, partial_mat->n_samples,mmap_dir);
+    // allow the caller to allocate the memory
+    if((*result) == NULL) {
+        initialize_mat_full_no_biom_T<TReal,TMat>(*result, partial_mat->sample_ids, partial_mat->n_samples,mmap_dir);
+    }
 
     if (((*result)==NULL) || ((*result)->matrix==NULL) || ((*result)->sample_ids==NULL) ) {
         fprintf(stderr, "Memory allocation error! (initialize_mat)\n");
@@ -640,7 +643,7 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
 
     if (rc==okay) {
       if (fp64) {
-        mat_full_fp64_t* result;
+        mat_full_fp64_t* result = NULL;
         rc = one_off_matrix(biom_filename, tree_filename,
                             unifrac_method, variance_adjust, alpha,
                             bypass_tips, threads, mmap_dir,
@@ -654,7 +657,7 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
           if (iostatus!=write_okay) rc=output_error;
         }
       } else {
-        mat_full_fp32_t* result;
+        mat_full_fp32_t* result = NULL;
         rc = one_off_matrix_fp32(biom_filename, tree_filename,
                                  unifrac_method, variance_adjust, alpha,
                                  bypass_tips, threads, mmap_dir,
@@ -1507,7 +1510,10 @@ MergeStatus merge_partial_to_matrix_T(partial_dyn_mat_t* * partial_mats, int n_p
     MergeStatus err = check_partial(partial_mats, n_partials, false);
     if (err!=merge_okay) return err;
 
-    initialize_mat_full_no_biom_T<TReal,TMat>(*result, partial_mats[0]->sample_ids, partial_mats[0]->n_samples,mmap_dir);
+    // allow the caller to allocate
+    if((*result) == NULL) {
+        initialize_mat_full_no_biom_T<TReal,TMat>(*result, partial_mats[0]->sample_ids, partial_mats[0]->n_samples,mmap_dir);
+    }
 
     if ((*result)==NULL) return incomplete_stripe_set;
     if ((*result)->matrix==NULL) return incomplete_stripe_set;
