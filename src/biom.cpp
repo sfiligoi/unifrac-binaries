@@ -427,11 +427,7 @@ unsigned int biom::get_sample_data_direct(const std::string &id, uint32_t *& cur
 }
 
 double* biom::get_sample_counts() {
-    double *sample_counts = (double*)malloc(sizeof(double) * n_samples);
-
-    for(int i = 0; i < n_samples; i++) {
-        sample_counts[i] = 0;
-    }
+    double *sample_counts = (double*)calloc(sizeof(double), n_samples);
 
     for(unsigned int i = 0; i < n_obs; i++) {
         unsigned int count = obs_counts_resident[i];
