@@ -1510,10 +1510,7 @@ MergeStatus merge_partial_to_matrix_T(partial_dyn_mat_t* * partial_mats, int n_p
     MergeStatus err = check_partial(partial_mats, n_partials, false);
     if (err!=merge_okay) return err;
 
-    // allow the caller to allocate
-    if((*result) == NULL) {
-        initialize_mat_full_no_biom_T<TReal,TMat>(*result, partial_mats[0]->sample_ids, partial_mats[0]->n_samples,mmap_dir);
-    }
+    initialize_mat_full_no_biom_T<TReal,TMat>(*result, partial_mats[0]->sample_ids, partial_mats[0]->n_samples,mmap_dir);
 
     if ((*result)==NULL) return incomplete_stripe_set;
     if ((*result)->matrix==NULL) return incomplete_stripe_set;
