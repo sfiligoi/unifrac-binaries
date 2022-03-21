@@ -153,9 +153,8 @@ void test_bptree_constructor_from_existing() {
                                 //11101000
     su::BPTree existing = su::BPTree("(('123:foo; bar':1,b:2)c);");
     su::BPTree tree = su::BPTree(existing.get_structure(), existing.lengths, existing.names);
-
+ 
     unsigned int exp_nparens = 8;
-
     std::vector<bool> exp_structure;
     exp_structure.push_back(true);
     exp_structure.push_back(true);
@@ -467,10 +466,7 @@ void test_biom_constructor() {
     SUITE_END();
 }
 
-void test_biom_get_obs_data() {
-    SUITE_START("biom get obs data");
-
-    su::biom table = su::biom("test.biom");
+void _exercise_get_obs_data(su::biom &table) {
     double exp0[] = {0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
     std::vector<double> exp0_vec = _double_array_to_vector(exp0, 6);
     double exp1[] = {5.0, 1.0, 0.0, 2.0, 3.0, 1.0};
@@ -506,8 +502,42 @@ void test_biom_get_obs_data() {
     ASSERT(vec_almost_equal(obs_vec, exp4_vec));
 
     free(out);
+}
+
+void test_biom_constructor_from_sparse() {
+    SUITE_START("biom from sparse constructor");
+    uint32_t index[] = {2, 0, 1, 3, 4, 5, 2, 3, 5, 0, 1, 2, 5, 1, 2};
+    uint32_t indptr[] = {0,  1,  6,  9, 13, 15};
+    double data[] = {1., 5., 1., 2., 3., 1., 1., 4., 2., 2., 1., 1., 1., 1., 1.};
+    char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
+    char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
+
+    su::biom table = su::biom(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
+    _exercise_get_obs_data(table);
+   
     SUITE_END();
 }
+
+void test_biom_nullary() {
+    SUITE_START("biom nullary");
+    su::biom table = su::biom();
+    SUITE_END();
+}
+
+void test_bptree_nullary() {
+    SUITE_START("bptree nullary");
+    su::BPTree tree = su::BPTree();
+    SUITE_END();
+}
+
+void test_biom_get_obs_data() {
+    SUITE_START("biom get obs data");
+
+    su::biom table = su::biom("test.biom");
+    _exercise_get_obs_data(table);
+    SUITE_END();
+}
+
 
 void test_bptree_leftchild() {
     SUITE_START("test bptree left child");
@@ -1802,6 +1832,66 @@ void test_set_tasks() {
     SUITE_END();
 }
 
+void test_bptree_cstyle_constructor() {
+    SUITE_START("test bptree constructor from c-style data");
+                                //01234567
+                                //11101000
+    bool structure[] = {true, true, true, false, true, false, false, false};
+    double lengths[] = {0, 0, 1, 0, 2, 0, 0, 0};
+    char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};
+    su::BPTree tree = su::BPTree(structure, lengths, names, 8);
+
+    unsigned int exp_nparens = 8;
+
+    std::vector<bool> exp_structure;
+    exp_structure.push_back(true);
+    exp_structure.push_back(true);
+    exp_structure.push_back(true);
+    exp_structure.push_back(false);
+    exp_structure.push_back(true);
+    exp_structure.push_back(false);
+    exp_structure.push_back(false);
+    exp_structure.push_back(false);
+
+    std::vector<uint32_t> exp_openclose;
+    exp_openclose.push_back(7);
+    exp_openclose.push_back(6);
+    exp_openclose.push_back(3);
+    exp_openclose.push_back(2);
+    exp_openclose.push_back(5);
+    exp_openclose.push_back(4);
+    exp_openclose.push_back(1);
+    exp_openclose.push_back(0);
+
+    std::vector<std::string> exp_names;
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string("c"));
+    exp_names.push_back(std::string("123:foo; bar"));
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string("b"));
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string());
+    exp_names.push_back(std::string());
+
+    std::vector<double> exp_lengths;
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(1.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(2.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(0.0);
+    exp_lengths.push_back(0.0);
+
+    ASSERT(tree.nparens == exp_nparens);
+    ASSERT(tree.get_structure() == exp_structure);
+    ASSERT(tree.get_openclose() == exp_openclose);
+    ASSERT(tree.lengths == exp_lengths);
+    ASSERT(tree.names == exp_names);
+
+    SUITE_END();
+}
+
 void test_bptree_constructor_newline_bug() {
     SUITE_START("test bptree constructor newline bug");
     su::BPTree tree = su::BPTree("((362be41f31fd26be95ae43a8769b91c0:0.116350803,(a16679d5a10caa9753f171977552d920:0.105836235,((a7acc2abb505c3ee177a12e514d3b994:0.008268754,(4e22aa3508b98813f52e1a12ffdb74ad:0.03144211,8139c4ac825dae48454fb4800fb87896:0.043622957)0.923:0.046588301)0.997:0.120902074,((2d3df7387323e2edcbbfcb6e56a02710:0.031543994,3f6752aabcc291b67a063fb6492fd107:0.091571442)0.759:0.016335166,((d599ebe277afb0dfd4ad3c2176afc50e:5e-09,84d0affc7243c7d6261f3a7d680b873f:0.010245188)0.883:0.048993011,51121722488d0c3da1388d1b117cd239:0.119447926)0.763:0.035660204)0.921:0.058191474)0.776:0.02854575)0.657:0.052060833)0.658:0.032547569,(99647b51f775c8ddde8ed36a7d60dbcd:0.173334268,(f18a9c8112372e2916a66a9778f3741b:0.194813398,(5833416522de0cca717a1abf720079ac:5e-09,(2bf1067d2cd4f09671e3ebe5500205ca:0.031692682,(b32621bcd86cb99e846d8f6fee7c9ab8:0.031330707,1016319c25196d73bdb3096d86a9df2f:5e-09)0.058:0.01028612)0.849:0.010284866)0.791:0.041353384)0.922:0.109470534):0.022169824000000005)root;\n\n");
@@ -1818,6 +1908,8 @@ int main(int argc, char** argv) {
     test_bptree_constructor_edgecases();
     test_bptree_constructor_quoted_comma();
     test_bptree_constructor_quoted_parens();
+    test_bptree_cstyle_constructor();
+    test_bptree_nullary();
     test_bptree_postorder();
     test_bptree_preorder();
     test_bptree_parent();
@@ -1832,6 +1924,8 @@ int main(int argc, char** argv) {
     test_bptree_collapse_edge();
 
     test_biom_constructor();
+    test_biom_constructor_from_sparse();
+    test_biom_nullary();
     test_biom_get_obs_data();
 
     test_propstack_constructor();

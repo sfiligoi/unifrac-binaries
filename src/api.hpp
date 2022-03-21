@@ -1,4 +1,5 @@
 #include "task_parameters.hpp"
+#include "status_enum.hpp"
 
 #ifdef __cplusplus
 #include <vector>
@@ -13,10 +14,6 @@
 #define PARTIAL_MAGIC "SSU-PARTIAL-01"
 #define PARTIAL_MAGIC_V2 0x088ABA02
 
-
-typedef enum compute_status {okay=0, tree_missing, table_missing, table_empty, unknown_method, table_and_tree_do_not_overlap, output_error} ComputeStatus;
-typedef enum io_status {read_okay=0, write_okay, open_error, read_error, magic_incompatible, bad_header, unexpected_end, write_error} IOStatus;
-typedef enum merge_status {merge_okay=0, incomplete_stripe_set, sample_id_consistency, square_mismatch, partials_mismatch, stripes_overlap} MergeStatus;
 
 /* a result matrix
  *
@@ -122,14 +119,49 @@ typedef struct partial_dyn_mat {
     char* filename;
 } partial_dyn_mat_t;
 
+/* support structure to carry in biom table information 
+ *
+ * obs_ids <char**> the observation IDs
+ * sample_ids <char**> the sample IDs
+ * indices <int32_t*> the indices of the data values
+ * indptr <int32_t*> the row offset of the data values
+ * data <double*> the actual matrix values
+ * n_obs <int> the number of observations, corresponding to length of obs_ids
+ * n_samples <int> the number of samples, corresponding to the length of sample_ids
+ * nnz <int> the number of nonzero values, corresponding to the length of data and indices
+ */
+typedef struct support_biom {
+    char** obs_ids;
+    char** sample_ids;
+    uint32_t* indices;
+    uint32_t* indptr;
+    double* data;
+    int n_obs;
+    int n_samples;
+    int nnz;
+} support_biom_t;
+
+/* support structure to carry in bptree information
+ *
+ * structure <bool*> the topology of the tree
+ * lengths <double*> the branch lengths of the tree
+ * names <char**> the names of the tips and internal nodes of hte tree
+ * n_parens <int> the length of the structure array
+ */
+typedef struct support_bptree {
+    bool* structure;
+    double* lengths;
+    char** names;
+    int n_parens;
+} support_bptree_t;
 
 
-void destroy_mat(mat_t** result);
-void destroy_mat_full_fp64(mat_full_fp64_t** result);
-void destroy_mat_full_fp32(mat_full_fp32_t** result);
-void destroy_partial_mat(partial_mat_t** result);
-void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
-void destroy_results_vec(r_vec** result);
+EXTERN void destroy_mat(mat_t** result);
+EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
+EXTERN void destroy_mat_full_fp32(mat_full_fp32_t** result);
+EXTERN void destroy_partial_mat(partial_mat_t** result);
+EXTERN void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
+EXTERN void destroy_results_vec(r_vec** result);
 
 /* Compute UniFrac - condensed form
  *
@@ -153,6 +185,49 @@ void destroy_results_vec(r_vec** result);
 EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int threads, mat_t** result);
+
+
+/* Compute UniFrac - against in-memory objects returning full form matrix
+ *
+ * table <biom> a constructed BIOM object
+ * tree <BPTree> a constructed BPTree object
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * threads <uint> the number of threads to use.
+ * result <mat_full_fp64_t**> the resulting distance matrix in full form, this is initialized within the method so using **
+ *
+ * one_off_inmem returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * unknown_method : the requested method is unknown.
+ * table_empty    : the table does not have any entries
+ */
+EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int threads, mat_full_fp64_t** result);
+
+/* Compute UniFrac - against in-memory objects returning full form matrix, fp32
+ *
+ * table <biom> a constructed BIOM object
+ * tree <BPTree> a constructed BPTree object
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * threads <uint> the number of threads to use.
+ * result <mat_full_fp32_t**> the resulting distance matrix in full form, this is initialized within the method so using **
+ *
+ * one_off_inmem returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * unknown_method : the requested method is unknown.
+ * table_empty    : the table does not have any entries
+ */
+EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int threads, mat_full_fp32_t** result);
 
 /* Compute UniFrac - matrix form
  *

@@ -135,6 +135,7 @@ install: libssu.so ssu faithpd
 	mkdir -p ${PREFIX}/include/unifrac
 	cp task_parameters.hpp ${PREFIX}/include/unifrac/
 	cp api.hpp ${PREFIX}/include/unifrac/
+	cp status_enum.hpp ${PREFIX}/include/unifrac/
 
 rapi_test: main
 	mkdir -p ~/.R

@@ -21,11 +21,34 @@
 namespace su {
     class biom : public biom_interface {
         public:
+            /* nullary constructor */
+            biom();
+
             /* default constructor
              *
              * @param filename The path to the BIOM table to read
              */
             biom(std::string filename);
+
+            /* constructor from compress sparse data
+             *
+             * @param obs_ids vector of observation identifiers
+             * @param samp_ids vector of sample identifiers
+             * @param index vector of index positions
+             * @param indptr vector of indptr positions
+             * @param data vector of observation counts
+             * @param n_obs number of observations
+             * @param n_samples number of samples
+             * @param nnz number of data points
+             */
+            biom(char** obs_ids,
+                 char** samp_ids,
+                 uint32_t* index,
+                 uint32_t* indptr,
+                 double* data,
+                 const int n_obs,
+                 const int n_samples,
+                 const int nnz);
 
             /* default destructor
              *
@@ -55,8 +78,9 @@ namespace su {
              */
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const;
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const;
-
         private:
+            bool has_hdf5_backing = false;
+            
             /* retain DataSet handles within the HDF5 file */
             H5::DataSet obs_indices;
             H5::DataSet sample_indices;
@@ -66,10 +90,13 @@ namespace su {
             uint32_t **obs_indices_resident;
             double **obs_data_resident;
             unsigned int *obs_counts_resident;
+            
+            void malloc_resident(uint32_t n_obs);
 
             unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             unsigned int get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             double* get_sample_counts();
+
 
             /* At construction, lookups mapping IDs -> index position within an
              * axis are defined
@@ -100,7 +127,7 @@ namespace su {
              * @param ids A vector of IDs to index
              * @param map A hash table to populate
              */
-            void create_id_index(std::vector<std::string> &ids, 
+            void create_id_index(const std::vector<std::string> &ids, 
                                  std::unordered_map<std::string, uint32_t> &map);
 
 

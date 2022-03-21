@@ -4,6 +4,8 @@
 
 using namespace su;
 
+BPTree::BPTree() { }
+
 BPTree::BPTree(std::string newick) {
     openclose = std::vector<uint32_t>();
     lengths = std::vector<double>();
@@ -37,6 +39,36 @@ BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_leng
     names = input_names;
     
     nparens = structure.size();
+
+    openclose = std::vector<uint32_t>();
+    select_0_index = std::vector<uint32_t>();
+    select_1_index = std::vector<uint32_t>();
+    openclose.resize(nparens);
+    select_0_index.resize(nparens / 2);
+    select_1_index.resize(nparens / 2);
+    excess.resize(nparens);
+
+    structure_to_openclose();
+    index_and_cache();
+}
+
+BPTree::BPTree(const bool* input_structure, const double* input_lengths, char** input_names, const int n_parens) {
+    structure = std::vector<bool>();
+    lengths = std::vector<double>();
+    names = std::vector<std::string>();
+
+    structure.resize(n_parens);
+    lengths.resize(n_parens);
+    names.resize(n_parens);
+
+    nparens = n_parens;
+
+    //#pragma omp parallel for schedule(static)
+    for(int i = 0; i < n_parens; i++) {
+        structure[i] = input_structure[i];
+        lengths[i] = input_lengths[i];
+        names[i] = std::string(input_names[i]);
+    }
 
     openclose = std::vector<uint32_t>();
     select_0_index = std::vector<uint32_t>();
@@ -197,7 +229,7 @@ void BPTree::index_and_cache() {
     }
 }
 
-uint32_t BPTree::postorderselect(uint32_t k) const { 
+uint32_t BPTree::postorderselect(uint32_t k) const {
     return open(select_0_index[k]);
 }
 
