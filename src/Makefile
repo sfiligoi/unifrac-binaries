@@ -68,7 +68,7 @@ endif
 
 ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -tp=piledriver
+		CPPFLAGS += -tp=sandybridge
 	endif
 else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
