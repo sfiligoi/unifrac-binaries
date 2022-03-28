@@ -55,6 +55,7 @@ jobs:
           ./scripts/install_hpc_sdk.sh
           source setup_nv_h5.sh
         fi
+        export PERFORMING_CONDA_BUILD=True
         make api && \
         make main && \
         make install && \
