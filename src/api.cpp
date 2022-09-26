@@ -17,11 +17,6 @@
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
 
-/* O_NOATIME is defined at fcntl.h when supported */
-#ifndef O_NOATIME
-#define O_NOATIME 0
-#endif
-
 
 #define CHECK_FILE(filename, err) if(!is_file_exists(filename)) { \
                                       return err;                 \
@@ -198,8 +193,12 @@ void initialize_mat_full_no_biom_T(TMat* &result, const char* const * sample_ids
     } else {
       std::string mmap_template(mmap_dir);
       mmap_template+="/su_mmap_XXXXXX";
-      // note: mkostemp will update mmap_template in place
+      // note: mkstemp/mkostemp will update mmap_template in place
+#ifdef O_NOATIME
       int fd=mkostemp((char *) mmap_template.c_str(), O_NOATIME ); 
+#else
+      int fd=mkstemp((char *) mmap_template.c_str() );
+#endif
       if (fd<0) {
          result->matrix = NULL;
          // leave error handling to the caller
