@@ -148,6 +148,7 @@ rapi_test: main
 	echo CXX1X=h5c++ > ~/.R/Makevars
 	echo CXX=h5c++ >> ~/.R/Makevars 
 	echo CC=h5c++ >> ~/.R/Makevars
+	echo CFLAGS=  >> ~/.R/Makevars
 	echo CPPFLAGS= $(CPPFLAGS) >> ~/.R/Makevars
 	echo LDFLAGS= -llz4 $(BLASLIB) >> ~/.R/Makevars
 	rm -f *.o
