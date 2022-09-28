@@ -34,7 +34,7 @@ jobs:
 
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          conda create --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
+          conda create --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
         else
           conda create --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
         fi 
@@ -65,6 +65,10 @@ jobs:
         then
           rm -f ~/.R/Makevars
           conda install -c conda-forge r-base
+          unset CXXFLAGS
+          unset CFLAGS
+          unset DEBUG_CXXFLAGS
+          unset DEBUG_CFLAGS
           # the r-base package has a broken dependency
           ln -s $CONDA_PREFIX/lib/libreadline.so $CONDA_PREFIX/lib/libreadline.so.6
           R -e 'install.packages("Rcpp", repos="http://lib.stat.cmu.edu/R/CRAN/")'
