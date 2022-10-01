@@ -186,6 +186,68 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 }
 
 template<class TFloat>
+static inline void NormalizedWeighted1(
+                      bool * const __restrict__ zcheck,
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ dm_stripes_total_buf,
+                      TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
+       const bool allzero_k = zcheck[k];
+       const bool allzero_l1 = zcheck[l1];
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else {
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+
+          // the totals can always use the distributed property
+          dm_stripe_total[k] += sums[k] + sums[l1];
+   
+          TFloat my_stripe;
+
+          if (allzero_k || allzero_l1) {
+            // one side has all zeros
+            // we can use the distributed property, and use the pre-computed values
+
+            const uint64_t ridx = (allzero_k) ? l1 : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+                                                k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+
+            // keep reads in the same place to maximize GPU warp performance
+            my_stripe = sums[ridx];
+          
+          } else {
+            // both sides non zero, use the explicit but slow approach
+
+            my_stripe = 0.0;
+
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u1 = embedded_proportions[offset + k];
+                TFloat v1 = embedded_proportions[offset + l1];
+                TFloat diff1 = u1 - v1;
+                TFloat length = lengths[emb];
+
+                my_stripe     += fabs(diff1) * length;
+            }
+
+          }
+
+          // keep all writes in a single place, to maximize GPU warp performance
+          dm_stripe[k]       += my_stripe;
+       }
+}
+
+template<class TFloat>
 void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
@@ -229,7 +291,7 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
     // point of thread
 #ifdef _OPENACC
     const unsigned int acc_vector_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
 #else
     // use dynamic scheduling due to non-homogeneity in the loop
 #pragma omp parallel for schedule(dynamic,1) default(shared)
@@ -242,57 +304,13 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
        if (k>=n_samples) continue; // past the limit
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+       const uint64_t idx = (stripe-start_idx) * n_samples_r;
 
-       const bool allzero_k = zcheck[k];
-       const bool allzero_l1 = zcheck[l1];
-
-       if (allzero_k && allzero_l1) {
-         // nothing to do, would have to add 0
-       } else {
-          const uint64_t idx = (stripe-start_idx) * n_samples_r;
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-
-          // the totals can always use the distributed property
-          dm_stripe_total[k] += sums[k] + sums[l1];
-   
-          TFloat my_stripe;
-
-          if (allzero_k || allzero_l1) {
-            // one side has all zeros
-            // we can use the distributed property, and use the pre-computed values
-
-            const uint64_t ridx = (allzero_k) ? l1 : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
-                                                k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
-
-            // keep reads in the same place to maximize GPU warp performance
-            my_stripe = sums[ridx];
-          
-          } else {
-            // both sides non zero, use the explicit but slow approach
-
-            my_stripe = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                TFloat v1 = embedded_proportions[offset + l1];
-                TFloat diff1 = u1 - v1;
-                TFloat length = lengths[emb];
-
-                my_stripe     += fabs(diff1) * length;
-            }
-
-          }
-
-          // keep all writes in a single place, to maximize GPU warp performance
-          dm_stripe[k]       += my_stripe;
-       }
-
+       NormalizedWeighted1<TFloat>(zcheck,
+                                   dm_stripes_buf,dm_stripes_total_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
       } // for ik
      } // for stripe
     } // for sk
