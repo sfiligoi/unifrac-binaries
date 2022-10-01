@@ -61,8 +61,6 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
        if (k>=n_samples) continue; // past the limit
 
-       const bool zcheck_k = zcheck[sk]; // due to loop collapse in ACC, must load in here
-
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
        const bool allzero_k = zcheck[k];
@@ -242,8 +240,6 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
        const uint64_t k = sk*step_size + ik;
 
        if (k>=n_samples) continue; // past the limit
-
-       const bool zcheck_k = zcheck[sk]; // due to loop collapse in ACC, must load in here
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
