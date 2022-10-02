@@ -185,9 +185,10 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 #endif
 }
 
+// SIngle step in computing NormalizedWeighted Unifrac
 template<class TFloat>
 static inline void NormalizedWeighted1(
-                      bool * const __restrict__ zcheck,
+                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
                       TFloat * const __restrict__ sums,
@@ -209,8 +210,11 @@ static inline void NormalizedWeighted1(
           //TFloat *dm_stripe = dm_stripes[stripe];
           //TFloat *dm_stripe_total = dm_stripes_total[stripe];
 
+          const TFloat sum_k = sums[k];
+          const TFloat sum_l = sums[l1];
+
           // the totals can always use the distributed property
-          dm_stripe_total[k] += sums[k] + sums[l1];
+          dm_stripe_total[k] += sum_k + sum_l;
    
           TFloat my_stripe;
 
@@ -218,12 +222,8 @@ static inline void NormalizedWeighted1(
             // one side has all zeros
             // we can use the distributed property, and use the pre-computed values
 
-            const uint64_t ridx = (allzero_k) ? l1 : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
-                                                k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
-
-            // keep reads in the same place to maximize GPU warp performance
-            my_stripe = sums[ridx];
-          
+            my_stripe = (allzero_k) ? sum_l : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+                                      sum_k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
           } else {
             // both sides non zero, use the explicit but slow approach
 
