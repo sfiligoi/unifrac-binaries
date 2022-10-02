@@ -2,8 +2,30 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+// Single step in computing Weighted part of Unifrac
+template<class TFloat>
+static inline TFloat WeightedVal1(
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
+            TFloat my_stripe = 0.0;
 
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
 
+                TFloat u1 = embedded_proportions[offset + k];
+                TFloat v1 = embedded_proportions[offset + l1];
+                TFloat diff1 = u1 - v1;
+                TFloat length = lengths[emb];
+
+                my_stripe     += fabs(diff1) * length;
+            } // for emb
+
+            return my_stripe;
+}
 
 template<class TFloat>
 void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
@@ -49,7 +71,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
     // now do the real compute
 #ifdef _OPENACC
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
 #else
     // use dynamic scheduling due to non-homogeneity in the loop
 #pragma omp parallel for default(shared) schedule(dynamic,1)
@@ -83,20 +105,9 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
           } else {
             // both sides non zero, use the explicit but slow approach
-            my_stripe = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                TFloat v1 = embedded_proportions[offset + l1];
-                TFloat diff1 = u1 - v1;
-                TFloat length = lengths[emb];
-
-                my_stripe     += fabs(diff1) * length;
-            } // for emb
-
+            my_stripe = WeightedVal1(embedded_proportions, lengths,
+                                     filled_embs, n_samples_r,
+                                     k, l1);
           }
 
           const uint64_t idx = (stripe-start_idx)*n_samples_r;
@@ -226,20 +237,9 @@ static inline void NormalizedWeighted1(
                                       sum_k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
           } else {
             // both sides non zero, use the explicit but slow approach
-
-            my_stripe = 0.0;
-
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                TFloat v1 = embedded_proportions[offset + l1];
-                TFloat diff1 = u1 - v1;
-                TFloat length = lengths[emb];
-
-                my_stripe     += fabs(diff1) * length;
-            }
-
+            my_stripe = WeightedVal1(embedded_proportions, lengths,
+                                     filled_embs, n_samples_r,
+                                     k, l1);
           }
 
           // keep all writes in a single place, to maximize GPU warp performance
