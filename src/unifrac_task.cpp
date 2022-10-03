@@ -27,6 +27,132 @@ static inline TFloat WeightedVal1(
             return my_stripe;
 }
 
+#ifndef _OPENACC
+template<class TFloat>
+static inline void WeightedVal4(
+                      TFloat * const __restrict__ stripes,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+            TFloat my_stripe0 = 0.0;
+            TFloat my_stripe1 = 0.0;
+            TFloat my_stripe2 = 0.0;
+            TFloat my_stripe3 = 0.0;
+
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u0 = embedded_proportions[offset + ks];
+                TFloat u1 = embedded_proportions[offset + ks + 1];
+                TFloat u2 = embedded_proportions[offset + ks + 2];
+                TFloat u3 = embedded_proportions[offset + ks + 3];
+                TFloat v0 = embedded_proportions[offset + ls];
+                TFloat v1 = embedded_proportions[offset + ls + 1];
+                TFloat v2 = embedded_proportions[offset + ls + 2];
+                TFloat v3 = embedded_proportions[offset + ls + 3];
+                TFloat length = lengths[emb];
+
+                TFloat diff0 = u0 - v0;
+                TFloat diff1 = u1 - v1;
+                TFloat diff2 = u2 - v2;
+                TFloat diff3 = u3 - v3;
+                TFloat absdiff0 = fabs(diff0);
+                TFloat absdiff1 = fabs(diff1);
+                TFloat absdiff2 = fabs(diff2);
+                TFloat absdiff3 = fabs(diff3);
+
+                my_stripe0     += absdiff0 * length;
+                my_stripe1     += absdiff1 * length;
+                my_stripe2     += absdiff2 * length;
+                my_stripe3     += absdiff3 * length;
+            } // for emb
+
+            stripes[0] += my_stripe0;
+            stripes[1] += my_stripe1;
+            stripes[2] += my_stripe2;
+            stripes[3] += my_stripe3;
+}
+
+template<class TFloat>
+static inline void WeightedVal8(
+                      TFloat * const __restrict__ stripes,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+            TFloat my_stripe0 = 0.0;
+            TFloat my_stripe1 = 0.0;
+            TFloat my_stripe2 = 0.0;
+            TFloat my_stripe3 = 0.0;
+            TFloat my_stripe4 = 0.0;
+            TFloat my_stripe5 = 0.0;
+            TFloat my_stripe6 = 0.0;
+            TFloat my_stripe7 = 0.0;
+
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u0 = embedded_proportions[offset + ks];
+                TFloat u1 = embedded_proportions[offset + ks + 1];
+                TFloat u2 = embedded_proportions[offset + ks + 2];
+                TFloat u3 = embedded_proportions[offset + ks + 3];
+                TFloat u4 = embedded_proportions[offset + ks + 4];
+                TFloat u5 = embedded_proportions[offset + ks + 5];
+                TFloat u6 = embedded_proportions[offset + ks + 6];
+                TFloat u7 = embedded_proportions[offset + ks + 7];
+                TFloat v0 = embedded_proportions[offset + ls];
+                TFloat v1 = embedded_proportions[offset + ls + 1];
+                TFloat v2 = embedded_proportions[offset + ls + 2];
+                TFloat v3 = embedded_proportions[offset + ls + 3];
+                TFloat v4 = embedded_proportions[offset + ls + 4];
+                TFloat v5 = embedded_proportions[offset + ls + 5];
+                TFloat v6 = embedded_proportions[offset + ls + 6];
+                TFloat v7 = embedded_proportions[offset + ls + 7];
+                TFloat length = lengths[emb];
+
+                TFloat diff0 = u0 - v0;
+                TFloat diff1 = u1 - v1;
+                TFloat diff2 = u2 - v2;
+                TFloat diff3 = u3 - v3;
+                TFloat diff4 = u4 - v4;
+                TFloat diff5 = u5 - v5;
+                TFloat diff6 = u6 - v6;
+                TFloat diff7 = u7 - v7;
+                TFloat absdiff0 = fabs(diff0);
+                TFloat absdiff1 = fabs(diff1);
+                TFloat absdiff2 = fabs(diff2);
+                TFloat absdiff3 = fabs(diff3);
+                TFloat absdiff4 = fabs(diff4);
+                TFloat absdiff5 = fabs(diff5);
+                TFloat absdiff6 = fabs(diff6);
+                TFloat absdiff7 = fabs(diff7);
+
+                my_stripe0     += absdiff0 * length;
+                my_stripe1     += absdiff1 * length;
+                my_stripe2     += absdiff2 * length;
+                my_stripe3     += absdiff3 * length;
+                my_stripe4     += absdiff4 * length;
+                my_stripe5     += absdiff5 * length;
+                my_stripe6     += absdiff6 * length;
+                my_stripe7     += absdiff7 * length;
+            } // for emb
+
+            stripes[0] += my_stripe0;
+            stripes[1] += my_stripe1;
+            stripes[2] += my_stripe2;
+            stripes[3] += my_stripe3;
+            stripes[4] += my_stripe4;
+            stripes[5] += my_stripe5;
+            stripes[6] += my_stripe6;
+            stripes[7] += my_stripe7;
+}
+#endif
+
 template<class TFloat>
 void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
@@ -310,9 +436,41 @@ static inline void NormalizedWeighted4(
              dm_stripe[ks+1] += sum_k1;
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
-          } 
+          }
+       } else if ((z_k==0) && (z_l==0)) {
+          // they are all nonzero, so use the vectorized expensive path
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+
+          const TFloat sum_k0 = sums[ks];
+          const TFloat sum_k1 = sums[ks+1];
+          const TFloat sum_k2 = sums[ks+2];
+          const TFloat sum_k3 = sums[ks+3];
+          const TFloat sum_l0 = sums[ls];
+          const TFloat sum_l1 = sums[ls+1];
+          const TFloat sum_l2 = sums[ls+2];
+          const TFloat sum_l3 = sums[ls+3];
+
+          // the totals can always use the distributed property
+          {
+             const TFloat sum_kl0 = sum_k0 + sum_l0;
+             const TFloat sum_kl1 = sum_k1 + sum_l1;
+             const TFloat sum_kl2 = sum_k2 + sum_l2;
+             const TFloat sum_kl3 = sum_k3 + sum_l3;
+             dm_stripe_total[ks]   += sum_kl0;
+             dm_stripe_total[ks+1] += sum_kl1;
+             dm_stripe_total[ks+2] += sum_kl2;
+             dm_stripe_total[ks+3] += sum_kl3;
+          }
+
+          WeightedVal4(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
        } else {
-         // both sides non zero, try smaller vect size
+         // both sides partially non zero, try smaller vect size
          for (unsigned int i=0; i<4; i++) {
             NormalizedWeighted1<TFloat>(zcheck,
                                    dm_stripes_buf,dm_stripes_total_buf,
@@ -409,8 +567,56 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+7] += sum_k6;
              dm_stripe[ks+8] += sum_k7;
           } 
+       } else if ((z_k==0) && (z_l==0)) {
+          // they are all nonzero, so use the vectorized expensive path
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+
+          const TFloat sum_k0 = sums[ks];
+          const TFloat sum_k1 = sums[ks+1];
+          const TFloat sum_k2 = sums[ks+2];
+          const TFloat sum_k3 = sums[ks+3];
+          const TFloat sum_k4 = sums[ks+4];
+          const TFloat sum_k5 = sums[ks+5];
+          const TFloat sum_k6 = sums[ks+6];
+          const TFloat sum_k7 = sums[ks+7];
+          const TFloat sum_l0 = sums[ls];
+          const TFloat sum_l1 = sums[ls+1];
+          const TFloat sum_l2 = sums[ls+2];
+          const TFloat sum_l3 = sums[ls+3];
+          const TFloat sum_l4 = sums[ls+4];
+          const TFloat sum_l5 = sums[ls+5];
+          const TFloat sum_l6 = sums[ls+6];
+          const TFloat sum_l7 = sums[ls+7];
+
+          // the totals can always use the distributed property
+          {
+             const TFloat sum_kl0 = sum_k0 + sum_l0;
+             const TFloat sum_kl1 = sum_k1 + sum_l1;
+             const TFloat sum_kl2 = sum_k2 + sum_l2;
+             const TFloat sum_kl3 = sum_k3 + sum_l3;
+             const TFloat sum_kl4 = sum_k4 + sum_l4;
+             const TFloat sum_kl5 = sum_k5 + sum_l5;
+             const TFloat sum_kl6 = sum_k6 + sum_l6;
+             const TFloat sum_kl7 = sum_k7 + sum_l7;
+             dm_stripe_total[ks]   += sum_kl0;
+             dm_stripe_total[ks+1] += sum_kl1;
+             dm_stripe_total[ks+2] += sum_kl2;
+             dm_stripe_total[ks+3] += sum_kl3;
+             dm_stripe_total[ks+4] += sum_kl4;
+             dm_stripe_total[ks+5] += sum_kl5;
+             dm_stripe_total[ks+6] += sum_kl6;
+             dm_stripe_total[ks+7] += sum_kl7;
+          }
+
+          WeightedVal8(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
        } else {
-         // both sides non zero, try smaller vect size
+         // both sides partially non zero, try smaller vect size
          NormalizedWeighted4<TFloat>(zcheck,
                                    dm_stripes_buf,dm_stripes_total_buf,
                                    sums, embedded_proportions, lengths,
