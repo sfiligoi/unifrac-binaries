@@ -2,6 +2,41 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+
+// check for zero values and pre-compute single column sums
+template<class TFloat>
+static inline void WeightedZerosAndSums(
+                      bool   * const __restrict__ zcheck,
+                      TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples,
+                      const uint64_t n_samples_r) {
+#ifdef _OPENACC
+#pragma acc parallel loop gang vector present(embedded_proportions,lengths,zcheck,sums)
+#else
+#pragma omp parallel for default(shared)
+#endif
+    for(uint64_t k=0; k<n_samples; k++) {
+            bool all_zeros=true;
+            TFloat my_sum = 0.0;
+
+#pragma acc loop seq
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u1 = embedded_proportions[offset + k];
+                my_sum += u1*lengths[emb];
+                all_zeros = all_zeros && (u1==0.0);
+            }
+
+            sums[k]     = my_sum;
+            zcheck[k] = all_zeros;
+    }
+}
+
+
 // Single step in computing Weighted part of Unifrac
 template<class TFloat>
 static inline TFloat WeightedVal1(
@@ -156,9 +191,9 @@ static inline void WeightedVal8(
 // Single step in computing NormalizedWeighted Unifrac
 template<class TFloat>
 static inline void UnnormalizedWeighted1(
-                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
-                      TFloat * const __restrict__ sums,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
                       const TFloat * const __restrict__ embedded_proportions,
                       const TFloat * __restrict__ lengths,
                       const unsigned int filled_embs,
@@ -202,9 +237,9 @@ static inline void UnnormalizedWeighted1(
 // Vectorized step in computing UnnormalizedWeighted Unifrac
 template<class TFloat>
 static inline void UnnormalizedWeighted4(
-                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
-                      TFloat * const __restrict__ sums,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
                       const TFloat * const __restrict__ embedded_proportions,
                       const TFloat * __restrict__ lengths,
                       const unsigned int filled_embs,
@@ -258,9 +293,9 @@ static inline void UnnormalizedWeighted4(
        } else {
          // both sides partially non zero, try smaller vect size
          for (unsigned int i=0; i<4; i++) {
-            UnnormalizedWeighted1<TFloat>(zcheck,
+            UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+i, ls+i);
          }
@@ -269,9 +304,9 @@ static inline void UnnormalizedWeighted4(
 
 template<class TFloat>
 static inline void UnnormalizedWeighted8(
-                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
-                      TFloat * const __restrict__ sums,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
                       const TFloat * const __restrict__ embedded_proportions,
                       const TFloat * __restrict__ lengths,
                       const unsigned int filled_embs,
@@ -340,14 +375,14 @@ static inline void UnnormalizedWeighted8(
                        ks, ls);
        } else {
          // both sides partially non zero, try smaller vect size
-         UnnormalizedWeighted4<TFloat>(zcheck,
+         UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-         UnnormalizedWeighted4<TFloat>(zcheck,
+         UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+4, ls+4);
        } // (allzero_k && allzero_l1)
@@ -372,28 +407,9 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // check for zero values and pre-compute single column sums
-#ifdef _OPENACC
-#pragma acc parallel loop present(embedded_proportions,lengths,zcheck,sums)
-#else
-#pragma omp parallel for default(shared)
-#endif
-    for(uint64_t k=0; k<n_samples; k++) {
-            bool all_zeros=true;
-            TFloat my_sum = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                my_sum += u1*lengths[emb];
-                all_zeros = all_zeros && (u1==0.0);
-            }
-
-            sums[k]     = my_sum;
-            zcheck[k] = all_zeros;
-    }
-
+    WeightedZerosAndSums(zcheck, sums,
+                         embedded_proportions, lengths,
+                         filled_embs, n_samples, n_samples_r);
 
     // now do the real compute
 #ifdef _OPENACC
@@ -415,9 +431,9 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
        const uint64_t idx = (stripe-start_idx) * n_samples_r;
 
-       UnnormalizedWeighted1<TFloat>(zcheck,
+       UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
       } // for ik
@@ -436,9 +452,9 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
        if ((le-ls)!=7) break; //nor contiguous, use serial version
 
-       UnnormalizedWeighted8<TFloat>(zcheck,
+       UnnormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
@@ -453,9 +469,9 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
        if ((le-ls)!=3) break; //nor contiguous, use serial version
 
-       UnnormalizedWeighted4<TFloat>(zcheck,
+       UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
@@ -467,9 +483,9 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
-       UnnormalizedWeighted1<TFloat>(zcheck,
+       UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
       } // for ik
@@ -554,10 +570,10 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 // Single step in computing NormalizedWeighted Unifrac
 template<class TFloat>
 static inline void NormalizedWeighted1(
-                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
-                      TFloat * const __restrict__ sums,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
                       const TFloat * const __restrict__ embedded_proportions,
                       const TFloat * __restrict__ lengths,
                       const unsigned int filled_embs,
@@ -606,10 +622,10 @@ static inline void NormalizedWeighted1(
 // Vectorized step in computing NormalizedWeighted Unifrac
 template<class TFloat>
 static inline void NormalizedWeighted4(
-                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
-                      TFloat * const __restrict__ sums,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
                       const TFloat * const __restrict__ embedded_proportions,
                       const TFloat * __restrict__ lengths,
                       const unsigned int filled_embs,
@@ -675,9 +691,9 @@ static inline void NormalizedWeighted4(
             // both sides partially non zero, try smaller vect size
             // Use UnnormalizedWeighted since we already computed dm_stripe_total
             for (unsigned int i=0; i<4; i++) {
-               UnnormalizedWeighted1<TFloat>(zcheck,
+               UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+i, ls+i);
             }
@@ -687,10 +703,10 @@ static inline void NormalizedWeighted4(
 
 template<class TFloat>
 static inline void NormalizedWeighted8(
-                      const bool * const __restrict__ zcheck,
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
-                      TFloat * const __restrict__ sums,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
                       const TFloat * const __restrict__ embedded_proportions,
                       const TFloat * __restrict__ lengths,
                       const unsigned int filled_embs,
@@ -779,14 +795,14 @@ static inline void NormalizedWeighted8(
           } else {
             // both sides partially non zero, try smaller vect size
             // Use UnnormalizedWeighted since we already computed dm_stripe_total
-            UnnormalizedWeighted4<TFloat>(zcheck,
+            UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-            UnnormalizedWeighted4<TFloat>(zcheck,
+            UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+4, ls+4);
           }
@@ -811,30 +827,11 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
     const uint64_t step_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::step_size;
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
-    //int cnt[10] = {0,0,0,0,0,0,0,0,0,0};
 
     // check for zero values and pre-compute single column sums
-#ifdef _OPENACC
-#pragma acc parallel loop present(embedded_proportions,lengths,zcheck,sums)
-#else
-#pragma omp parallel for default(shared)
-#endif
-    for(uint64_t k=0; k<n_samples; k++) {
-            bool all_zeros=true;
-            TFloat my_sum = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                my_sum += u1*lengths[emb];
-                all_zeros = all_zeros && (u1==0.0);
-            }
-
-            sums[k]     = my_sum;
-            zcheck[k] = all_zeros;
-    }
+    WeightedZerosAndSums(zcheck, sums,
+                         embedded_proportions, lengths,
+                         filled_embs, n_samples, n_samples_r);
 
     // point of thread
 #ifdef _OPENACC
@@ -856,9 +853,9 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
        const uint64_t idx = (stripe-start_idx) * n_samples_r;
 
-       NormalizedWeighted1<TFloat>(zcheck,
+       NormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
       } // for ik
@@ -877,9 +874,9 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
        if ((le-ls)!=7) break; //nor contiguous, use serial version
 
-       NormalizedWeighted8<TFloat>(zcheck,
+       NormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
@@ -894,9 +891,9 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
        if ((le-ls)!=3) break; //nor contiguous, use serial version
 
-       NormalizedWeighted4<TFloat>(zcheck,
+       NormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
@@ -908,23 +905,15 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
-       NormalizedWeighted1<TFloat>(zcheck,
+       NormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
-                                   sums, embedded_proportions, lengths,
+                                   zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
       } // for ik
 #endif
      } // for stripe
     } // for sk
-
-   /*
-   int cntall=(cnt[0]+cnt[1]+cnt[2]+cnt[3]+cnt[4]+cnt[5]+cnt[6]+cnt[7]+cnt[8]+cnt[9])/100;
-   fprintf(stderr,"%10i %10i,%10i (%10i %10i,%10i %10i,%10i %10i,%10i)\n",
-           cnt[0],cnt[1],cnt[2],cnt[3],cnt[4],cnt[5],cnt[6],cnt[7],cnt[8],cnt[9]);
-   fprintf(stderr,"%2i %2i,%2i (%2i %2i,%2i %2i,%2i %2i,%2i)\n",
-           cnt[0]/cntall,cnt[1]/cntall,cnt[2]/cntall,cnt[3]/cntall,cnt[4]/cntall,cnt[5]/cntall,cnt[6]/cntall,cnt[7]/cntall,cnt[8]/cntall,cnt[9]/cntall);
-   */
 
 #ifdef _OPENACC
    // next iteration will use the alternative space
