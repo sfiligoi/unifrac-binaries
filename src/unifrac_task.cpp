@@ -153,6 +153,207 @@ static inline void WeightedVal8(
 }
 #endif
 
+// Single step in computing NormalizedWeighted Unifrac
+template<class TFloat>
+static inline void UnnormalizedWeighted1(
+                      const bool * const __restrict__ zcheck,
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
+       const bool allzero_k = zcheck[k];
+       const bool allzero_l1 = zcheck[l1];
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else {
+          TFloat my_stripe;
+
+          if (allzero_k || allzero_l1) {
+            // one side has all zeros
+            // we can use the distributed property, and use the pre-computed values
+
+            const uint64_t ridx = (allzero_k) ? l1 : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+                                                k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+
+            // keep reads in the same place to maximize GPU warp performance
+            my_stripe = sums[ridx];
+          } else {
+            // both sides non zero, use the explicit but slow approach
+            my_stripe = WeightedVal1(embedded_proportions, lengths,
+                                     filled_embs, n_samples_r,
+                                     k, l1);
+          }
+
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          
+          // keep all writes in a single place, to maximize GPU warp performance
+          dm_stripe[k]       += my_stripe;
+       }
+}
+
+#ifndef _OPENACC
+// Vectorized step in computing UnnormalizedWeighted Unifrac
+template<class TFloat>
+static inline void UnnormalizedWeighted4(
+                      const bool * const __restrict__ zcheck,
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+       const uint32_t z_k = ((const uint32_t *)(zcheck+ks))[0];
+       const uint32_t z_l = ((const uint32_t *)(zcheck+ls))[0];
+       const bool allzero_k =  z_k==0x01010101;
+       const bool allzero_l1 = z_l==0x01010101;
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else if (allzero_k || allzero_l1) {
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          if (allzero_k) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+             const TFloat sum_l0 = sums[ls];
+             const TFloat sum_l1 = sums[ls+1];
+             const TFloat sum_l2 = sums[ls+2];
+             const TFloat sum_l3 = sums[ls+3];
+             dm_stripe[ks]   += sum_l0;
+             dm_stripe[ks+1] += sum_l1;
+             dm_stripe[ks+2] += sum_l2;
+             dm_stripe[ks+3] += sum_l3;
+          } else {
+             // one side has all zeros, use distributed property
+             // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+             const TFloat sum_k0 = sums[ks];
+             const TFloat sum_k1 = sums[ks+1];
+             const TFloat sum_k2 = sums[ks+2];
+             const TFloat sum_k3 = sums[ks+3];
+             dm_stripe[ks]   += sum_k0;
+             dm_stripe[ks+1] += sum_k1;
+             dm_stripe[ks+2] += sum_k2;
+             dm_stripe[ks+3] += sum_k3;
+          }
+       } else if ((z_k==0) && (z_l==0)) {
+          // they are all nonzero, so use the vectorized expensive path
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          WeightedVal4(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
+       } else {
+         // both sides partially non zero, try smaller vect size
+         for (unsigned int i=0; i<4; i++) {
+            UnnormalizedWeighted1<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks+i, ls+i);
+         }
+       } // (allzero_k && allzero_l1)
+}
+
+template<class TFloat>
+static inline void UnnormalizedWeighted8(
+                      const bool * const __restrict__ zcheck,
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+       const uint64_t z_k = ((const uint64_t *)(zcheck+ks))[0];
+       const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
+       const bool allzero_k =  z_k==0x0101010101010101;
+       const bool allzero_l1 = z_l==0x0101010101010101;
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else if (allzero_k || allzero_l1) {
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          if (allzero_k) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+             const TFloat sum_l0 = sums[ls];
+             const TFloat sum_l1 = sums[ls+1];
+             const TFloat sum_l2 = sums[ls+2];
+             const TFloat sum_l3 = sums[ls+3];
+             const TFloat sum_l4 = sums[ls+4];
+             const TFloat sum_l5 = sums[ls+5];
+             const TFloat sum_l6 = sums[ls+6];
+             const TFloat sum_l7 = sums[ls+7];
+             dm_stripe[ks]   += sum_l0;
+             dm_stripe[ks+1] += sum_l1;
+             dm_stripe[ks+2] += sum_l2;
+             dm_stripe[ks+3] += sum_l3;
+             dm_stripe[ks+4] += sum_l4;
+             dm_stripe[ks+5] += sum_l5;
+             dm_stripe[ks+7] += sum_l6;
+             dm_stripe[ks+8] += sum_l7;
+          } else {
+             // one side has all zeros, use distributed property
+             // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+             const TFloat sum_k0 = sums[ks];
+             const TFloat sum_k1 = sums[ks+1];
+             const TFloat sum_k2 = sums[ks+2];
+             const TFloat sum_k3 = sums[ks+3];
+             const TFloat sum_k4 = sums[ks+4];
+             const TFloat sum_k5 = sums[ks+5];
+             const TFloat sum_k6 = sums[ks+6];
+             const TFloat sum_k7 = sums[ks+7];
+             dm_stripe[ks]   += sum_k0;
+             dm_stripe[ks+1] += sum_k1;
+             dm_stripe[ks+2] += sum_k2;
+             dm_stripe[ks+3] += sum_k3;
+             dm_stripe[ks+4] += sum_k4;
+             dm_stripe[ks+5] += sum_k5;
+             dm_stripe[ks+7] += sum_k6;
+             dm_stripe[ks+8] += sum_k7;
+          } 
+       } else if ((z_k==0) && (z_l==0)) {
+          // they are all nonzero, so use the vectorized expensive path
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          WeightedVal8(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
+       } else {
+         // both sides partially non zero, try smaller vect size
+         UnnormalizedWeighted4<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+         UnnormalizedWeighted4<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks+4, ls+4);
+       } // (allzero_k && allzero_l1)
+}
+#endif
+
 template<class TFloat>
 void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
@@ -204,47 +405,75 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
+#ifdef _OPENACC
+      // SIMT-based GPU work great one at a time (HW will deal with parallelism)
       for(uint64_t ik = 0; ik < step_size ; ik++) {
        const uint64_t k = sk*step_size + ik;
 
        if (k>=n_samples) continue; // past the limit
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+       const uint64_t idx = (stripe-start_idx) * n_samples_r;
 
-       const bool allzero_k = zcheck[k];
-       const bool allzero_l1 = zcheck[l1];
-
-       if (allzero_k && allzero_l1) {
-         // nothing to do, would have to add 0
-       } else {
-          TFloat my_stripe;
-
-          if (allzero_k || allzero_l1) {
-            // one side has all zeros
-            // we can use the distributed property, and use the pre-computed values
-
-            const uint64_t ridx = (allzero_k) ? l1 : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
-                                                k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
-
-            // keep reads in the same place to maximize GPU warp performance
-            my_stripe = sums[ridx];
-
-          } else {
-            // both sides non zero, use the explicit but slow approach
-            my_stripe = WeightedVal1(embedded_proportions, lengths,
-                                     filled_embs, n_samples_r,
-                                     k, l1);
-          }
-
-          const uint64_t idx = (stripe-start_idx)*n_samples_r;
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-
-          // keep all writes in a single place, to maximize GPU warp performance
-          dm_stripe[k] += my_stripe;
-       } 
-
+       UnnormalizedWeighted1<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
       } // for ik
+#else
+      // SIMD-based CPUs need help with vectorization
+      const uint64_t idx = (stripe-start_idx) * n_samples_r;
+      uint64_t ik = 0;
+      for(; ik < (step_size-7) ; ik+=8) {
+       const uint64_t ks = sk*step_size + ik;
+       const uint64_t ke = ks+7;
+
+       if (ke>=n_samples) break; // past the limit
+
+       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
+       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
+
+       if ((le-ls)!=7) break; //nor contiguous, use serial version
+
+       UnnormalizedWeighted8<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+      } // for ik
+      for(; ik < (step_size-3) ; ik+=4) {
+       const uint64_t ks = sk*step_size + ik;
+       const uint64_t ke = ks+3;
+
+       if (ke>=n_samples) break; // past the limit
+
+       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
+       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
+
+       if ((le-ls)!=3) break; //nor contiguous, use serial version
+
+       UnnormalizedWeighted4<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+      } // for ik
+      // deal with any leftovers in serial way
+      for(; ik < step_size ; ik++) {
+       const uint64_t k = sk*step_size + ik;
+
+       if (k>=n_samples) break; // past the limit
+
+       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+
+       UnnormalizedWeighted1<TFloat>(zcheck,
+                                   dm_stripes_buf,
+                                   sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
+      } // for ik
+#endif
      } // for stripe
     } // for sk
 
@@ -395,12 +624,7 @@ static inline void NormalizedWeighted4(
 
        if (allzero_k && allzero_l1) {
          // nothing to do, would have to add 0
-       } else if (allzero_k || allzero_l1) {
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-
+       } else {
           const TFloat sum_k0 = sums[ks];
           const TFloat sum_k1 = sums[ks+1];
           const TFloat sum_k2 = sums[ks+2];
@@ -412,6 +636,8 @@ static inline void NormalizedWeighted4(
 
           // the totals can always use the distributed property
           {
+             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
              const TFloat sum_kl0 = sum_k0 + sum_l0;
              const TFloat sum_kl1 = sum_k1 + sum_l1;
              const TFloat sum_kl2 = sum_k2 + sum_l2;
@@ -421,6 +647,9 @@ static inline void NormalizedWeighted4(
              dm_stripe_total[ks+2] += sum_kl2;
              dm_stripe_total[ks+3] += sum_kl3;
           }
+
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
 
           if (allzero_k) {
              // one side has all zeros, use distributed property
@@ -429,55 +658,30 @@ static inline void NormalizedWeighted4(
              dm_stripe[ks+1] += sum_l1;
              dm_stripe[ks+2] += sum_l2;
              dm_stripe[ks+3] += sum_l3;
-          } else {
+          } else if (allzero_l1) {
              // one side has all zeros, use distributed property
              // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
              dm_stripe[ks]   += sum_k0;
              dm_stripe[ks+1] += sum_k1;
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
-          }
-       } else if ((z_k==0) && (z_l==0)) {
-          // they are all nonzero, so use the vectorized expensive path
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-
-          const TFloat sum_k0 = sums[ks];
-          const TFloat sum_k1 = sums[ks+1];
-          const TFloat sum_k2 = sums[ks+2];
-          const TFloat sum_k3 = sums[ks+3];
-          const TFloat sum_l0 = sums[ls];
-          const TFloat sum_l1 = sums[ls+1];
-          const TFloat sum_l2 = sums[ls+2];
-          const TFloat sum_l3 = sums[ls+3];
-
-          // the totals can always use the distributed property
-          {
-             const TFloat sum_kl0 = sum_k0 + sum_l0;
-             const TFloat sum_kl1 = sum_k1 + sum_l1;
-             const TFloat sum_kl2 = sum_k2 + sum_l2;
-             const TFloat sum_kl3 = sum_k3 + sum_l3;
-             dm_stripe_total[ks]   += sum_kl0;
-             dm_stripe_total[ks+1] += sum_kl1;
-             dm_stripe_total[ks+2] += sum_kl2;
-             dm_stripe_total[ks+3] += sum_kl3;
-          }
-
-          WeightedVal4(dm_stripe,
+          } else if ((z_k==0) && (z_l==0)) {
+             // they are all nonzero, so use the vectorized expensive path
+             WeightedVal4(dm_stripe,
                        embedded_proportions, lengths,
                        filled_embs, n_samples_r,
                        ks, ls);
-       } else {
-         // both sides partially non zero, try smaller vect size
-         for (unsigned int i=0; i<4; i++) {
-            NormalizedWeighted1<TFloat>(zcheck,
-                                   dm_stripes_buf,dm_stripes_total_buf,
+          } else {
+            // both sides partially non zero, try smaller vect size
+            // Use UnnormalizedWeighted since we already computed dm_stripe_total
+            for (unsigned int i=0; i<4; i++) {
+               UnnormalizedWeighted1<TFloat>(zcheck,
+                                   dm_stripes_buf,
                                    sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+i, ls+i);
-         }
+            }
+          }
        } // (allzero_k && allzero_l1)
 }
 
@@ -501,12 +705,7 @@ static inline void NormalizedWeighted8(
 
        if (allzero_k && allzero_l1) {
          // nothing to do, would have to add 0
-       } else if (allzero_k || allzero_l1) {
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-
+       } else {
           const TFloat sum_k0 = sums[ks];
           const TFloat sum_k1 = sums[ks+1];
           const TFloat sum_k2 = sums[ks+2];
@@ -526,6 +725,8 @@ static inline void NormalizedWeighted8(
 
           // the totals can always use the distributed property
           {
+             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
              const TFloat sum_kl0 = sum_k0 + sum_l0;
              const TFloat sum_kl1 = sum_k1 + sum_l1;
              const TFloat sum_kl2 = sum_k2 + sum_l2;
@@ -543,6 +744,9 @@ static inline void NormalizedWeighted8(
              dm_stripe_total[ks+6] += sum_kl6;
              dm_stripe_total[ks+7] += sum_kl7;
           }
+
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
 
           if (allzero_k) {
              // one side has all zeros, use distributed property
@@ -555,7 +759,7 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+5] += sum_l5;
              dm_stripe[ks+7] += sum_l6;
              dm_stripe[ks+8] += sum_l7;
-          } else {
+          } else if (allzero_l1) {
              // one side has all zeros, use distributed property
              // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
              dm_stripe[ks]   += sum_k0;
@@ -566,67 +770,26 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+5] += sum_k5;
              dm_stripe[ks+7] += sum_k6;
              dm_stripe[ks+8] += sum_k7;
-          } 
-       } else if ((z_k==0) && (z_l==0)) {
-          // they are all nonzero, so use the vectorized expensive path
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-
-          const TFloat sum_k0 = sums[ks];
-          const TFloat sum_k1 = sums[ks+1];
-          const TFloat sum_k2 = sums[ks+2];
-          const TFloat sum_k3 = sums[ks+3];
-          const TFloat sum_k4 = sums[ks+4];
-          const TFloat sum_k5 = sums[ks+5];
-          const TFloat sum_k6 = sums[ks+6];
-          const TFloat sum_k7 = sums[ks+7];
-          const TFloat sum_l0 = sums[ls];
-          const TFloat sum_l1 = sums[ls+1];
-          const TFloat sum_l2 = sums[ls+2];
-          const TFloat sum_l3 = sums[ls+3];
-          const TFloat sum_l4 = sums[ls+4];
-          const TFloat sum_l5 = sums[ls+5];
-          const TFloat sum_l6 = sums[ls+6];
-          const TFloat sum_l7 = sums[ls+7];
-
-          // the totals can always use the distributed property
-          {
-             const TFloat sum_kl0 = sum_k0 + sum_l0;
-             const TFloat sum_kl1 = sum_k1 + sum_l1;
-             const TFloat sum_kl2 = sum_k2 + sum_l2;
-             const TFloat sum_kl3 = sum_k3 + sum_l3;
-             const TFloat sum_kl4 = sum_k4 + sum_l4;
-             const TFloat sum_kl5 = sum_k5 + sum_l5;
-             const TFloat sum_kl6 = sum_k6 + sum_l6;
-             const TFloat sum_kl7 = sum_k7 + sum_l7;
-             dm_stripe_total[ks]   += sum_kl0;
-             dm_stripe_total[ks+1] += sum_kl1;
-             dm_stripe_total[ks+2] += sum_kl2;
-             dm_stripe_total[ks+3] += sum_kl3;
-             dm_stripe_total[ks+4] += sum_kl4;
-             dm_stripe_total[ks+5] += sum_kl5;
-             dm_stripe_total[ks+6] += sum_kl6;
-             dm_stripe_total[ks+7] += sum_kl7;
-          }
-
-          WeightedVal8(dm_stripe,
+          } else if ((z_k==0) && (z_l==0)) {
+             // they are all nonzero, so use the vectorized expensive path
+             WeightedVal8(dm_stripe,
                        embedded_proportions, lengths,
                        filled_embs, n_samples_r,
                        ks, ls);
-       } else {
-         // both sides partially non zero, try smaller vect size
-         NormalizedWeighted4<TFloat>(zcheck,
-                                   dm_stripes_buf,dm_stripes_total_buf,
+          } else {
+            // both sides partially non zero, try smaller vect size
+            // Use UnnormalizedWeighted since we already computed dm_stripe_total
+            UnnormalizedWeighted4<TFloat>(zcheck,
+                                   dm_stripes_buf,
                                    sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-         NormalizedWeighted4<TFloat>(zcheck,
-                                   dm_stripes_buf,dm_stripes_total_buf,
+            UnnormalizedWeighted4<TFloat>(zcheck,
+                                   dm_stripes_buf,
                                    sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+4, ls+4);
+          }
        } // (allzero_k && allzero_l1)
 }
 #endif
