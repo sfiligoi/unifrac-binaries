@@ -110,7 +110,7 @@ Note that there is no GPU support for MacOS.
 
 ## Additional timing information
 
-When evaluating the performance of Unifrac it is sometimes necessary to distingiush
+When evaluating the performance of Unifrac it is sometimes necessary to distinguish
 the time spent interacting with the data from the Unifrac compute proper.
 Additional informational messages can be enabled by setting:
 
