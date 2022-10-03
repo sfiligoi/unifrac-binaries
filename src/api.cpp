@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <lz4.h>
+#include <time.h>
 
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
@@ -22,6 +23,23 @@
 #define O_NOATIME 0
 #endif
 
+
+#define SETUP_TDBG(method) const char *tdbg_method=method; \
+                          bool print_tdbg = false;\
+                          if (const char* env_p = std::getenv("UNIFRAC_TIMING_INFO")) { \
+                            print_tdbg = true; \
+                            std::string env_s(env_p); \
+                            if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") || \
+                               (env_s=="NEVER") || (env_s=="never")) print_tdbg = false; \
+                          } \
+                          time_t tgdb_t0; time(&tgdb_t0); \
+                          if(print_tdbg) printf("INFO (unifrac): Starting %s\n",tdbg_method);
+
+#define TDBG_STEP(sname) if(print_tdbg) {\
+                           time_t tgdb_t1; time(&tgdb_t1); \
+                           printf("INFO (unifrac): dt %4i : Completed %s.%s\n",(int)(tgdb_t1-tgdb_t0),tdbg_method,sname); \
+                           tgdb_t0 = tgdb_t1; \
+                         }
 
 #define CHECK_FILE(filename, err) if(!is_file_exists(filename)) { \
                                       return err;                 \
@@ -382,7 +400,9 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
 compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
+    SETUP_TDBG("one_off_inmem")
     SYNC_TREE_TABLE(tree, table)
+    TDBG_STEP("sync_tree_table")
     SET_METHOD(unifrac_method, unknown_method)
 
     const unsigned int stripe_stop = (table.n_samples + 1) / 2;
@@ -400,11 +420,13 @@ compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
     set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
     su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
+    TDBG_STEP("process_stripes")
     initialize_mat(*result, table, true);  // true -> is_upper_triangle
     for(unsigned int tid = 0; tid < threads.size(); tid++) {
         su::stripes_to_condensed_form(dm_stripes,table.n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
     }
 
+    TDBG_STEP("stripes_to_condensed_form")
     destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, 0, 0);
 
     return okay;
@@ -415,11 +437,13 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
                        unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
                        partial_mat_t** result) {
 
+    SETUP_TDBG("partial")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     SET_METHOD(unifrac_method, unknown_method)
     PARSE_SYNC_TREE_TABLE(tree_filename, table_filename)
 
+    TDBG_STEP("load_files")
     // we resize to the largest number of possible stripes even if only computing
     // partial, however we do not allocate arrays for non-computed stripes so
     // there is a little memory waste here but should be on the order of
@@ -443,7 +467,9 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
     set_tasks(tasks, alpha, table.n_samples, stripe_start, stripe_stop, bypass_tips, nthreads);
     su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
+    TDBG_STEP("process_stripes")
     initialize_partial_mat(*result, table, dm_stripes, stripe_start, stripe_stop, true);  // true -> is_upper_triangle
+    TDBG_STEP("partial_mat")
     destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, stripe_start, stripe_stop);
 
     return okay;
@@ -451,14 +477,17 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
 
 compute_status faith_pd_one_off(const char* biom_filename, const char* tree_filename,
                                 r_vec** result){
+    SETUP_TDBG("faith_pd_one_off")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_SYNC_TREE_TABLE(tree_filename, table_filename)
 
+    TDBG_STEP("load_files")
     initialize_results_vec(*result, table);
 
     // compute faithpd
     su::faith_pd(table, tree_sheared, std::ref((*result)->values));
+    TDBG_STEP("faith_pd")
 
     return okay;
 }
@@ -466,10 +495,12 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
 compute_status one_off(const char* biom_filename, const char* tree_filename,
                        const char* unifrac_method, bool variance_adjust, double alpha,
                        bool bypass_tips, unsigned int nthreads, mat_t** result) {
+    SETUP_TDBG("one_off")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, table_filename)
 
+    TDBG_STEP("load_files")
     // condensed form
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
@@ -481,6 +512,7 @@ compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
                                 bool bypass_tips, unsigned int nthreads,
                                 const char *mmap_dir,  
                                 TMat** result) {
+    SETUP_TDBG("one_off_matrix_inmem")
     if (mmap_dir!=NULL) {
      if (mmap_dir[0]==0) mmap_dir = NULL; // easier to have a simple test going on
     }
@@ -488,6 +520,7 @@ compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
     SET_METHOD(unifrac_method, unknown_method)
     SYNC_TREE_TABLE(tree, table)
 
+    TDBG_STEP("sync_tree_table")
     const unsigned int stripe_stop = (table.n_samples + 1) / 2;
     partial_mat_t *partial_mat = NULL;
 
@@ -501,6 +534,7 @@ compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
       set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
       su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
+      TDBG_STEP("process_stripes")
       initialize_partial_mat(partial_mat, table, dm_stripes, 0, stripe_stop, true);  // true -> is_upper_triangle
       if ((partial_mat==NULL) || (partial_mat->stripes==NULL) || (partial_mat->sample_ids==NULL) ) {
           fprintf(stderr, "Memory allocation error! (initialize_partial_mat)\n");
@@ -527,6 +561,7 @@ compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
                                   (4096/sizeof(TReal)); /* make it larger for mmap, as the limiting factor is swapping */
       su::stripes_to_matrix_T<TReal>(ps, partial_mat->n_samples, partial_mat->stripe_total, (*result)->matrix, tile_size);
     }
+    TDBG_STEP("stripes_to_matrix")
     destroy_partial_mat(&partial_mat);
 
     return okay;
@@ -538,9 +573,11 @@ compute_status one_off_matrix(const char* biom_filename, const char* tree_filena
                               bool bypass_tips, unsigned int nthreads,
                               const char *mmap_dir,
                               mat_full_fp64_t** result) {
+    SETUP_TDBG("one_off_matrix")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
+    TDBG_STEP("load_files")
     return one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
 }
 
@@ -549,9 +586,11 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
                                    bool bypass_tips, unsigned int nthreads,
                                    const char *mmap_dir,
                                    mat_full_fp32_t** result) {
+    SETUP_TDBG("one_off_matrix_fp32")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
+    TDBG_STEP("load_files")
     return one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
 }
 
