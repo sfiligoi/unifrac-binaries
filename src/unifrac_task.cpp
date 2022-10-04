@@ -3,28 +3,18 @@
 #include <cstdlib>
 
 
-
-
+// check for zero values and pre-compute single column sums
 template<class TFloat>
-void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
-
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-
-    bool * const __restrict__ zcheck = this->zcheck;
-    TFloat * const __restrict__ sums = this->sums;
-
-    const uint64_t step_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::step_size;
-    const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
-
-    // check for zero values and pre-compute single column sums
+static inline void WeightedZerosAndSums(
+                      bool   * const __restrict__ zcheck,
+                      TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples,
+                      const uint64_t n_samples_r) {
 #ifdef _OPENACC
-#pragma acc parallel loop present(embedded_proportions,lengths,zcheck,sums)
+#pragma acc parallel loop gang vector present(embedded_proportions,lengths,zcheck,sums)
 #else
 #pragma omp parallel for default(shared)
 #endif
@@ -44,27 +34,173 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
             sums[k]     = my_sum;
             zcheck[k] = all_zeros;
     }
+}
 
 
-    // now do the real compute
-#ifdef _OPENACC
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
-#else
-    // use dynamic scheduling due to non-homogeneity in the loop
-#pragma omp parallel for default(shared) schedule(dynamic,1)
+// Single step in computing Weighted part of Unifrac
+template<class TFloat>
+static inline TFloat WeightedVal1(
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
+            TFloat my_stripe = 0.0;
+
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u1 = embedded_proportions[offset + k];
+                TFloat v1 = embedded_proportions[offset + l1];
+                TFloat diff1 = u1 - v1;
+                TFloat length = lengths[emb];
+
+                my_stripe     += fabs(diff1) * length;
+            } // for emb
+
+            return my_stripe;
+}
+
+#ifndef _OPENACC
+template<class TFloat>
+static inline void WeightedVal4(
+                      TFloat * const __restrict__ stripes,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+            TFloat my_stripe0 = 0.0;
+            TFloat my_stripe1 = 0.0;
+            TFloat my_stripe2 = 0.0;
+            TFloat my_stripe3 = 0.0;
+
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u0 = embedded_proportions[offset + ks];
+                TFloat u1 = embedded_proportions[offset + ks + 1];
+                TFloat u2 = embedded_proportions[offset + ks + 2];
+                TFloat u3 = embedded_proportions[offset + ks + 3];
+                TFloat v0 = embedded_proportions[offset + ls];
+                TFloat v1 = embedded_proportions[offset + ls + 1];
+                TFloat v2 = embedded_proportions[offset + ls + 2];
+                TFloat v3 = embedded_proportions[offset + ls + 3];
+                TFloat length = lengths[emb];
+
+                TFloat diff0 = u0 - v0;
+                TFloat diff1 = u1 - v1;
+                TFloat diff2 = u2 - v2;
+                TFloat diff3 = u3 - v3;
+                TFloat absdiff0 = fabs(diff0);
+                TFloat absdiff1 = fabs(diff1);
+                TFloat absdiff2 = fabs(diff2);
+                TFloat absdiff3 = fabs(diff3);
+
+                my_stripe0     += absdiff0 * length;
+                my_stripe1     += absdiff1 * length;
+                my_stripe2     += absdiff2 * length;
+                my_stripe3     += absdiff3 * length;
+            } // for emb
+
+            stripes[ks] += my_stripe0;
+            stripes[ks + 1] += my_stripe1;
+            stripes[ks + 2] += my_stripe2;
+            stripes[ks + 3] += my_stripe3;
+}
+
+template<class TFloat>
+static inline void WeightedVal8(
+                      TFloat * const __restrict__ stripes,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+            TFloat my_stripe0 = 0.0;
+            TFloat my_stripe1 = 0.0;
+            TFloat my_stripe2 = 0.0;
+            TFloat my_stripe3 = 0.0;
+            TFloat my_stripe4 = 0.0;
+            TFloat my_stripe5 = 0.0;
+            TFloat my_stripe6 = 0.0;
+            TFloat my_stripe7 = 0.0;
+
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                TFloat u0 = embedded_proportions[offset + ks];
+                TFloat u1 = embedded_proportions[offset + ks + 1];
+                TFloat u2 = embedded_proportions[offset + ks + 2];
+                TFloat u3 = embedded_proportions[offset + ks + 3];
+                TFloat u4 = embedded_proportions[offset + ks + 4];
+                TFloat u5 = embedded_proportions[offset + ks + 5];
+                TFloat u6 = embedded_proportions[offset + ks + 6];
+                TFloat u7 = embedded_proportions[offset + ks + 7];
+                TFloat v0 = embedded_proportions[offset + ls];
+                TFloat v1 = embedded_proportions[offset + ls + 1];
+                TFloat v2 = embedded_proportions[offset + ls + 2];
+                TFloat v3 = embedded_proportions[offset + ls + 3];
+                TFloat v4 = embedded_proportions[offset + ls + 4];
+                TFloat v5 = embedded_proportions[offset + ls + 5];
+                TFloat v6 = embedded_proportions[offset + ls + 6];
+                TFloat v7 = embedded_proportions[offset + ls + 7];
+                TFloat length = lengths[emb];
+
+                TFloat diff0 = u0 - v0;
+                TFloat diff1 = u1 - v1;
+                TFloat diff2 = u2 - v2;
+                TFloat diff3 = u3 - v3;
+                TFloat diff4 = u4 - v4;
+                TFloat diff5 = u5 - v5;
+                TFloat diff6 = u6 - v6;
+                TFloat diff7 = u7 - v7;
+                TFloat absdiff0 = fabs(diff0);
+                TFloat absdiff1 = fabs(diff1);
+                TFloat absdiff2 = fabs(diff2);
+                TFloat absdiff3 = fabs(diff3);
+                TFloat absdiff4 = fabs(diff4);
+                TFloat absdiff5 = fabs(diff5);
+                TFloat absdiff6 = fabs(diff6);
+                TFloat absdiff7 = fabs(diff7);
+
+                my_stripe0     += absdiff0 * length;
+                my_stripe1     += absdiff1 * length;
+                my_stripe2     += absdiff2 * length;
+                my_stripe3     += absdiff3 * length;
+                my_stripe4     += absdiff4 * length;
+                my_stripe5     += absdiff5 * length;
+                my_stripe6     += absdiff6 * length;
+                my_stripe7     += absdiff7 * length;
+            } // for emb
+
+            stripes[ks] += my_stripe0;
+            stripes[ks + 1] += my_stripe1;
+            stripes[ks + 2] += my_stripe2;
+            stripes[ks + 3] += my_stripe3;
+            stripes[ks + 4] += my_stripe4;
+            stripes[ks + 5] += my_stripe5;
+            stripes[ks + 6] += my_stripe6;
+            stripes[ks + 7] += my_stripe7;
+}
 #endif
-    for(uint64_t sk = 0; sk < sample_steps ; sk++) {
-     for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
-      for(uint64_t ik = 0; ik < step_size ; ik++) {
-       const uint64_t k = sk*step_size + ik;
 
-       if (k>=n_samples) continue; // past the limit
-
-       const bool zcheck_k = zcheck[sk]; // due to loop collapse in ACC, must load in here
-
-       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
-
+// Single step in computing NormalizedWeighted Unifrac
+template<class TFloat>
+static inline void UnnormalizedWeighted1(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
        const bool allzero_k = zcheck[k];
        const bool allzero_l1 = zcheck[l1];
 
@@ -82,34 +218,285 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
             // keep reads in the same place to maximize GPU warp performance
             my_stripe = sums[ridx];
-
           } else {
             // both sides non zero, use the explicit but slow approach
-            my_stripe = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                TFloat v1 = embedded_proportions[offset + l1];
-                TFloat diff1 = u1 - v1;
-                TFloat length = lengths[emb];
-
-                my_stripe     += fabs(diff1) * length;
-            } // for emb
-
+            my_stripe = WeightedVal1(embedded_proportions, lengths,
+                                     filled_embs, n_samples_r,
+                                     k, l1);
           }
 
-          const uint64_t idx = (stripe-start_idx)*n_samples_r;
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          
+          // keep all writes in a single place, to maximize GPU warp performance
+          dm_stripe[k]       += my_stripe;
+       }
+}
+
+#ifndef _OPENACC
+// Vectorized step in computing UnnormalizedWeighted Unifrac
+template<class TFloat>
+static inline void UnnormalizedWeighted4(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+       const uint32_t z_k = ((const uint32_t *)(zcheck+ks))[0];
+       const uint32_t z_l = ((const uint32_t *)(zcheck+ls))[0];
+       const bool allzero_k =  z_k==0x01010101;
+       const bool allzero_l1 = z_l==0x01010101;
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else if (allzero_k || allzero_l1) {
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
-          // keep all writes in a single place, to maximize GPU warp performance
-          dm_stripe[k] += my_stripe;
-       } 
+          if (allzero_k) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+             const TFloat sum_l0 = sums[ls];
+             const TFloat sum_l1 = sums[ls+1];
+             const TFloat sum_l2 = sums[ls+2];
+             const TFloat sum_l3 = sums[ls+3];
+             dm_stripe[ks]   += sum_l0;
+             dm_stripe[ks+1] += sum_l1;
+             dm_stripe[ks+2] += sum_l2;
+             dm_stripe[ks+3] += sum_l3;
+          } else {
+             // one side has all zeros, use distributed property
+             // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+             const TFloat sum_k0 = sums[ks];
+             const TFloat sum_k1 = sums[ks+1];
+             const TFloat sum_k2 = sums[ks+2];
+             const TFloat sum_k3 = sums[ks+3];
+             dm_stripe[ks]   += sum_k0;
+             dm_stripe[ks+1] += sum_k1;
+             dm_stripe[ks+2] += sum_k2;
+             dm_stripe[ks+3] += sum_k3;
+          }
+       } else if ((z_k==0) && (z_l==0)) {
+          // they are all nonzero, so use the vectorized expensive path
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
 
+          WeightedVal4(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
+       } else {
+         // both sides partially non zero, try smaller vect size
+         for (uint64_t i=0; i<4; i++) {
+            UnnormalizedWeighted1<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks+i, ls+i);
+         }
+       } // (allzero_k && allzero_l1)
+}
+
+template<class TFloat>
+static inline void UnnormalizedWeighted8(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+       const uint64_t z_k = ((const uint64_t *)(zcheck+ks))[0];
+       const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
+       const bool allzero_k =  z_k==0x0101010101010101;
+       const bool allzero_l1 = z_l==0x0101010101010101;
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else if (allzero_k || allzero_l1) {
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          if (allzero_k) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+             const TFloat sum_l0 = sums[ls];
+             const TFloat sum_l1 = sums[ls+1];
+             const TFloat sum_l2 = sums[ls+2];
+             const TFloat sum_l3 = sums[ls+3];
+             const TFloat sum_l4 = sums[ls+4];
+             const TFloat sum_l5 = sums[ls+5];
+             const TFloat sum_l6 = sums[ls+6];
+             const TFloat sum_l7 = sums[ls+7];
+             dm_stripe[ks]   += sum_l0;
+             dm_stripe[ks+1] += sum_l1;
+             dm_stripe[ks+2] += sum_l2;
+             dm_stripe[ks+3] += sum_l3;
+             dm_stripe[ks+4] += sum_l4;
+             dm_stripe[ks+5] += sum_l5;
+             dm_stripe[ks+6] += sum_l6;
+             dm_stripe[ks+7] += sum_l7;
+          } else {
+             // one side has all zeros, use distributed property
+             // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+             const TFloat sum_k0 = sums[ks];
+             const TFloat sum_k1 = sums[ks+1];
+             const TFloat sum_k2 = sums[ks+2];
+             const TFloat sum_k3 = sums[ks+3];
+             const TFloat sum_k4 = sums[ks+4];
+             const TFloat sum_k5 = sums[ks+5];
+             const TFloat sum_k6 = sums[ks+6];
+             const TFloat sum_k7 = sums[ks+7];
+             dm_stripe[ks]   += sum_k0;
+             dm_stripe[ks+1] += sum_k1;
+             dm_stripe[ks+2] += sum_k2;
+             dm_stripe[ks+3] += sum_k3;
+             dm_stripe[ks+4] += sum_k4;
+             dm_stripe[ks+5] += sum_k5;
+             dm_stripe[ks+6] += sum_k6;
+             dm_stripe[ks+7] += sum_k7;
+          } 
+       } else if ((z_k==0) && (z_l==0)) {
+          // they are all nonzero, so use the vectorized expensive path
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          WeightedVal8(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
+       } else {
+         // both sides partially non zero, try smaller vect size
+         UnnormalizedWeighted4<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+         UnnormalizedWeighted4<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks+4, ls+4);
+       } // (allzero_k && allzero_l1)
+}
+#endif
+
+template<class TFloat>
+void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+    const uint64_t start_idx = this->task_p->start;
+    const uint64_t stop_idx = this->task_p->stop;
+    const uint64_t n_samples = this->task_p->n_samples;
+    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+
+    // openacc only works well with local variables
+    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
+
+    bool * const __restrict__ zcheck = this->zcheck;
+    TFloat * const __restrict__ sums = this->sums;
+
+    const uint64_t step_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::step_size;
+    const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
+
+    // check for zero values and pre-compute single column sums
+    WeightedZerosAndSums(zcheck, sums,
+                         embedded_proportions, lengths,
+                         filled_embs, n_samples, n_samples_r);
+
+    // now do the real compute
+#ifdef _OPENACC
+    const unsigned int acc_vector_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::acc_vector_size;
+#pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
+#else
+    // use dynamic scheduling due to non-homogeneity in the loop
+#pragma omp parallel for default(shared) schedule(dynamic,1)
+#endif
+    for(uint64_t sk = 0; sk < sample_steps ; sk++) {
+     for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
+#ifdef _OPENACC
+      // SIMT-based GPU work great one at a time (HW will deal with parallelism)
+      for(uint64_t ik = 0; ik < step_size ; ik++) {
+       const uint64_t k = sk*step_size + ik;
+
+       if (k>=n_samples) continue; // past the limit
+
+       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+       const uint64_t idx = (stripe-start_idx) * n_samples_r;
+
+       UnnormalizedWeighted1<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
       } // for ik
+#else
+      // SIMD-based CPUs need help with vectorization
+      const uint64_t idx = (stripe-start_idx) * n_samples_r;
+      uint64_t ik = 0;
+
+      while( ik < (step_size-7) ) {
+       const uint64_t ks = sk*step_size + ik;
+       const uint64_t ke = ks+7;
+
+       if (ke>=n_samples) break; // past the limit
+
+       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
+       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
+
+       if ((le-ls)!=7) break; //nor contiguous, use serial version
+       ik+=8;
+
+       UnnormalizedWeighted8<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+      } // for ik
+
+      while( ik < (step_size-3) ) {
+       const uint64_t ks = sk*step_size + ik;
+       const uint64_t ke = ks+3;
+
+       if (ke>=n_samples) break; // past the limit
+
+       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
+       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
+
+       if ((le-ls)!=3) break; //nor contiguous, use serial version
+       ik+=4;
+
+       UnnormalizedWeighted4<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+      } // for ik
+
+      // deal with any leftovers in serial way
+      while( ik < step_size ) {
+       const uint64_t k = sk*step_size + ik;
+
+       if (k>=n_samples) break; // past the limit
+       ik++;
+
+       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+
+       UnnormalizedWeighted1<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
+      
+      } // for ik
+#endif
      } // for stripe
     } // for sk
 
@@ -187,6 +574,249 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 #endif
 }
 
+// Single step in computing NormalizedWeighted Unifrac
+template<class TFloat>
+static inline void NormalizedWeighted1(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ dm_stripes_total_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
+       const bool allzero_k = zcheck[k];
+       const bool allzero_l1 = zcheck[l1];
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else {
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+
+          const TFloat sum_k = sums[k];
+          const TFloat sum_l = sums[l1];
+
+          // the totals can always use the distributed property
+          dm_stripe_total[k] += sum_k + sum_l;
+   
+          TFloat my_stripe;
+
+          if (allzero_k || allzero_l1) {
+            // one side has all zeros
+            // we can use the distributed property, and use the pre-computed values
+
+            my_stripe = (allzero_k) ? sum_l : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+                                      sum_k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+          } else {
+            // both sides non zero, use the explicit but slow approach
+            my_stripe = WeightedVal1(embedded_proportions, lengths,
+                                     filled_embs, n_samples_r,
+                                     k, l1);
+          }
+
+          // keep all writes in a single place, to maximize GPU warp performance
+          dm_stripe[k]       += my_stripe;
+       }
+}
+
+#ifndef _OPENACC
+// Vectorized step in computing NormalizedWeighted Unifrac
+template<class TFloat>
+static inline void NormalizedWeighted4(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ dm_stripes_total_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+       const uint32_t z_k = ((const uint32_t *)(zcheck+ks))[0];
+       const uint32_t z_l = ((const uint32_t *)(zcheck+ls))[0];
+       const bool allzero_k =  z_k==0x01010101;
+       const bool allzero_l1 = z_l==0x01010101;
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else {
+          const TFloat sum_k0 = sums[ks];
+          const TFloat sum_k1 = sums[ks+1];
+          const TFloat sum_k2 = sums[ks+2];
+          const TFloat sum_k3 = sums[ks+3];
+          const TFloat sum_l0 = sums[ls];
+          const TFloat sum_l1 = sums[ls+1];
+          const TFloat sum_l2 = sums[ls+2];
+          const TFloat sum_l3 = sums[ls+3];
+
+          // the totals can always use the distributed property
+          {
+             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+             const TFloat sum_kl0 = sum_k0 + sum_l0;
+             const TFloat sum_kl1 = sum_k1 + sum_l1;
+             const TFloat sum_kl2 = sum_k2 + sum_l2;
+             const TFloat sum_kl3 = sum_k3 + sum_l3;
+             dm_stripe_total[ks]   += sum_kl0;
+             dm_stripe_total[ks+1] += sum_kl1;
+             dm_stripe_total[ks+2] += sum_kl2;
+             dm_stripe_total[ks+3] += sum_kl3;
+          }
+
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          if (allzero_k) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+             dm_stripe[ks]   += sum_l0;
+             dm_stripe[ks+1] += sum_l1;
+             dm_stripe[ks+2] += sum_l2;
+             dm_stripe[ks+3] += sum_l3;
+          } else if (allzero_l1) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+             dm_stripe[ks]   += sum_k0;
+             dm_stripe[ks+1] += sum_k1;
+             dm_stripe[ks+2] += sum_k2;
+             dm_stripe[ks+3] += sum_k3;
+          } else if ((z_k==0) && (z_l==0)) {
+             // they are all nonzero, so use the vectorized expensive path
+             WeightedVal4(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
+          } else {
+            // both sides partially non zero, try smaller vect size
+            // Use UnnormalizedWeighted since we already computed dm_stripe_total
+            for (uint64_t i=0; i<4; i++) {
+               UnnormalizedWeighted1<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks+i, ls+i);
+            }
+          }
+       } // (allzero_k && allzero_l1)
+}
+
+template<class TFloat>
+static inline void NormalizedWeighted8(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ dm_stripes_total_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const __restrict__ sums,
+                      const TFloat * const __restrict__ embedded_proportions,
+                      const TFloat * __restrict__ lengths,
+                      const unsigned int filled_embs,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t ks,
+                      const uint64_t ls) {
+       const uint64_t z_k = ((const uint64_t *)(zcheck+ks))[0];
+       const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
+       const bool allzero_k =  z_k==0x0101010101010101;
+       const bool allzero_l1 = z_l==0x0101010101010101;
+
+       if (allzero_k && allzero_l1) {
+         // nothing to do, would have to add 0
+       } else {
+          const TFloat sum_k0 = sums[ks];
+          const TFloat sum_k1 = sums[ks+1];
+          const TFloat sum_k2 = sums[ks+2];
+          const TFloat sum_k3 = sums[ks+3];
+          const TFloat sum_k4 = sums[ks+4];
+          const TFloat sum_k5 = sums[ks+5];
+          const TFloat sum_k6 = sums[ks+6];
+          const TFloat sum_k7 = sums[ks+7];
+          const TFloat sum_l0 = sums[ls];
+          const TFloat sum_l1 = sums[ls+1];
+          const TFloat sum_l2 = sums[ls+2];
+          const TFloat sum_l3 = sums[ls+3];
+          const TFloat sum_l4 = sums[ls+4];
+          const TFloat sum_l5 = sums[ls+5];
+          const TFloat sum_l6 = sums[ls+6];
+          const TFloat sum_l7 = sums[ls+7];
+
+          // the totals can always use the distributed property
+          {
+             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+             const TFloat sum_kl0 = sum_k0 + sum_l0;
+             const TFloat sum_kl1 = sum_k1 + sum_l1;
+             const TFloat sum_kl2 = sum_k2 + sum_l2;
+             const TFloat sum_kl3 = sum_k3 + sum_l3;
+             const TFloat sum_kl4 = sum_k4 + sum_l4;
+             const TFloat sum_kl5 = sum_k5 + sum_l5;
+             const TFloat sum_kl6 = sum_k6 + sum_l6;
+             const TFloat sum_kl7 = sum_k7 + sum_l7;
+             dm_stripe_total[ks]   += sum_kl0;
+             dm_stripe_total[ks+1] += sum_kl1;
+             dm_stripe_total[ks+2] += sum_kl2;
+             dm_stripe_total[ks+3] += sum_kl3;
+             dm_stripe_total[ks+4] += sum_kl4;
+             dm_stripe_total[ks+5] += sum_kl5;
+             dm_stripe_total[ks+6] += sum_kl6;
+             dm_stripe_total[ks+7] += sum_kl7;
+          }
+
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+
+          if (allzero_k) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
+             dm_stripe[ks]   += sum_l0;
+             dm_stripe[ks+1] += sum_l1;
+             dm_stripe[ks+2] += sum_l2;
+             dm_stripe[ks+3] += sum_l3;
+             dm_stripe[ks+4] += sum_l4;
+             dm_stripe[ks+5] += sum_l5;
+             dm_stripe[ks+6] += sum_l6;
+             dm_stripe[ks+7] += sum_l7;
+          } else if (allzero_l1) {
+             // one side has all zeros, use distributed property
+             // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
+             dm_stripe[ks]   += sum_k0;
+             dm_stripe[ks+1] += sum_k1;
+             dm_stripe[ks+2] += sum_k2;
+             dm_stripe[ks+3] += sum_k3;
+             dm_stripe[ks+4] += sum_k4;
+             dm_stripe[ks+5] += sum_k5;
+             dm_stripe[ks+6] += sum_k6;
+             dm_stripe[ks+7] += sum_k7;
+          } else if ((z_k==0) && (z_l==0)) {
+             // they are all nonzero, so use the vectorized expensive path
+             WeightedVal8(dm_stripe,
+                       embedded_proportions, lengths,
+                       filled_embs, n_samples_r,
+                       ks, ls);
+          } else {
+            // both sides partially non zero, try smaller vect size
+            // Use UnnormalizedWeighted since we already computed dm_stripe_total
+            UnnormalizedWeighted4<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+            UnnormalizedWeighted4<TFloat>(
+                                   dm_stripes_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks+4, ls+4);
+          }
+       } // (allzero_k && allzero_l1)
+}
+#endif
+
 template<class TFloat>
 void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
@@ -206,98 +836,94 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // check for zero values and pre-compute single column sums
-#ifdef _OPENACC
-#pragma acc parallel loop present(embedded_proportions,lengths,zcheck,sums)
-#else
-#pragma omp parallel for default(shared)
-#endif
-    for(uint64_t k=0; k<n_samples; k++) {
-            bool all_zeros=true;
-            TFloat my_sum = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                my_sum += u1*lengths[emb];
-                all_zeros = all_zeros && (u1==0.0);
-            }
-
-            sums[k]     = my_sum;
-            zcheck[k] = all_zeros;
-    }
+    WeightedZerosAndSums(zcheck, sums,
+                         embedded_proportions, lengths,
+                         filled_embs, n_samples, n_samples_r);
 
     // point of thread
 #ifdef _OPENACC
     const unsigned int acc_vector_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
 #else
     // use dynamic scheduling due to non-homogeneity in the loop
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
+#ifdef _OPENACC
+      // SIMT-based GPU work great one at a time (HW will deal with parallelism)
       for(uint64_t ik = 0; ik < step_size ; ik++) {
        const uint64_t k = sk*step_size + ik;
 
        if (k>=n_samples) continue; // past the limit
 
-       const bool zcheck_k = zcheck[sk]; // due to loop collapse in ACC, must load in here
+       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+       const uint64_t idx = (stripe-start_idx) * n_samples_r;
+
+       NormalizedWeighted1<TFloat>(
+                                   dm_stripes_buf,dm_stripes_total_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
+      } // for ik
+#else
+      // SIMD-based CPUs need help with vectorization
+      const uint64_t idx = (stripe-start_idx) * n_samples_r;
+      uint64_t ik = 0;
+
+      while( ik < (step_size-7) ) {
+       const uint64_t ks = sk*step_size + ik;
+       const uint64_t ke = ks+7;
+
+       if (ke>=n_samples) break; // past the limit
+
+       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
+       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
+
+       if ((le-ls)!=7) break; //nor contiguous, use serial version
+       ik+=8;
+
+       NormalizedWeighted8<TFloat>(
+                                   dm_stripes_buf,dm_stripes_total_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+      } // for ik
+
+      while( ik < (step_size-3) ) {
+       const uint64_t ks = sk*step_size + ik;
+       const uint64_t ke = ks+3;
+
+       if (ke>=n_samples) break; // past the limit
+
+       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
+       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
+
+       if ((le-ls)!=3) break; //nor contiguous, use serial version
+       ik+=4;
+
+       NormalizedWeighted4<TFloat>(
+                                   dm_stripes_buf,dm_stripes_total_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   ks, ls);
+      } // for ik
+      // deal with any leftovers in serial way
+      while( ik < step_size ) {
+       const uint64_t k = sk*step_size + ik;
+
+       if (k>=n_samples) break; // past the limit
+       ik++;
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
-       const bool allzero_k = zcheck[k];
-       const bool allzero_l1 = zcheck[l1];
-
-       if (allzero_k && allzero_l1) {
-         // nothing to do, would have to add 0
-       } else {
-          const uint64_t idx = (stripe-start_idx) * n_samples_r;
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-
-          // the totals can always use the distributed property
-          dm_stripe_total[k] += sums[k] + sums[l1];
-   
-          TFloat my_stripe;
-
-          if (allzero_k || allzero_l1) {
-            // one side has all zeros
-            // we can use the distributed property, and use the pre-computed values
-
-            const uint64_t ridx = (allzero_k) ? l1 : // if (nonzero_l1) ridx=l1 // fabs(k-l1), with k==0
-                                                k;   // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
-
-            // keep reads in the same place to maximize GPU warp performance
-            my_stripe = sums[ridx];
-          
-          } else {
-            // both sides non zero, use the explicit but slow approach
-
-            my_stripe = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                TFloat u1 = embedded_proportions[offset + k];
-                TFloat v1 = embedded_proportions[offset + l1];
-                TFloat diff1 = u1 - v1;
-                TFloat length = lengths[emb];
-
-                my_stripe     += fabs(diff1) * length;
-            }
-
-          }
-
-          // keep all writes in a single place, to maximize GPU warp performance
-          dm_stripe[k]       += my_stripe;
-       }
-
+       NormalizedWeighted1<TFloat>(
+                                   dm_stripes_buf,dm_stripes_total_buf,
+                                   zcheck, sums, embedded_proportions, lengths,
+                                   filled_embs,idx, n_samples_r,
+                                   k, l1);
       } // for ik
+#endif
      } // for stripe
     } // for sk
 
