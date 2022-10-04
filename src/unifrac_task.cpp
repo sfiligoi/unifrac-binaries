@@ -342,8 +342,8 @@ static inline void UnnormalizedWeighted8(
              dm_stripe[ks+3] += sum_l3;
              dm_stripe[ks+4] += sum_l4;
              dm_stripe[ks+5] += sum_l5;
-             dm_stripe[ks+7] += sum_l6;
-             dm_stripe[ks+8] += sum_l7;
+             dm_stripe[ks+6] += sum_l6;
+             dm_stripe[ks+7] += sum_l7;
           } else {
              // one side has all zeros, use distributed property
              // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
@@ -361,8 +361,8 @@ static inline void UnnormalizedWeighted8(
              dm_stripe[ks+3] += sum_k3;
              dm_stripe[ks+4] += sum_k4;
              dm_stripe[ks+5] += sum_k5;
-             dm_stripe[ks+7] += sum_k6;
-             dm_stripe[ks+8] += sum_k7;
+             dm_stripe[ks+6] += sum_k6;
+             dm_stripe[ks+7] += sum_k7;
           } 
        } else if ((z_k==0) && (z_l==0)) {
           // they are all nonzero, so use the vectorized expensive path
@@ -441,6 +441,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
       uint64_t ik = 0;
+
       for(; ik < (step_size-7) ; ik+=8) {
        const uint64_t ks = sk*step_size + ik;
        const uint64_t ke = ks+7;
@@ -458,6 +459,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
+
       for(; ik < (step_size-3) ; ik+=4) {
        const uint64_t ks = sk*step_size + ik;
        const uint64_t ke = ks+3;
@@ -475,6 +477,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
+
       // deal with any leftovers in serial way
       for(; ik < step_size ; ik++) {
        const uint64_t k = sk*step_size + ik;
@@ -488,6 +491,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
+      
       } // for ik
 #endif
      } // for stripe
@@ -773,8 +777,8 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+3] += sum_l3;
              dm_stripe[ks+4] += sum_l4;
              dm_stripe[ks+5] += sum_l5;
-             dm_stripe[ks+7] += sum_l6;
-             dm_stripe[ks+8] += sum_l7;
+             dm_stripe[ks+6] += sum_l6;
+             dm_stripe[ks+7] += sum_l7;
           } else if (allzero_l1) {
              // one side has all zeros, use distributed property
              // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
@@ -784,8 +788,8 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+3] += sum_k3;
              dm_stripe[ks+4] += sum_k4;
              dm_stripe[ks+5] += sum_k5;
-             dm_stripe[ks+7] += sum_k6;
-             dm_stripe[ks+8] += sum_k7;
+             dm_stripe[ks+6] += sum_k6;
+             dm_stripe[ks+7] += sum_k7;
           } else if ((z_k==0) && (z_l==0)) {
              // they are all nonzero, so use the vectorized expensive path
              WeightedVal8(dm_stripe,
