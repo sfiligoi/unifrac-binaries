@@ -105,10 +105,10 @@ static inline void WeightedVal4(
                 my_stripe3     += absdiff3 * length;
             } // for emb
 
-            stripes[0] += my_stripe0;
-            stripes[1] += my_stripe1;
-            stripes[2] += my_stripe2;
-            stripes[3] += my_stripe3;
+            stripes[ks] += my_stripe0;
+            stripes[ks + 1] += my_stripe1;
+            stripes[ks + 2] += my_stripe2;
+            stripes[ks + 3] += my_stripe3;
 }
 
 template<class TFloat>
@@ -177,14 +177,14 @@ static inline void WeightedVal8(
                 my_stripe7     += absdiff7 * length;
             } // for emb
 
-            stripes[0] += my_stripe0;
-            stripes[1] += my_stripe1;
-            stripes[2] += my_stripe2;
-            stripes[3] += my_stripe3;
-            stripes[4] += my_stripe4;
-            stripes[5] += my_stripe5;
-            stripes[6] += my_stripe6;
-            stripes[7] += my_stripe7;
+            stripes[ks] += my_stripe0;
+            stripes[ks + 1] += my_stripe1;
+            stripes[ks + 2] += my_stripe2;
+            stripes[ks + 3] += my_stripe3;
+            stripes[ks + 4] += my_stripe4;
+            stripes[ks + 5] += my_stripe5;
+            stripes[ks + 6] += my_stripe6;
+            stripes[ks + 7] += my_stripe7;
 }
 #endif
 
@@ -292,7 +292,7 @@ static inline void UnnormalizedWeighted4(
                        ks, ls);
        } else {
          // both sides partially non zero, try smaller vect size
-         for (unsigned int i=0; i<4; i++) {
+         for (uint64_t i=0; i<4; i++) {
             UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
@@ -697,7 +697,7 @@ static inline void NormalizedWeighted4(
           } else {
             // both sides partially non zero, try smaller vect size
             // Use UnnormalizedWeighted since we already computed dm_stripe_total
-            for (unsigned int i=0; i<4; i++) {
+            for (uint64_t i=0; i<4; i++) {
                UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
