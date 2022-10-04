@@ -442,7 +442,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
       uint64_t ik = 0;
 
-      for(; ik < (step_size-7) ; ik+=8) {
+      while( ik < (step_size-7) ) {
        const uint64_t ks = sk*step_size + ik;
        const uint64_t ke = ks+7;
 
@@ -452,6 +452,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
        const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
 
        if ((le-ls)!=7) break; //nor contiguous, use serial version
+       ik+=8;
 
        UnnormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,
@@ -460,7 +461,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                                    ks, ls);
       } // for ik
 
-      for(; ik < (step_size-3) ; ik+=4) {
+      while( ik < (step_size-3) ) {
        const uint64_t ks = sk*step_size + ik;
        const uint64_t ke = ks+3;
 
@@ -470,6 +471,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
        const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
 
        if ((le-ls)!=3) break; //nor contiguous, use serial version
+       ik+=4;
 
        UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
@@ -479,10 +481,11 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
       } // for ik
 
       // deal with any leftovers in serial way
-      for(; ik < step_size ; ik++) {
+      while( ik < step_size ) {
        const uint64_t k = sk*step_size + ik;
 
        if (k>=n_samples) break; // past the limit
+       ik++;
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
@@ -867,7 +870,8 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
       uint64_t ik = 0;
-      for(; ik < (step_size-7) ; ik+=8) {
+
+      while( ik < (step_size-7) ) {
        const uint64_t ks = sk*step_size + ik;
        const uint64_t ke = ks+7;
 
@@ -877,6 +881,7 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
        const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
 
        if ((le-ls)!=7) break; //nor contiguous, use serial version
+       ik+=8;
 
        NormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
@@ -884,7 +889,8 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
       } // for ik
-      for(; ik < (step_size-3) ; ik+=4) {
+
+      while( ik < (step_size-3) ) {
        const uint64_t ks = sk*step_size + ik;
        const uint64_t ke = ks+3;
 
@@ -894,6 +900,7 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
        const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
 
        if ((le-ls)!=3) break; //nor contiguous, use serial version
+       ik+=4;
 
        NormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
@@ -902,10 +909,11 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
                                    ks, ls);
       } // for ik
       // deal with any leftovers in serial way
-      for(; ik < step_size ; ik++) {
+      while( ik < step_size ) {
        const uint64_t k = sk*step_size + ik;
 
        if (k>=n_samples) break; // past the limit
+       ik++;
 
        const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
