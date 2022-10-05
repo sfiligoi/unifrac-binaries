@@ -94,34 +94,34 @@ jobs:
         # weighted_unnormalized
         time ssu -m weighted_unnormalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
         ./compare_unifrac_matrix.py test500.weighted_unnormalized_fp32.h5 t1.h5 1.e-5
-        ./compare_unifrac_pcoa.py test500.weighted_unnormalized_fp32.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.weighted_unnormalized_fp32.h5 t1.h5 3 0.1
         rm -f t1.h5
         time ssu -f -m weighted_unnormalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
         # matrrix will be different, but PCOA similar
-        ./compare_unifrac_pcoa.py test500.weighted_unnormalized_fp32.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.weighted_unnormalized_fp32.h5 t1.h5 3 0.1
         rm -f t1.h5
         time ssu -m weighted_unnormalized -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp64 -o t1.h5
         # minimal precision loss between fp32 and fp64
         ./compare_unifrac_matrix.py test500.weighted_unnormalized_fp32.h5 t1.h5 1.e-5
-        ./compare_unifrac_pcoa.py test500.weighted_unnormalized_fp32.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.weighted_unnormalized_fp32.h5 t1.h5 3 0.1
         rm -f t1.h5
         # weighted_normalized
         time ssu -f -m weighted_normalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
         ./compare_unifrac_matrix.py test500.weighted_normalized_fp32.f.h5 t1.h5 1.e-5
-        ./compare_unifrac_pcoa.py test500.weighted_normalized_fp32.f.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.weighted_normalized_fp32.f.h5 t1.h5 3 0.1
         rm -f t1.h5
         time ssu -f -m weighted_normalized -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp64 -o t1.h5
         ./compare_unifrac_matrix.py test500.weighted_normalized_fp32.f.h5 t1.h5 1.e-5
-        ./compare_unifrac_pcoa.py test500.weighted_normalized_fp32.f.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.weighted_normalized_fp32.f.h5 t1.h5 3 0.1
         rm -f t1.h5
         # unweighted
         time ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
         ./compare_unifrac_matrix.py test500.unweighted_fp32.f.h5 t1.h5 1.e-5
-        ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 3 0.1
         rm -f t1.h5
         time ssu -f -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp64 -o t1.h5
         ./compare_unifrac_matrix.py test500.unweighted_fp32.f.h5 t1.h5 1.e-5
-        ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 4 0.1
+        ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 3 0.1
         rm -f t1.h5
         popd
     - name: Sanity checks
