@@ -3,9 +3,20 @@
 #include <cstdlib>
 
 #ifndef _OPENACC
+// popcnt returns number of bits set to 1, if supported by fast HW compute
+// else return 0 when v is 0 and max-bits else
+// Note: The user of popcnt in this file must be able to use this modified semantics
+
+#if __SSE__
 #include <immintrin.h>
+static inline int32_t popcnt_u32(uint32_t v) {return  _mm_popcnt_u32(v);}
+static inline int64_t popcnt_u64(uint64_t v) {return  _mm_popcnt_u64(v);}
+#else
+static inline int32_t popcnt_u32(uint32_t v) {return (v==0) ? 0 : 32;}
+static inline int64_t popcnt_u64(uint64_t v) {return (v==0) ? 0 : 64;}
 // For future non-x86 ports, see https://barakmich.dev/posts/popcnt-arm64-go-asm/
 // and https://stackoverflow.com/questions/38113284/whats-the-difference-between-builtin-popcountll-and-mm-popcnt-u64
+#endif
 #endif
 
 // check for zero values and pre-compute single column sums
@@ -258,8 +269,8 @@ static inline void UnnormalizedWeighted4(
        const bool allzero_l = z_l==0x01010101;
 
        // popcnt is cheap but has large latency, so compute speculatively/early
-       const int32_t cnt_k = _mm_popcnt_u32(z_k);
-       const int32_t cnt_l = _mm_popcnt_u32(z_l);
+       const int32_t cnt_k = popcnt_u32(z_k);
+       const int32_t cnt_l = popcnt_u32(z_l);
 
        if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
@@ -329,8 +340,8 @@ static inline void UnnormalizedWeighted8(
        const bool allzero_l = z_l==0x0101010101010101;
 
        // popcnt is cheap but has large latency, so compute speculatively/early
-       const int64_t cnt_k = _mm_popcnt_u64(z_k);
-       const int64_t cnt_l = _mm_popcnt_u64(z_l);
+       const int64_t cnt_k = popcnt_u64(z_k);
+       const int64_t cnt_l = popcnt_u64(z_l);
 
        if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
