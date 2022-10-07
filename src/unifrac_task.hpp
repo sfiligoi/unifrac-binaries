@@ -297,9 +297,8 @@ namespace SUCMP_NM {
     template<class TFloat, class TEmb>
     class UnifracTask : public UnifracTaskBase<TFloat,TEmb> {
       protected:
-        // Use one cache line on CPU
-        // On GPU, shaing a cache line is actually a good thing
-        static const unsigned int step_size = 16*4/sizeof(TFloat);
+        // Use a moderate sized step, a few cache lines
+        static const unsigned int step_size = 64*4/sizeof(TFloat);
 
 #ifdef _OPENACC
         // Use as big vector size as we can, to maximize cache line reuse
@@ -403,6 +402,9 @@ namespace SUCMP_NM {
     template<class TFloat>
     class UnifracUnweightedTask : public UnifracTask<TFloat,uint64_t> {
       public:
+        // use the smaller size for historical reasons
+        static const unsigned int step_size = 16*4/sizeof(TFloat);
+
         static const unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,uint64_t>::RECOMMENDED_MAX_EMBS_BOOL;
 
         // Note: _max_emb MUST be multiple of 64
