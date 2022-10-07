@@ -86,7 +86,7 @@ endif
 BLASLIB=-llapacke -lcblas
 
 
-CPPFLAGS += -Wall  -std=c++17 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
+CPPFLAGS += -Wall  -std=c++14 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
 all: api main install
 
