@@ -461,62 +461,39 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 #else
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
-      uint64_t ik = 0;
+      uint64_t ks = sk*step_size;
+      const uint64_t kmax = std::min(ks+step_size,n_samples);
+      uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
 
-      while( ik < (step_size-7) ) {
-       const uint64_t ks = sk*step_size + ik;
-       const uint64_t ke = ks+7;
-
-       if (ke>=n_samples) break; // past the limit
-
-       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
-       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
-
-       if ((le-ls)!=7) break; //nor contiguous, use serial version
-       ik+=8;
-
+      while( ((ks+8) <= kmax) && ((n_samples-ls)>=8) ) {
        UnnormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-      } // for ik
+       ks+=8;
+       ls = (ls + 8)%n_samples; // wraparound
+      } // for ks+=8
 
-      while( ik < (step_size-3) ) {
-       const uint64_t ks = sk*step_size + ik;
-       const uint64_t ke = ks+3;
-
-       if (ke>=n_samples) break; // past the limit
-
-       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
-       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
-
-       if ((le-ls)!=3) break; //nor contiguous, use serial version
-       ik+=4;
-
+      while( ((ks+4) <= kmax) && ((n_samples-ls)>=4) ) {
        UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-      } // for ik
+       ks+=4;
+       ls = (ls + 4)%n_samples; // wraparound
+      } // for ks+=4
 
       // deal with any leftovers in serial way
-      while( ik < step_size ) {
-       const uint64_t k = sk*step_size + ik;
-
-       if (k>=n_samples) break; // past the limit
-       ik++;
-
-       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
-
+      for( ; ks < kmax; ks++ ) {
        UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
-                                   k, l1);
-      
-      } // for ik
+                                   ks, ls);
+       ls = (ls + 1)%n_samples; // wraparound
+      } // for ks
 #endif
      } // for stripe
     } // for sk
