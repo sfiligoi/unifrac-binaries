@@ -72,9 +72,9 @@ ifneq (,$(findstring pgi,$(COMPILER)))
 	endif
 else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -mtune=generic
+		CPPFLAGS += -mtune=generic -mavx
 	else
-		CPPFLAGS += -mfma -march=native
+		CPPFLAGS += -mavx -mfma -march=native
 	endif
 endif
 
@@ -86,7 +86,7 @@ endif
 BLASLIB=-llapacke -lcblas
 
 
-CPPFLAGS += -Wall  -std=c++11 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
+CPPFLAGS += -Wall  -std=c++17 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
 all: api main install
 
