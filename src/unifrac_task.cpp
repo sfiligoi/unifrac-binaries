@@ -7,7 +7,7 @@
 // else return 0 when v is 0 and max-bits else
 // Note: The user of popcnt in this file must be able to use this modified semantics
 
-#if __SSE__
+#if __AVX__
 #include <immintrin.h>
 static inline int32_t popcnt_u32(uint32_t v) {return  _mm_popcnt_u32(v);}
 static inline int64_t popcnt_u64(uint64_t v) {return  _mm_popcnt_u64(v);}
