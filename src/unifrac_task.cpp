@@ -2,6 +2,11 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+#ifndef _OPENACC
+#include <immintrin.h>
+// For future non-x86 ports, see https://barakmich.dev/posts/popcnt-arm64-go-asm/
+// and https://stackoverflow.com/questions/38113284/whats-the-difference-between-builtin-popcountll-and-mm-popcnt-u64
+#endif
 
 // check for zero values and pre-compute single column sums
 template<class TFloat>
@@ -249,12 +254,16 @@ static inline void UnnormalizedWeighted4(
                       const uint64_t ls) {
        const uint32_t z_k = ((const uint32_t *)(zcheck+ks))[0];
        const uint32_t z_l = ((const uint32_t *)(zcheck+ls))[0];
-       const bool allzero_k =  z_k==0x01010101;
-       const bool allzero_l1 = z_l==0x01010101;
+       const bool allzero_k = z_k==0x01010101;
+       const bool allzero_l = z_l==0x01010101;
 
-       if (allzero_k && allzero_l1) {
+       // popcnt is cheap but has large latency, so compute speculatively/early
+       const int32_t cnt_k = _mm_popcnt_u32(z_k);
+       const int32_t cnt_l = _mm_popcnt_u32(z_l);
+
+       if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
-       } else if (allzero_k || allzero_l1) {
+       } else if (allzero_k || allzero_l) {
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -281,8 +290,8 @@ static inline void UnnormalizedWeighted4(
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
           }
-       } else if ((z_k==0) && (z_l==0)) {
-          // they are all nonzero, so use the vectorized expensive path
+       } else if ((cnt_k<3) && (cnt_l<3)) {
+          // several of the elemens are nonzero, may as well use the vectorized version
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -291,7 +300,7 @@ static inline void UnnormalizedWeighted4(
                        filled_embs, n_samples_r,
                        ks, ls);
        } else {
-         // both sides partially non zero, try smaller vect size
+         // only a few have both sides partially non zero, use the fine grained compute
          for (uint64_t i=0; i<4; i++) {
             UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
@@ -299,7 +308,7 @@ static inline void UnnormalizedWeighted4(
                                    filled_embs,idx, n_samples_r,
                                    ks+i, ls+i);
          }
-       } // (allzero_k && allzero_l1)
+       } // (allzero_k && allzero_l)
 }
 
 template<class TFloat>
@@ -316,12 +325,16 @@ static inline void UnnormalizedWeighted8(
                       const uint64_t ls) {
        const uint64_t z_k = ((const uint64_t *)(zcheck+ks))[0];
        const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
-       const bool allzero_k =  z_k==0x0101010101010101;
-       const bool allzero_l1 = z_l==0x0101010101010101;
+       const bool allzero_k = z_k==0x0101010101010101;
+       const bool allzero_l = z_l==0x0101010101010101;
 
-       if (allzero_k && allzero_l1) {
+       // popcnt is cheap but has large latency, so compute speculatively/early
+       const int64_t cnt_k = _mm_popcnt_u64(z_k);
+       const int64_t cnt_l = _mm_popcnt_u64(z_l);
+
+       if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
-       } else if (allzero_k || allzero_l1) {
+       } else if (allzero_k || allzero_l) {
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -364,8 +377,8 @@ static inline void UnnormalizedWeighted8(
              dm_stripe[ks+6] += sum_k6;
              dm_stripe[ks+7] += sum_k7;
           } 
-       } else if ((z_k==0) && (z_l==0)) {
-          // they are all nonzero, so use the vectorized expensive path
+       } else if ((cnt_k<6) && (cnt_l<6)) {
+          // several of the elemens are nonzero, may as well use the vectorized version
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -374,18 +387,15 @@ static inline void UnnormalizedWeighted8(
                        filled_embs, n_samples_r,
                        ks, ls);
        } else {
-         // both sides partially non zero, try smaller vect size
-         UnnormalizedWeighted4<TFloat>(
+         // only a few have both sides partially non zero, use the fine grained compute
+         for (uint64_t i=0; i<8; i++) {
+            UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
-                                   ks, ls);
-         UnnormalizedWeighted4<TFloat>(
-                                   dm_stripes_buf,
-                                   zcheck, sums, embedded_proportions, lengths,
-                                   filled_embs,idx, n_samples_r,
-                                   ks+4, ls+4);
-       } // (allzero_k && allzero_l1)
+                                   ks+i, ls+i);
+         }
+       } // (allzero_k && allzero_l)
 }
 #endif
 
