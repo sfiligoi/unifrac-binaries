@@ -1165,6 +1165,70 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
 #endif
 }
 
+// Single step in computing NormalizedWeighted Unifrac
+template<class TFloat>
+static inline void Unweighted1(
+                      TFloat * const __restrict__ dm_stripes_buf,
+                      TFloat * const __restrict__ dm_stripes_total_buf,
+                      const TFloat * const   __restrict__ sums,
+                      const uint64_t * const __restrict__ embedded_proportions,
+                      const unsigned int filled_embs_els_round,
+                      const uint64_t idx,
+                      const uint64_t n_samples_r,
+                      const uint64_t k,
+                      const uint64_t l1) {
+            TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+            TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+            //TFloat *dm_stripe = dm_stripes[stripe];
+            //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+
+            bool did_update = false;
+            TFloat my_stripe = 0.0;
+            TFloat my_stripe_total = 0.0;
+
+            for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
+                const uint64_t offset = n_samples_r * emb_el;
+                const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
+
+                uint64_t u1 = embedded_proportions[offset + k];
+                uint64_t v1 = embedded_proportions[offset + l1];
+                uint64_t o1 = u1 | v1;
+
+                if (o1!=0) {  // zeros are prevalent
+                    did_update=true;
+                    uint64_t x1 = u1 ^ v1;
+
+                    // Use the pre-computed sums
+                    // Each range of 8 lengths has already been pre-computed and stored in psum
+                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
+                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
+
+                    my_stripe       += psum[              (x1 & 0xff)] + 
+                                   psum[0x100+((x1 >>  8) & 0xff)] +
+                                   psum[0x200+((x1 >> 16) & 0xff)] +
+                                   psum[0x300+((x1 >> 24) & 0xff)] +
+                                   psum[0x400+((x1 >> 32) & 0xff)] +
+                                   psum[0x500+((x1 >> 40) & 0xff)] +
+                                   psum[0x600+((x1 >> 48) & 0xff)] +
+                                   psum[0x700+((x1 >> 56)       )];
+                    my_stripe_total += psum[              (o1 & 0xff)] +
+                                   psum[0x100+((o1 >>  8) & 0xff)] +
+                                   psum[0x200+((o1 >> 16) & 0xff)] +
+                                   psum[0x300+((o1 >> 24) & 0xff)] +
+                                   psum[0x400+((o1 >> 32) & 0xff)] +
+                                   psum[0x500+((o1 >> 40) & 0xff)] +
+                                   psum[0x600+((o1 >> 48) & 0xff)] +
+                                   psum[0x700+((o1 >> 56)       )];
+                }
+            }
+
+            if (did_update) {
+              dm_stripe[k]       += my_stripe;
+              dm_stripe_total[k] += my_stripe_total;
+            }
+
+}
+
 template<class TFloat>
 void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
@@ -1247,7 +1311,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 #ifdef _OPENACC
 #pragma acc wait
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
+#pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
 #else
     // use dynamic scheduling due to non-homogeneity in the loop
 #pragma omp parallel for schedule(dynamic,1) default(shared)
@@ -1257,61 +1321,16 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
         for(uint64_t ik = 0; ik < step_size ; ik++) {
             const uint64_t k = sk*step_size + ik;
             const uint64_t idx = (stripe-start_idx) * n_samples_r;
-            TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-            TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-            //TFloat *dm_stripe = dm_stripes[stripe];
-            //TFloat *dm_stripe_total = dm_stripes_total[stripe];
 
             if (k>=n_samples) continue; // past the limit
 
             const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
-            bool did_update = false;
-            TFloat my_stripe = 0.0;
-            TFloat my_stripe_total = 0.0;
-
-#pragma acc loop seq
-            for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
-                const uint64_t offset = n_samples_r * emb_el;
-                const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
-
-                uint64_t u1 = embedded_proportions[offset + k];
-                uint64_t v1 = embedded_proportions[offset + l1];
-                uint64_t o1 = u1 | v1;
-
-                if (o1!=0) {  // zeros are prevalent
-                    did_update=true;
-                    uint64_t x1 = u1 ^ v1;
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    my_stripe       += psum[              (x1 & 0xff)] + 
-                                   psum[0x100+((x1 >>  8) & 0xff)] +
-                                   psum[0x200+((x1 >> 16) & 0xff)] +
-                                   psum[0x300+((x1 >> 24) & 0xff)] +
-                                   psum[0x400+((x1 >> 32) & 0xff)] +
-                                   psum[0x500+((x1 >> 40) & 0xff)] +
-                                   psum[0x600+((x1 >> 48) & 0xff)] +
-                                   psum[0x700+((x1 >> 56)       )];
-                    my_stripe_total += psum[              (o1 & 0xff)] +
-                                   psum[0x100+((o1 >>  8) & 0xff)] +
-                                   psum[0x200+((o1 >> 16) & 0xff)] +
-                                   psum[0x300+((o1 >> 24) & 0xff)] +
-                                   psum[0x400+((o1 >> 32) & 0xff)] +
-                                   psum[0x500+((o1 >> 40) & 0xff)] +
-                                   psum[0x600+((o1 >> 48) & 0xff)] +
-                                   psum[0x700+((o1 >> 56)       )];
-                }
-            }
-
-            if (did_update) {
-              dm_stripe[k]       += my_stripe;
-              dm_stripe_total[k] += my_stripe_total;
-            }
-
+            Unweighted1<TFloat>(
+                                dm_stripes_buf,dm_stripes_total_buf,
+                                sums, embedded_proportions,
+                                filled_embs_els_round,idx, n_samples_r,
+                                k, l1);
         }
 
       }
