@@ -1203,22 +1203,22 @@ static inline void Unweighted1(
                     // Since embedded_proportions packed format is in 64-bit format for performance reasons
                     //    we need to add the 8 sums using the four 8-bits for addressing inside psum
 
-                    my_stripe       += psum[              (x1 & 0xff)] + 
-                                   psum[0x100+((x1 >>  8) & 0xff)] +
-                                   psum[0x200+((x1 >> 16) & 0xff)] +
-                                   psum[0x300+((x1 >> 24) & 0xff)] +
-                                   psum[0x400+((x1 >> 32) & 0xff)] +
-                                   psum[0x500+((x1 >> 40) & 0xff)] +
-                                   psum[0x600+((x1 >> 48) & 0xff)] +
-                                   psum[0x700+((x1 >> 56)       )];
-                    my_stripe_total += psum[              (o1 & 0xff)] +
-                                   psum[0x100+((o1 >>  8) & 0xff)] +
-                                   psum[0x200+((o1 >> 16) & 0xff)] +
-                                   psum[0x300+((o1 >> 24) & 0xff)] +
-                                   psum[0x400+((o1 >> 32) & 0xff)] +
-                                   psum[0x500+((o1 >> 40) & 0xff)] +
-                                   psum[0x600+((o1 >> 48) & 0xff)] +
-                                   psum[0x700+((o1 >> 56)       )];
+                    my_stripe       += psum[       (uint8_t)(x1)       ] + 
+                                       psum[0x100+((uint8_t)(x1 >>  8))] +
+                                       psum[0x200+((uint8_t)(x1 >> 16))] +
+                                       psum[0x300+((uint8_t)(x1 >> 24))] +
+                                       psum[0x400+((uint8_t)(x1 >> 32))] +
+                                       psum[0x500+((uint8_t)(x1 >> 40))] +
+                                       psum[0x600+((uint8_t)(x1 >> 48))] +
+                                       psum[0x700+((uint8_t)(x1 >> 56))];
+                    my_stripe_total += psum[       (uint8_t)(o1)       ] + 
+                                       psum[0x100+((uint8_t)(o1 >>  8))] +
+                                       psum[0x200+((uint8_t)(o1 >> 16))] +
+                                       psum[0x300+((uint8_t)(o1 >> 24))] +
+                                       psum[0x400+((uint8_t)(o1 >> 32))] +
+                                       psum[0x500+((uint8_t)(o1 >> 40))] +
+                                       psum[0x600+((uint8_t)(o1 >> 48))] +
+                                       psum[0x700+((uint8_t)(o1 >> 56))];
                 }
             }
 
