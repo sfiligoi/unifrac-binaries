@@ -2,6 +2,22 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+#ifndef _OPENACC
+// popcnt returns number of bits set to 1, if supported by fast HW compute
+// else return 0 when v is 0 and max-bits else
+// Note: The user of popcnt in this file must be able to use this modified semantics
+
+#if __AVX__
+#include <immintrin.h>
+static inline int32_t popcnt_u32(uint32_t v) {return  _mm_popcnt_u32(v);}
+static inline int64_t popcnt_u64(uint64_t v) {return  _mm_popcnt_u64(v);}
+#else
+static inline int32_t popcnt_u32(uint32_t v) {return (v==0) ? 0 : 32;}
+static inline int64_t popcnt_u64(uint64_t v) {return (v==0) ? 0 : 64;}
+// For future non-x86 ports, see https://barakmich.dev/posts/popcnt-arm64-go-asm/
+// and https://stackoverflow.com/questions/38113284/whats-the-difference-between-builtin-popcountll-and-mm-popcnt-u64
+#endif
+#endif
 
 // check for zero values and pre-compute single column sums
 template<class TFloat>
@@ -249,12 +265,16 @@ static inline void UnnormalizedWeighted4(
                       const uint64_t ls) {
        const uint32_t z_k = ((const uint32_t *)(zcheck+ks))[0];
        const uint32_t z_l = ((const uint32_t *)(zcheck+ls))[0];
-       const bool allzero_k =  z_k==0x01010101;
-       const bool allzero_l1 = z_l==0x01010101;
+       const bool allzero_k = z_k==0x01010101;
+       const bool allzero_l = z_l==0x01010101;
 
-       if (allzero_k && allzero_l1) {
+       // popcnt is cheap but has large latency, so compute speculatively/early
+       const int32_t cnt_k = popcnt_u32(z_k);
+       const int32_t cnt_l = popcnt_u32(z_l);
+
+       if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
-       } else if (allzero_k || allzero_l1) {
+       } else if (allzero_k || allzero_l) {
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -281,8 +301,8 @@ static inline void UnnormalizedWeighted4(
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
           }
-       } else if ((z_k==0) && (z_l==0)) {
-          // they are all nonzero, so use the vectorized expensive path
+       } else if ((cnt_k<3) && (cnt_l<3)) {
+          // several of the elemens are nonzero, may as well use the vectorized version
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -291,7 +311,7 @@ static inline void UnnormalizedWeighted4(
                        filled_embs, n_samples_r,
                        ks, ls);
        } else {
-         // both sides partially non zero, try smaller vect size
+         // only a few have both sides partially non zero, use the fine grained compute
          for (uint64_t i=0; i<4; i++) {
             UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
@@ -299,7 +319,7 @@ static inline void UnnormalizedWeighted4(
                                    filled_embs,idx, n_samples_r,
                                    ks+i, ls+i);
          }
-       } // (allzero_k && allzero_l1)
+       } // (allzero_k && allzero_l)
 }
 
 template<class TFloat>
@@ -316,12 +336,16 @@ static inline void UnnormalizedWeighted8(
                       const uint64_t ls) {
        const uint64_t z_k = ((const uint64_t *)(zcheck+ks))[0];
        const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
-       const bool allzero_k =  z_k==0x0101010101010101;
-       const bool allzero_l1 = z_l==0x0101010101010101;
+       const bool allzero_k = z_k==0x0101010101010101;
+       const bool allzero_l = z_l==0x0101010101010101;
 
-       if (allzero_k && allzero_l1) {
+       // popcnt is cheap but has large latency, so compute speculatively/early
+       const int64_t cnt_k = popcnt_u64(z_k);
+       const int64_t cnt_l = popcnt_u64(z_l);
+
+       if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
-       } else if (allzero_k || allzero_l1) {
+       } else if (allzero_k || allzero_l) {
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -364,8 +388,8 @@ static inline void UnnormalizedWeighted8(
              dm_stripe[ks+6] += sum_k6;
              dm_stripe[ks+7] += sum_k7;
           } 
-       } else if ((z_k==0) && (z_l==0)) {
-          // they are all nonzero, so use the vectorized expensive path
+       } else if ((cnt_k<6) && (cnt_l<6)) {
+          // several of the elemens are nonzero, may as well use the vectorized version
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -374,18 +398,15 @@ static inline void UnnormalizedWeighted8(
                        filled_embs, n_samples_r,
                        ks, ls);
        } else {
-         // both sides partially non zero, try smaller vect size
-         UnnormalizedWeighted4<TFloat>(
+         // only a few have both sides partially non zero, use the fine grained compute
+         for (uint64_t i=0; i<8; i++) {
+            UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
-                                   ks, ls);
-         UnnormalizedWeighted4<TFloat>(
-                                   dm_stripes_buf,
-                                   zcheck, sums, embedded_proportions, lengths,
-                                   filled_embs,idx, n_samples_r,
-                                   ks+4, ls+4);
-       } // (allzero_k && allzero_l1)
+                                   ks+i, ls+i);
+         }
+       } // (allzero_k && allzero_l)
 }
 #endif
 
@@ -440,62 +461,39 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 #else
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
-      uint64_t ik = 0;
+      uint64_t ks = sk*step_size;
+      const uint64_t kmax = std::min(ks+step_size,n_samples);
+      uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
 
-      while( ik < (step_size-7) ) {
-       const uint64_t ks = sk*step_size + ik;
-       const uint64_t ke = ks+7;
-
-       if (ke>=n_samples) break; // past the limit
-
-       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
-       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
-
-       if ((le-ls)!=7) break; //nor contiguous, use serial version
-       ik+=8;
-
+      while( ((ks+8) <= kmax) && ((n_samples-ls)>=8) ) {
        UnnormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-      } // for ik
+       ks+=8;
+       ls = (ls + 8)%n_samples; // wraparound
+      } // for ks+=8
 
-      while( ik < (step_size-3) ) {
-       const uint64_t ks = sk*step_size + ik;
-       const uint64_t ke = ks+3;
-
-       if (ke>=n_samples) break; // past the limit
-
-       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
-       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
-
-       if ((le-ls)!=3) break; //nor contiguous, use serial version
-       ik+=4;
-
+      while( ((ks+4) <= kmax) && ((n_samples-ls)>=4) ) {
        UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-      } // for ik
+       ks+=4;
+       ls = (ls + 4)%n_samples; // wraparound
+      } // for ks+=4
 
       // deal with any leftovers in serial way
-      while( ik < step_size ) {
-       const uint64_t k = sk*step_size + ik;
-
-       if (k>=n_samples) break; // past the limit
-       ik++;
-
-       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
-
+      for( ; ks < kmax; ks++ ) {
        UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
-                                   k, l1);
-      
-      } // for ik
+                                   ks, ls);
+       ls = (ls + 1)%n_samples; // wraparound
+      } // for ks
 #endif
      } // for stripe
     } // for sk
@@ -642,10 +640,10 @@ static inline void NormalizedWeighted4(
                       const uint64_t ls) {
        const uint32_t z_k = ((const uint32_t *)(zcheck+ks))[0];
        const uint32_t z_l = ((const uint32_t *)(zcheck+ls))[0];
-       const bool allzero_k =  z_k==0x01010101;
-       const bool allzero_l1 = z_l==0x01010101;
+       const bool allzero_k = z_k==0x01010101;
+       const bool allzero_l = z_l==0x01010101;
 
-       if (allzero_k && allzero_l1) {
+       if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
        } else {
           const TFloat sum_k0 = sums[ks];
@@ -657,19 +655,13 @@ static inline void NormalizedWeighted4(
           const TFloat sum_l2 = sums[ls+2];
           const TFloat sum_l3 = sums[ls+3];
 
-          // the totals can always use the distributed property
-          {
-             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-             const TFloat sum_kl0 = sum_k0 + sum_l0;
-             const TFloat sum_kl1 = sum_k1 + sum_l1;
-             const TFloat sum_kl2 = sum_k2 + sum_l2;
-             const TFloat sum_kl3 = sum_k3 + sum_l3;
-             dm_stripe_total[ks]   += sum_kl0;
-             dm_stripe_total[ks+1] += sum_kl1;
-             dm_stripe_total[ks+2] += sum_kl2;
-             dm_stripe_total[ks+3] += sum_kl3;
-          }
+          const TFloat sum_kl0 = sum_k0 + sum_l0;
+          const TFloat sum_kl1 = sum_k1 + sum_l1;
+          const TFloat sum_kl2 = sum_k2 + sum_l2;
+          const TFloat sum_kl3 = sum_k3 + sum_l3;
+
+          int32_t cnt_k = 0;
+          int32_t cnt_l = 0;
 
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
@@ -681,31 +673,52 @@ static inline void NormalizedWeighted4(
              dm_stripe[ks+1] += sum_l1;
              dm_stripe[ks+2] += sum_l2;
              dm_stripe[ks+3] += sum_l3;
-          } else if (allzero_l1) {
+          } else if (allzero_l) {
              // one side has all zeros, use distributed property
              // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
              dm_stripe[ks]   += sum_k0;
              dm_stripe[ks+1] += sum_k1;
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
-          } else if ((z_k==0) && (z_l==0)) {
-             // they are all nonzero, so use the vectorized expensive path
+          } else {
+             // popcnt is cheap but has large latency, so compute early
+             cnt_k = popcnt_u32(z_k);
+             cnt_l = popcnt_u32(z_l);
+          }
+
+          // the totals can always use the distributed property
+          {
+             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+             dm_stripe_total[ks]   += sum_kl0;
+             dm_stripe_total[ks+1] += sum_kl1;
+             dm_stripe_total[ks+2] += sum_kl2;
+             dm_stripe_total[ks+3] += sum_kl3;
+          }
+
+          if (allzero_k||allzero_l) {
+             // already done
+          } else if ((cnt_k<3) && (cnt_l<3)) {
+             // several of the elemens are nonzero, may as well use the vectorized version
+             TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+             //TFloat *dm_stripe = dm_stripes[stripe];
+
              WeightedVal4(dm_stripe,
                        embedded_proportions, lengths,
                        filled_embs, n_samples_r,
                        ks, ls);
           } else {
-            // both sides partially non zero, try smaller vect size
-            // Use UnnormalizedWeighted since we already computed dm_stripe_total
-            for (uint64_t i=0; i<4; i++) {
-               UnnormalizedWeighted1<TFloat>(
+             // only a few have both sides partially non zero, use the fine grained compute
+             // Use UnnormalizedWeighted since we already computed dm_stripe_total
+             for (uint64_t i=0; i<4; i++) {
+                UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks+i, ls+i);
-            }
+             }
           }
-       } // (allzero_k && allzero_l1)
+       } // (allzero_k && allzero_l)
 }
 
 template<class TFloat>
@@ -723,10 +736,10 @@ static inline void NormalizedWeighted8(
                       const uint64_t ls) {
        const uint64_t z_k = ((const uint64_t *)(zcheck+ks))[0];
        const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
-       const bool allzero_k =  z_k==0x0101010101010101;
-       const bool allzero_l1 = z_l==0x0101010101010101;
+       const bool allzero_k = z_k==0x0101010101010101;
+       const bool allzero_l = z_l==0x0101010101010101;
 
-       if (allzero_k && allzero_l1) {
+       if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
        } else {
           const TFloat sum_k0 = sums[ks];
@@ -746,27 +759,17 @@ static inline void NormalizedWeighted8(
           const TFloat sum_l6 = sums[ls+6];
           const TFloat sum_l7 = sums[ls+7];
 
-          // the totals can always use the distributed property
-          {
-             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
-             const TFloat sum_kl0 = sum_k0 + sum_l0;
-             const TFloat sum_kl1 = sum_k1 + sum_l1;
-             const TFloat sum_kl2 = sum_k2 + sum_l2;
-             const TFloat sum_kl3 = sum_k3 + sum_l3;
-             const TFloat sum_kl4 = sum_k4 + sum_l4;
-             const TFloat sum_kl5 = sum_k5 + sum_l5;
-             const TFloat sum_kl6 = sum_k6 + sum_l6;
-             const TFloat sum_kl7 = sum_k7 + sum_l7;
-             dm_stripe_total[ks]   += sum_kl0;
-             dm_stripe_total[ks+1] += sum_kl1;
-             dm_stripe_total[ks+2] += sum_kl2;
-             dm_stripe_total[ks+3] += sum_kl3;
-             dm_stripe_total[ks+4] += sum_kl4;
-             dm_stripe_total[ks+5] += sum_kl5;
-             dm_stripe_total[ks+6] += sum_kl6;
-             dm_stripe_total[ks+7] += sum_kl7;
-          }
+          const TFloat sum_kl0 = sum_k0 + sum_l0;
+          const TFloat sum_kl1 = sum_k1 + sum_l1;
+          const TFloat sum_kl2 = sum_k2 + sum_l2;
+          const TFloat sum_kl3 = sum_k3 + sum_l3;
+          const TFloat sum_kl4 = sum_k4 + sum_l4;
+          const TFloat sum_kl5 = sum_k5 + sum_l5;
+          const TFloat sum_kl6 = sum_k6 + sum_l6;
+          const TFloat sum_kl7 = sum_k7 + sum_l7;
+
+          int32_t cnt_k = 0;
+          int32_t cnt_l = 0;
 
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
@@ -782,7 +785,7 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+5] += sum_l5;
              dm_stripe[ks+6] += sum_l6;
              dm_stripe[ks+7] += sum_l7;
-          } else if (allzero_l1) {
+          } else if (allzero_l) {
              // one side has all zeros, use distributed property
              // if (nonzero_k)  ridx=k  // fabs(k-l1), with l1==0
              dm_stripe[ks]   += sum_k0;
@@ -793,27 +796,49 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+5] += sum_k5;
              dm_stripe[ks+6] += sum_k6;
              dm_stripe[ks+7] += sum_k7;
-          } else if ((z_k==0) && (z_l==0)) {
-             // they are all nonzero, so use the vectorized expensive path
+          } else {
+             // popcnt is cheap but has large latency, so compute early
+             cnt_k = popcnt_u64(z_k);
+             cnt_l = popcnt_u64(z_l);
+          }
+
+          // the totals can always use the distributed property
+          {
+             TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+             //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+             dm_stripe_total[ks]   += sum_kl0;
+             dm_stripe_total[ks+1] += sum_kl1;
+             dm_stripe_total[ks+2] += sum_kl2;
+             dm_stripe_total[ks+3] += sum_kl3;
+             dm_stripe_total[ks+4] += sum_kl4;
+             dm_stripe_total[ks+5] += sum_kl5;
+             dm_stripe_total[ks+6] += sum_kl6;
+             dm_stripe_total[ks+7] += sum_kl7;
+          }
+
+          if (allzero_k||allzero_l) {
+             // already done
+          } else if ((cnt_k<6) && (cnt_l<6)) {
+             // several of the elemens are nonzero, may as well use the vectorized version
+             TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+             //TFloat *dm_stripe = dm_stripes[stripe];
+
              WeightedVal8(dm_stripe,
                        embedded_proportions, lengths,
                        filled_embs, n_samples_r,
                        ks, ls);
           } else {
-            // both sides partially non zero, try smaller vect size
-            // Use UnnormalizedWeighted since we already computed dm_stripe_total
-            UnnormalizedWeighted4<TFloat>(
+             // only a few have both sides partially non zero, use the fine grained compute
+             // Use UnnormalizedWeighted since we already computed dm_stripe_total
+             for (uint64_t i=0; i<8; i++) {
+                UnnormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
-                                   ks, ls);
-            UnnormalizedWeighted4<TFloat>(
-                                   dm_stripes_buf,
-                                   zcheck, sums, embedded_proportions, lengths,
-                                   filled_embs,idx, n_samples_r,
-                                   ks+4, ls+4);
+                                   ks+i, ls+i);
+             }
           }
-       } // (allzero_k && allzero_l1)
+       } // (allzero_k && allzero_l)
 }
 #endif
 
@@ -869,60 +894,39 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 #else
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
-      uint64_t ik = 0;
+      uint64_t ks = sk*step_size;
+      const uint64_t kmax = std::min(ks+step_size,n_samples);
+      uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
 
-      while( ik < (step_size-7) ) {
-       const uint64_t ks = sk*step_size + ik;
-       const uint64_t ke = ks+7;
-
-       if (ke>=n_samples) break; // past the limit
-
-       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
-       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
-
-       if ((le-ls)!=7) break; //nor contiguous, use serial version
-       ik+=8;
-
+      while( ((ks+8) <= kmax) && ((n_samples-ls)>=8) ) {
        NormalizedWeighted8<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-      } // for ik
+       ks+=8;
+       ls = (ls + 8)%n_samples; // wraparound
+      } // for ks+=8
 
-      while( ik < (step_size-3) ) {
-       const uint64_t ks = sk*step_size + ik;
-       const uint64_t ke = ks+3;
-
-       if (ke>=n_samples) break; // past the limit
-
-       const uint64_t ls = (ks + stripe + 1)%n_samples; // wraparound
-       const uint64_t le = (ke + stripe + 1)%n_samples; // wraparound
-
-       if ((le-ls)!=3) break; //nor contiguous, use serial version
-       ik+=4;
-
+      while( ((ks+4) <= kmax) && ((n_samples-ls)>=4) ) {
        NormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
                                    ks, ls);
-      } // for ik
+       ks+=4;
+       ls = (ls + 4)%n_samples; // wraparound
+      } // for ks+=4
+
       // deal with any leftovers in serial way
-      while( ik < step_size ) {
-       const uint64_t k = sk*step_size + ik;
-
-       if (k>=n_samples) break; // past the limit
-       ik++;
-
-       const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
-
+      for( ; ks < kmax; ks++ ) {
        NormalizedWeighted1<TFloat>(
                                    dm_stripes_buf,dm_stripes_total_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
-                                   k, l1);
-      } // for ik
+                                   ks, ls);
+       ls = (ls + 1)%n_samples; // wraparound
+      } // for ks
 #endif
      } // for stripe
     } // for sk
