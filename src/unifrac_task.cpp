@@ -1203,14 +1203,6 @@ static inline void Unweighted1(
                     // Since embedded_proportions packed format is in 64-bit format for performance reasons
                     //    we need to add the 8 sums using the four 8-bits for addressing inside psum
 
-                    my_stripe       += psum[       (uint8_t)(x1)       ] + 
-                                       psum[0x100+((uint8_t)(x1 >>  8))] +
-                                       psum[0x200+((uint8_t)(x1 >> 16))] +
-                                       psum[0x300+((uint8_t)(x1 >> 24))] +
-                                       psum[0x400+((uint8_t)(x1 >> 32))] +
-                                       psum[0x500+((uint8_t)(x1 >> 40))] +
-                                       psum[0x600+((uint8_t)(x1 >> 48))] +
-                                       psum[0x700+((uint8_t)(x1 >> 56))];
                     my_stripe_total += psum[       (uint8_t)(o1)       ] + 
                                        psum[0x100+((uint8_t)(o1 >>  8))] +
                                        psum[0x200+((uint8_t)(o1 >> 16))] +
@@ -1219,6 +1211,14 @@ static inline void Unweighted1(
                                        psum[0x500+((uint8_t)(o1 >> 40))] +
                                        psum[0x600+((uint8_t)(o1 >> 48))] +
                                        psum[0x700+((uint8_t)(o1 >> 56))];
+                    my_stripe       += psum[       (uint8_t)(x1)       ] + 
+                                       psum[0x100+((uint8_t)(x1 >>  8))] +
+                                       psum[0x200+((uint8_t)(x1 >> 16))] +
+                                       psum[0x300+((uint8_t)(x1 >> 24))] +
+                                       psum[0x400+((uint8_t)(x1 >> 32))] +
+                                       psum[0x500+((uint8_t)(x1 >> 40))] +
+                                       psum[0x600+((uint8_t)(x1 >> 48))] +
+                                       psum[0x700+((uint8_t)(x1 >> 56))];
                 }
             }
 
