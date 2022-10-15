@@ -1458,6 +1458,8 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     const uint64_t step_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::step_size;
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
+    const uint64_t stripe_steps = ((stop_idx-start_idx)+(step_size-1))/step_size; // round up
+
     const uint64_t filled_embs_els = filled_embs/64;
     const uint64_t filled_embs_rem = filled_embs%64; 
 
@@ -1531,22 +1533,28 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 #ifdef _OPENACC
 #pragma acc wait
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
+#pragma acc parallel loop collapse(2) gang present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
 #else
     // use dynamic scheduling due to non-homogeneity in the loop
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
-      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
+      for(uint64_t ss = 0; sk < stripe_steps ; sk++) {
+#pragma acc loop vector
         for(uint64_t ik = 0; ik < step_size ; ik++) {
             const uint64_t k = sk*step_size + ik;
-            const uint64_t idx = (stripe-start_idx) * n_samples_r;
 
             if (k>=n_samples) continue; // past the limit
 
-            const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+#pragma acc loop seq
+            for(uint64_t is = 0; is < step_size ; is++) {
+                const uint64_t stripe = start_idx+ss*step_size + is;
+                if (stripe>=stop_idx) continue; // past the limit
 
-            Unweighted1<TFloat>(
+                const uint64_t idx = (stripe-start_idx) * n_samples_r;
+                const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+
+                Unweighted1<TFloat>(
                                 dm_stripes_buf,dm_stripes_total_buf,
 #ifndef _OPENACC
                                 zcheck,
@@ -1554,7 +1562,8 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
                                 sums, embedded_proportions,
                                 filled_embs_els_round,idx, n_samples_r,
                                 k, l1);
-        }
+            } // for is
+        } // for ik
 
       }
     }
