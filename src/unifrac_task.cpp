@@ -1230,16 +1230,13 @@ static inline void Unweighted1(
 }
 #else
 template<class TFloat>
-static inline void UnweightedOneSide(
-                      TFloat &sum_stripe,
-                      TFloat &sum_stripe_total,
+static inline TFloat UnweightedOneSide(
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
                       const unsigned int filled_embs_els_round,
                       const uint64_t n_samples_r,
                       const uint64_t kl) {
             TFloat my_stripe = 0.0;
-            TFloat my_stripe_total = 0.0;
 
             for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
                 const uint64_t offset = n_samples_r * emb_el;
@@ -1267,7 +1264,6 @@ static inline void UnweightedOneSide(
                                        psum[0x500+((uint8_t)(o1 >> 40))] +
                                        psum[0x600+((uint8_t)(o1 >> 48))] +
                                        psum[0x700+((uint8_t)(o1 >> 56))];
-                    my_stripe_total += esum;
                     my_stripe       += esum;
                 } else if ((o1>>32)==0) {
                     // only low part relevant
@@ -1283,7 +1279,6 @@ static inline void UnweightedOneSide(
                                        psum[0x100+((uint8_t)(o1 >>  8))] +
                                        psum[0x200+((uint8_t)(o1 >> 16))] +
                                        psum[0x300+((uint8_t)(o1 >> 24))];
-                    my_stripe_total += esum;
                     my_stripe       += esum;
                 } else {
                     //uint64_t x1 = u1 ^ v1;
@@ -1302,14 +1297,11 @@ static inline void UnweightedOneSide(
                                        psum[0x500+((uint8_t)(o1 >> 40))] +
                                        psum[0x600+((uint8_t)(o1 >> 48))] +
                                        psum[0x700+((uint8_t)(o1 >> 56))];
-                    my_stripe_total += esum;
                     my_stripe       += esum;
                 }
             }
 
-            // export at the end to maximize optimization
-            sum_stripe = my_stripe;
-            sum_stripe_total = my_stripe_total;
+            return my_stripe;
 
 }
 
@@ -1318,6 +1310,7 @@ static inline void Unweighted1(
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
                       const bool   * const __restrict__ zcheck,
+                      const TFloat * const   __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
                       const unsigned int filled_embs_els_round,
@@ -1342,12 +1335,9 @@ static inline void Unweighted1(
 
           if (allzero_k || allzero_l1) {
             // with one side zero, | and ^ are no-ops
-            const uint64_t kl = (allzero_k) ? l1 : k; // only use the non-sero one
-            UnweightedOneSide(
-                      my_stripe, my_stripe_total,
-                      sums, embedded_proportions,
-                      filled_embs_els_round, n_samples_r,
-                      kl);
+            const uint64_t kl = (allzero_k) ? l1 : k; // only use the non-sero onea
+            my_stripe = stripe_sums[kl];
+            my_stripe_total = my_stripe;
             did_update = (my_stripe!=0.0) || (my_stripe_total!=0);
           } else {
             // we need both sides
@@ -1435,15 +1425,18 @@ static inline void Unweighted1(
 #endif
 
 // check for zero values
-template<class T>
-static inline void UnweightedZerosAsync(
+template<class TFloat, class T>
+static inline void UnweightedZerosAndSums(
                       bool   * const __restrict__ zcheck,
+                      TFloat * const  __restrict__ stripe_sums,
+                      const TFloat * const   __restrict__ el_sums,
                       const T * const __restrict__ embedded_proportions,
                       const unsigned int filled_embs,
+                      const unsigned int filled_embs_els_round,
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
 #ifdef _OPENACC
-#pragma acc parallel loop gang vector present(embedded_proportions,zcheck) async
+#pragma acc parallel loop gang vector present(embedded_proportions,zcheck,el_sums,stripe_sums)
 #else
 #pragma omp parallel for default(shared)
 #endif
@@ -1451,7 +1444,7 @@ static inline void UnweightedZerosAsync(
             bool all_zeros=true;
 
 #pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
+            for (uint64_t emb=0; emb<filled_embs_els_round; emb++) {
                 const uint64_t offset = n_samples_r * emb;
 
                 T u1 = embedded_proportions[offset + k];
@@ -1459,6 +1452,11 @@ static inline void UnweightedZerosAsync(
             }
 
             zcheck[k] = all_zeros;
+
+            stripe_sums[k] = UnweightedOneSide(
+                      el_sums, embedded_proportions,
+                      filled_embs_els_round, n_samples_r,
+                      k);
     }
 }
 
@@ -1483,15 +1481,6 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     const uint64_t filled_embs_rem = filled_embs%64; 
 
     const uint64_t filled_embs_els_round = (filled_embs+63)/64;
-
-#ifndef _OPENACC
-    // not effective for GPUs, but helps a lot on the CPUs
-    bool * const __restrict__ zcheck = this->zcheck;
-    // check for zero values 
-    UnweightedZerosAsync(zcheck,
-                       embedded_proportions,
-                       filled_embs_els_round, n_samples, n_samples_r);
-#endif
 
     // pre-compute sums of length elements, since they are likely to be accessed many times
     // We will use a 8-bit map, to keep it small enough to keep in L1 cache
@@ -1548,9 +1537,18 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
         }
     }
 
+#ifndef _OPENACC
+#pragma acc wait
+    bool   * const __restrict__ zcheck = this->zcheck;
+    TFloat * const __restrict__ stripe_sums = this->stripe_sums;
+    // check for zero values and somput stripe sums
+    UnweightedZerosAndSums(zcheck, stripe_sums,
+                           sums, embedded_proportions,
+                           filled_embs, filled_embs_els_round, n_samples, n_samples_r);
+#endif
+
     // point of thread
 #ifdef _OPENACC
-#pragma acc wait
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
 #pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
 #else
@@ -1570,7 +1568,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
             Unweighted1<TFloat>(
                                 dm_stripes_buf,dm_stripes_total_buf,
 #ifndef _OPENACC
-                                zcheck,
+                                zcheck, stripe_sums,
 #endif
                                 sums, embedded_proportions,
                                 filled_embs_els_round,idx, n_samples_r,

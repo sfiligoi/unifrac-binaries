@@ -415,7 +415,9 @@ namespace SUCMP_NM {
           // zcheck is not beneficial for GPUs, but helps a lot for the CPUs
           const unsigned int n_samples = this->task_p->n_samples;
           zcheck = NULL;
+          stripe_sums = NULL;
           posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
+          posix_memalign((void **)&stripe_sums, 4096, sizeof(TFloat) *  n_samples);
 #endif
           const unsigned int bsize = _max_embs*(0x400/32);
           sums = NULL;
@@ -431,6 +433,7 @@ namespace SUCMP_NM {
 #endif
           free(sums);
 #ifndef _OPENACC
+          free(stripe_sums);
           free(zcheck);
 #endif
         }
@@ -444,6 +447,7 @@ namespace SUCMP_NM {
 #ifndef _OPENACC
           // zcheck is not beneficial for GPUs, but helps a lot for the CPUs
         bool     *zcheck;
+        TFloat   *stripe_sums;
 #endif
     };
     template<class TFloat>
