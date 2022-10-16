@@ -1230,27 +1230,28 @@ static inline void Unweighted1(
 }
 #else
 template<class TFloat>
-static inline TFloat UnweightedOneSide(
+static inline void UnweightedOneSide(
+                      bool   * const __restrict__ zcheck,
+                      TFloat * const  __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
                       const unsigned int filled_embs_els_round,
                       const uint64_t n_samples_r,
                       const uint64_t kl) {
+            bool all_zeros=true;
             TFloat my_stripe = 0.0;
 
             for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
                 const uint64_t offset = n_samples_r * emb_el;
                 const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
 
-                //uint64_t u1 = embedded_proportions[offset + k];
-                //uint64_t v1 = embedded_proportions[offset + l1];
-                //uint64_t o1 = u1 | v1;
-                // With one of the two being 0, or is just the non-negative one
                 uint64_t o1 = embedded_proportions[offset + kl];
 
                 if (o1==0) {  // zeros are prevalent
                     // nothing to do
-                } else if (((uint32_t)o1)==0) {
+                } else {
+                 all_zeros = false;
+                 if (((uint32_t)o1)==0) {
                     // only high part relevant
                     //uint64_t x1 = u1 ^ v1;
                     // With one of the two being 0, xor is just the non-negative one
@@ -1265,7 +1266,7 @@ static inline TFloat UnweightedOneSide(
                                        psum[0x600+((uint8_t)(o1 >> 48))] +
                                        psum[0x700+((uint8_t)(o1 >> 56))];
                     my_stripe       += esum;
-                } else if ((o1>>32)==0) {
+                 } else if ((o1>>32)==0) {
                     // only low part relevant
                     //uint64_t x1 = u1 ^ v1;
                     // With one of the two being 0, xor is just the non-negative one
@@ -1280,7 +1281,7 @@ static inline TFloat UnweightedOneSide(
                                        psum[0x200+((uint8_t)(o1 >> 16))] +
                                        psum[0x300+((uint8_t)(o1 >> 24))];
                     my_stripe       += esum;
-                } else {
+                 } else {
                     //uint64_t x1 = u1 ^ v1;
                     // With one of the two being 0, xor is just the non-negative one
 
@@ -1298,10 +1299,12 @@ static inline TFloat UnweightedOneSide(
                                        psum[0x600+((uint8_t)(o1 >> 48))] +
                                        psum[0x700+((uint8_t)(o1 >> 56))];
                     my_stripe       += esum;
+                 }
                 }
             }
 
-            return my_stripe;
+            zcheck[kl] = all_zeros;
+            stripe_sums[kl] = my_stripe;
 
 }
 
@@ -1431,7 +1434,6 @@ static inline void UnweightedZerosAndSums(
                       TFloat * const  __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ el_sums,
                       const T * const __restrict__ embedded_proportions,
-                      const unsigned int filled_embs,
                       const unsigned int filled_embs_els_round,
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
@@ -1441,19 +1443,8 @@ static inline void UnweightedZerosAndSums(
 #pragma omp parallel for default(shared)
 #endif
     for(uint64_t k=0; k<n_samples; k++) {
-            bool all_zeros=true;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs_els_round; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                T u1 = embedded_proportions[offset + k];
-                all_zeros = all_zeros && (u1==0);
-            }
-
-            zcheck[k] = all_zeros;
-
-            stripe_sums[k] = UnweightedOneSide(
+            UnweightedOneSide(
+                      zcheck, stripe_sums,
                       el_sums, embedded_proportions,
                       filled_embs_els_round, n_samples_r,
                       k);
@@ -1544,7 +1535,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     // check for zero values and somput stripe sums
     UnweightedZerosAndSums(zcheck, stripe_sums,
                            sums, embedded_proportions,
-                           filled_embs, filled_embs_els_round, n_samples, n_samples_r);
+                           filled_embs_els_round, n_samples, n_samples_r);
 #endif
 
     // point of thread
