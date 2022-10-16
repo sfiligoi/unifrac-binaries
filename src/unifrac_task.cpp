@@ -52,35 +52,6 @@ static inline void WeightedZerosAndSums(
     }
 }
 
-// check for zero values
-template<class T>
-static inline void WeightedZerosAsync(
-                      bool   * const __restrict__ zcheck,
-                      const T * const __restrict__ embedded_proportions,
-                      const unsigned int filled_embs,
-                      const uint64_t n_samples,
-                      const uint64_t n_samples_r) {
-#ifdef _OPENACC
-#pragma acc parallel loop gang vector present(embedded_proportions,zcheck) async
-#else
-#pragma omp parallel for default(shared)
-#endif
-    for(uint64_t k=0; k<n_samples; k++) {
-            bool all_zeros=true;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                T u1 = embedded_proportions[offset + k];
-                all_zeros = all_zeros && (u1==0);
-            }
-
-            zcheck[k] = all_zeros;
-    }
-}
-
-
 // Single step in computing Weighted part of Unifrac
 template<class TFloat>
 static inline TFloat WeightedVal1(
@@ -1193,7 +1164,7 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
 #endif
 }
 
-// Single step in computing NormalizedWeighted Unifrac
+// Single step in computing Unweighted Unifrac
 #ifdef _OPENACC
 template<class TFloat>
 static inline void Unweighted1(
@@ -1441,6 +1412,34 @@ static inline void Unweighted1(
 }
 #endif
 
+// check for zero values
+template<class T>
+static inline void UnweightedZerosAsync(
+                      bool   * const __restrict__ zcheck,
+                      const T * const __restrict__ embedded_proportions,
+                      const unsigned int filled_embs,
+                      const uint64_t n_samples,
+                      const uint64_t n_samples_r) {
+#ifdef _OPENACC
+#pragma acc parallel loop gang vector present(embedded_proportions,zcheck) async
+#else
+#pragma omp parallel for default(shared)
+#endif
+    for(uint64_t k=0; k<n_samples; k++) {
+            bool all_zeros=true;
+
+#pragma acc loop seq
+            for (uint64_t emb=0; emb<filled_embs; emb++) {
+                const uint64_t offset = n_samples_r * emb;
+
+                T u1 = embedded_proportions[offset + k];
+                all_zeros = all_zeros && (u1==0);
+            }
+
+            zcheck[k] = all_zeros;
+    }
+}
+
 template<class TFloat>
 void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
@@ -1467,7 +1466,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     // not effective for GPUs, but helps a lot on the CPUs
     bool * const __restrict__ zcheck = this->zcheck;
     // check for zero values 
-    WeightedZerosAsync(zcheck,
+    UnweightedZerosAsync(zcheck,
                        embedded_proportions,
                        filled_embs_els_round, n_samples, n_samples_r);
 #endif
