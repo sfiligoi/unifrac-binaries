@@ -1539,7 +1539,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
-      for(uint64_t ss = 0; sk < stripe_steps ; sk++) {
+      for(uint64_t ss = 0; ss < stripe_steps ; ss++) {
 #pragma acc loop vector
         for(uint64_t ik = 0; ik < step_size ; ik++) {
             const uint64_t k = sk*step_size + ik;

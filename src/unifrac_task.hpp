@@ -402,8 +402,8 @@ namespace SUCMP_NM {
     template<class TFloat>
     class UnifracUnweightedTask : public UnifracTask<TFloat,uint64_t> {
       public:
-        // use the smaller size for historical reasons
-        static const unsigned int step_size = 16*4/sizeof(TFloat);
+        // use a larger one to maximize cache reuse
+        static const unsigned int step_size = 256*4/sizeof(TFloat);
 
         static const unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,uint64_t>::RECOMMENDED_MAX_EMBS_BOOL;
 
