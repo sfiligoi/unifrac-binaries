@@ -411,31 +411,27 @@ namespace SUCMP_NM {
         UnifracUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTask<TFloat, uint64_t>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p) 
         {
-#ifndef _OPENACC
-          // zcheck is not beneficial for GPUs, but helps a lot for the CPUs
           const unsigned int n_samples = this->task_p->n_samples;
+          const unsigned int bsize = _max_embs*(0x400/32);
           zcheck = NULL;
           stripe_sums = NULL;
+          sums = NULL;
           posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
           posix_memalign((void **)&stripe_sums, 4096, sizeof(TFloat) *  n_samples);
-#endif
-          const unsigned int bsize = _max_embs*(0x400/32);
-          sums = NULL;
           posix_memalign((void **)&sums, 4096, sizeof(TFloat) * bsize);
-#pragma acc enter data create(sums[:bsize])
+#pragma acc enter data create(zcheck[:n_samples],stripe_sums[:n_samples],sums[:bsize])
         }
 
         virtual ~UnifracUnweightedTask()
         {
 #ifdef _OPENACC
+          const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
-#pragma acc exit data delete(sums[:bsize])
+#pragma acc exit data delete(sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
 #endif
           free(sums);
-#ifndef _OPENACC
           free(stripe_sums);
           free(zcheck);
-#endif
         }
 
         virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
@@ -444,11 +440,8 @@ namespace SUCMP_NM {
       private:
         // temp buffers
         TFloat *sums;
-#ifndef _OPENACC
-          // zcheck is not beneficial for GPUs, but helps a lot for the CPUs
         bool     *zcheck;
         TFloat   *stripe_sums;
-#endif
     };
     template<class TFloat>
     class UnifracGeneralizedTask : public UnifracTask<TFloat,TFloat> {
