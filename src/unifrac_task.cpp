@@ -435,13 +435,8 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 #ifdef _OPENACC
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::acc_vector_size;
 #pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
-#else
-    // use dynamic scheduling due to non-homogeneity in the loop
-#pragma omp parallel for default(shared) schedule(dynamic,1)
-#endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
-#ifdef _OPENACC
       // SIMT-based GPU work great one at a time (HW will deal with parallelism)
       for(uint64_t ik = 0; ik < step_size ; ik++) {
        const uint64_t k = sk*step_size + ik;
@@ -457,7 +452,22 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
       } // for ik
+     } // for stripe
+    } // for sk
 #else
+    // tilling helps with better cache reuse without the need of multiple cores
+    const uint64_t stripe_steps = ((stop_idx-start_idx)+(step_size-1))/step_size; // round up
+
+    // use dynamic scheduling due to non-homogeneity in the loop
+    // Use a moderate block to prevent trashing but still have some cache reuse
+#pragma omp parallel for collapse(2) schedule(dynamic,step_size) default(shared)
+    for(uint64_t ss = 0; ss < stripe_steps ; ss++) {
+     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
+      // tile to maximize cache reuse
+      for(uint64_t is = 0; is < step_size ; is++) {
+       const uint64_t stripe = start_idx+ss*step_size + is;
+       if (stripe<stop_idx) { // else past limit
+
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
       uint64_t ks = sk*step_size;
@@ -493,9 +503,12 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                                    ks, ls);
        ls = (ls + 1)%n_samples; // wraparound
       } // for ks
+
+       } // if stripe
+      } // for is
+     } // for sk
+    } // for ss
 #endif
-     } // for stripe
-    } // for sk
 
 #ifdef _OPENACC
    // next iteration will use the alternative space
@@ -868,13 +881,8 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 #ifdef _OPENACC
     const unsigned int acc_vector_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::acc_vector_size;
 #pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
-#else
-    // use dynamic scheduling due to non-homogeneity in the loop
-#pragma omp parallel for schedule(dynamic,1) default(shared)
-#endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
-#ifdef _OPENACC
       // SIMT-based GPU work great one at a time (HW will deal with parallelism)
       for(uint64_t ik = 0; ik < step_size ; ik++) {
        const uint64_t k = sk*step_size + ik;
@@ -890,7 +898,22 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
                                    filled_embs,idx, n_samples_r,
                                    k, l1);
       } // for ik
+     } // for stripe
+    } // for sk
 #else
+    // tilling helps with better cache reuse without the need of multiple cores
+    const uint64_t stripe_steps = ((stop_idx-start_idx)+(step_size-1))/step_size; // round up
+
+    // use dynamic scheduling due to non-homogeneity in the loop
+    // Use a moderate block to prevent trashing but still have some cache reuse
+#pragma omp parallel for collapse(2) schedule(dynamic,step_size) default(shared)
+    for(uint64_t ss = 0; ss < stripe_steps ; ss++) {
+     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
+      // tile to maximize cache reuse
+      for(uint64_t is = 0; is < step_size ; is++) {
+       const uint64_t stripe = start_idx+ss*step_size + is;
+       if (stripe<stop_idx) { // else past limit
+
       // SIMD-based CPUs need help with vectorization
       const uint64_t idx = (stripe-start_idx) * n_samples_r;
       uint64_t ks = sk*step_size;
@@ -926,9 +949,12 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
                                    ks, ls);
        ls = (ls + 1)%n_samples; // wraparound
       } // for ks
+
+       } // if stripe
+      } // for is
+     } // for sk
+    } // for ss
 #endif
-     } // for stripe
-    } // for sk
 
 #ifdef _OPENACC
    // next iteration will use the alternative space
@@ -1566,11 +1592,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     // point of thread
 #ifdef _OPENACC
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
-#pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
-#else
-    // use dynamic scheduling due to non-homogeneity in the loop
-#pragma omp parallel for schedule(dynamic,1) default(shared)
-#endif
+#pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums,zcheck,stripe_sums) async
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
       for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
         for(uint64_t ik = 0; ik < step_size ; ik++) {
@@ -1591,6 +1613,38 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 
       }
     }
+#else
+    // tilling helps with better cache reuse without the need of multiple cores
+    const uint64_t stripe_steps = ((stop_idx-start_idx)+(step_size-1))/step_size; // round up
+
+    // use dynamic scheduling due to non-homogeneity in the loop
+    // Use a moderate block to prevent trashing but still have some cache reuse
+#pragma omp parallel for collapse(2) schedule(dynamic,step_size) default(shared)
+    for(uint64_t ss = 0; ss < stripe_steps ; ss++) {
+     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
+       // tile to maximize cache reuse
+       for(uint64_t is = 0; is < step_size ; is++) {
+        const uint64_t stripe = start_idx+ss*step_size + is;
+        if (stripe<stop_idx) { // esle past limit}
+         for(uint64_t ik = 0; ik < step_size ; ik++) {
+           const uint64_t k = sk*step_size + ik;
+           if (k<n_samples) { // elsepast the limit
+            const uint64_t idx = (stripe-start_idx) * n_samples_r;
+            const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
+
+            Unweighted1<TFloat>(
+                                dm_stripes_buf,dm_stripes_total_buf,
+                                zcheck, stripe_sums,
+                                sums, embedded_proportions,
+                                filled_embs_els_round,idx, n_samples_r,
+                                k, l1);
+           } // if k
+         } // for ik
+        } // if stripe
+       } // for is
+      } // for sk
+    } // for ss
+#endif
 
 #ifdef _OPENACC
    // next iteration will use the alternative space
