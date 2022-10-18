@@ -52,35 +52,6 @@ static inline void WeightedZerosAndSums(
     }
 }
 
-// check for zero values
-template<class T>
-static inline void WeightedZerosAsync(
-                      bool   * const __restrict__ zcheck,
-                      const T * const __restrict__ embedded_proportions,
-                      const unsigned int filled_embs,
-                      const uint64_t n_samples,
-                      const uint64_t n_samples_r) {
-#ifdef _OPENACC
-#pragma acc parallel loop gang vector present(embedded_proportions,zcheck) async
-#else
-#pragma omp parallel for default(shared)
-#endif
-    for(uint64_t k=0; k<n_samples; k++) {
-            bool all_zeros=true;
-
-#pragma acc loop seq
-            for (uint64_t emb=0; emb<filled_embs; emb++) {
-                const uint64_t offset = n_samples_r * emb;
-
-                T u1 = embedded_proportions[offset + k];
-                all_zeros = all_zeros && (u1==0);
-            }
-
-            zcheck[k] = all_zeros;
-    }
-}
-
-
 // Single step in computing Weighted part of Unifrac
 template<class TFloat>
 static inline TFloat WeightedVal1(
@@ -1193,12 +1164,101 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
 #endif
 }
 
-// Single step in computing NormalizedWeighted Unifrac
+// Single step in computing Unweighted Unifrac
+
+template<class TFloat>
+static inline void UnweightedOneSide(
+                      bool   * const __restrict__ zcheck,
+                      TFloat * const  __restrict__ stripe_sums,
+                      const TFloat * const   __restrict__ sums,
+                      const uint64_t * const __restrict__ embedded_proportions,
+                      const unsigned int filled_embs_els_round,
+                      const uint64_t n_samples_r,
+                      const uint64_t kl) {
+            bool all_zeros=true;
+            TFloat my_stripe = 0.0;
+
+            for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
+                const uint64_t offset = n_samples_r * emb_el;
+                const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
+
+                uint64_t o1 = embedded_proportions[offset + kl];
+
+                if (o1==0) {  // zeros are prevalent
+                    // nothing to do
+                } else {
+                 all_zeros = false;
+#ifndef _OPENACC
+                 // CPU/SIMD faster if we check for partial compute
+                 if (((uint32_t)o1)==0) {
+                    // only high part relevant
+                    //uint64_t x1 = u1 ^ v1;
+                    // With one of the two being 0, xor is just the non-negative one
+
+                    // Use the pre-computed sums
+                    // Each range of 8 lengths has already been pre-computed and stored in psum
+                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
+                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
+
+                    TFloat esum      = psum[0x400+((uint8_t)(o1 >> 32))] +
+                                       psum[0x500+((uint8_t)(o1 >> 40))] +
+                                       psum[0x600+((uint8_t)(o1 >> 48))] +
+                                       psum[0x700+((uint8_t)(o1 >> 56))];
+                    my_stripe       += esum;
+                 } else if ((o1>>32)==0) {
+                    // only low part relevant
+                    //uint64_t x1 = u1 ^ v1;
+                    // With one of the two being 0, xor is just the non-negative one
+
+                    // Use the pre-computed sums
+                    // Each range of 8 lengths has already been pre-computed and stored in psum
+                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
+                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
+
+                    TFloat esum      = psum[       (uint8_t)(o1)       ] + 
+                                       psum[0x100+((uint8_t)(o1 >>  8))] +
+                                       psum[0x200+((uint8_t)(o1 >> 16))] +
+                                       psum[0x300+((uint8_t)(o1 >> 24))];
+                    my_stripe       += esum;
+                 } else {
+#else
+                 // GPU/SIMT faster if we just go ahead will full at all times
+                 {
+#endif
+                    //uint64_t x1 = u1 ^ v1;
+                    // With one of the two being 0, xor is just the non-negative one
+
+                    // Use the pre-computed sums
+                    // Each range of 8 lengths has already been pre-computed and stored in psum
+                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
+                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
+
+                    TFloat esum      = psum[       (uint8_t)(o1)       ] + 
+                                       psum[0x100+((uint8_t)(o1 >>  8))] +
+                                       psum[0x200+((uint8_t)(o1 >> 16))] +
+                                       psum[0x300+((uint8_t)(o1 >> 24))] +
+                                       psum[0x400+((uint8_t)(o1 >> 32))] +
+                                       psum[0x500+((uint8_t)(o1 >> 40))] +
+                                       psum[0x600+((uint8_t)(o1 >> 48))] +
+                                       psum[0x700+((uint8_t)(o1 >> 56))];
+                    my_stripe       += esum;
+                 }
+                }
+            }
+
+            zcheck[kl] = all_zeros;
+            stripe_sums[kl] = my_stripe;
+
+}
+
 #ifdef _OPENACC
+
 template<class TFloat>
 static inline void Unweighted1(
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
+                      const bool   * const __restrict__ zcheck,
+                      const TFloat * const   __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
                       const unsigned int filled_embs_els_round,
@@ -1206,15 +1266,29 @@ static inline void Unweighted1(
                       const uint64_t n_samples_r,
                       const uint64_t k,
                       const uint64_t l1) {
-            TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-            TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
-            //TFloat *dm_stripe = dm_stripes[stripe];
-            //TFloat *dm_stripe_total = dm_stripes_total[stripe];
+       const bool allzero_k = zcheck[k];
+       const bool allzero_l1 = zcheck[l1];
 
-            bool did_update = false;
-            TFloat my_stripe = 0.0;
-            TFloat my_stripe_total = 0.0;
+       if (allzero_k && allzero_l1) {
+          // nothing to do, would have to add 0
+       } else {
+          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
+          TFloat * const __restrict__ dm_stripe_total = dm_stripes_total_buf+idx;
+          //TFloat *dm_stripe = dm_stripes[stripe];
+          //TFloat *dm_stripe_total = dm_stripes_total[stripe];
 
+          bool did_update = false;
+          TFloat my_stripe = 0.0;
+          TFloat my_stripe_total = 0.0;
+
+          if (allzero_k || allzero_l1) {
+            // with one side zero, | and ^ are no-ops
+            const uint64_t kl = (allzero_k) ? l1 : k; // only use the non-sero onea
+            my_stripe = stripe_sums[kl];
+            did_update = (my_stripe!=0.0);
+            my_stripe_total = my_stripe;
+          } else {
+            // we need both sides
             for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
                 const uint64_t offset = n_samples_r * emb_el;
                 const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
@@ -1250,19 +1324,23 @@ static inline void Unweighted1(
                                        psum[0x700+((uint8_t)(x1 >> 56))];
                 }
             }
+          }
 
-            if (did_update) {
-              dm_stripe[k]       += my_stripe;
-              dm_stripe_total[k] += my_stripe_total;
-            }
+          if (did_update) {
+            dm_stripe[k]       += my_stripe;
+            dm_stripe_total[k] += my_stripe_total;
+          }
+       } // (allzero_k && allzero_l1)
 
 }
 #else
+
 template<class TFloat>
 static inline void Unweighted1(
                       TFloat * const __restrict__ dm_stripes_buf,
                       TFloat * const __restrict__ dm_stripes_total_buf,
                       const bool   * const __restrict__ zcheck,
+                      const TFloat * const   __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
                       const unsigned int filled_embs_els_round,
@@ -1287,75 +1365,10 @@ static inline void Unweighted1(
 
           if (allzero_k || allzero_l1) {
             // with one side zero, | and ^ are no-ops
-            const uint64_t kl = (allzero_k) ? l1 : k; // only use the non-sero one
-            for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
-                const uint64_t offset = n_samples_r * emb_el;
-                const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
-
-                //uint64_t u1 = embedded_proportions[offset + k];
-                //uint64_t v1 = embedded_proportions[offset + l1];
-                //uint64_t o1 = u1 | v1;
-                // With one of the two being 0, or is just the non-negative one
-                uint64_t o1 = embedded_proportions[offset + kl];
-
-                if (o1==0) {  // zeros are prevalent
-                    // nothing to do
-                } else if (((uint32_t)o1)==0) {
-                    // only high part relevant
-                    did_update=true;
-                    //uint64_t x1 = u1 ^ v1;
-                    // With one of the two being 0, xor is just the non-negative one
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    TFloat esum      = psum[0x400+((uint8_t)(o1 >> 32))] +
-                                       psum[0x500+((uint8_t)(o1 >> 40))] +
-                                       psum[0x600+((uint8_t)(o1 >> 48))] +
-                                       psum[0x700+((uint8_t)(o1 >> 56))];
-                    my_stripe_total += esum;
-                    my_stripe       += esum;
-                } else if ((o1>>32)==0) {
-                    // only low part relevant
-                    did_update=true;
-                    //uint64_t x1 = u1 ^ v1;
-                    // With one of the two being 0, xor is just the non-negative one
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    TFloat esum      = psum[       (uint8_t)(o1)       ] + 
-                                       psum[0x100+((uint8_t)(o1 >>  8))] +
-                                       psum[0x200+((uint8_t)(o1 >> 16))] +
-                                       psum[0x300+((uint8_t)(o1 >> 24))];
-                    my_stripe_total += esum;
-                    my_stripe       += esum;
-                } else {
-                    did_update=true;
-                    //uint64_t x1 = u1 ^ v1;
-                    // With one of the two being 0, xor is just the non-negative one
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    TFloat esum      = psum[       (uint8_t)(o1)       ] + 
-                                       psum[0x100+((uint8_t)(o1 >>  8))] +
-                                       psum[0x200+((uint8_t)(o1 >> 16))] +
-                                       psum[0x300+((uint8_t)(o1 >> 24))] +
-                                       psum[0x400+((uint8_t)(o1 >> 32))] +
-                                       psum[0x500+((uint8_t)(o1 >> 40))] +
-                                       psum[0x600+((uint8_t)(o1 >> 48))] +
-                                       psum[0x700+((uint8_t)(o1 >> 56))];
-                    my_stripe_total += esum;
-                    my_stripe       += esum;
-                }
-            }
+            const uint64_t kl = (allzero_k) ? l1 : k; // only use the non-sero onea
+            my_stripe = stripe_sums[kl];
+            my_stripe_total = my_stripe;
+            did_update = (my_stripe!=0.0);
           } else {
             // we need both sides
             for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
@@ -1441,6 +1454,30 @@ static inline void Unweighted1(
 }
 #endif
 
+// check for zero values
+template<class TFloat, class T>
+static inline void UnweightedZerosAndSums(
+                      bool   * const __restrict__ zcheck,
+                      TFloat * const  __restrict__ stripe_sums,
+                      const TFloat * const   __restrict__ el_sums,
+                      const T * const __restrict__ embedded_proportions,
+                      const unsigned int filled_embs_els_round,
+                      const uint64_t n_samples,
+                      const uint64_t n_samples_r) {
+#ifdef _OPENACC
+#pragma acc parallel loop gang vector present(embedded_proportions,zcheck,el_sums,stripe_sums)
+#else
+#pragma omp parallel for default(shared)
+#endif
+    for(uint64_t k=0; k<n_samples; k++) {
+            UnweightedOneSide(
+                      zcheck, stripe_sums,
+                      el_sums, embedded_proportions,
+                      filled_embs_els_round, n_samples_r,
+                      k);
+    }
+}
+
 template<class TFloat>
 void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
     const uint64_t start_idx = this->task_p->start;
@@ -1454,6 +1491,8 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
     TFloat * const __restrict__ sums = this->sums;
+    bool   * const __restrict__ zcheck = this->zcheck;
+    TFloat * const __restrict__ stripe_sums = this->stripe_sums;
 
     const uint64_t step_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::step_size;
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
@@ -1462,15 +1501,6 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     const uint64_t filled_embs_rem = filled_embs%64; 
 
     const uint64_t filled_embs_els_round = (filled_embs+63)/64;
-
-#ifndef _OPENACC
-    // not effective for GPUs, but helps a lot on the CPUs
-    bool * const __restrict__ zcheck = this->zcheck;
-    // check for zero values 
-    WeightedZerosAsync(zcheck,
-                       embedded_proportions,
-                       filled_embs_els_round, n_samples, n_samples_r);
-#endif
 
     // pre-compute sums of length elements, since they are likely to be accessed many times
     // We will use a 8-bit map, to keep it small enough to keep in L1 cache
@@ -1527,9 +1557,14 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
         }
     }
 
+#pragma acc wait
+    // check for zero values and compute stripe sums
+    UnweightedZerosAndSums(zcheck, stripe_sums,
+                           sums, embedded_proportions,
+                           filled_embs_els_round, n_samples, n_samples_r);
+
     // point of thread
 #ifdef _OPENACC
-#pragma acc wait
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
 #pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums) async
 #else
@@ -1548,9 +1583,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 
             Unweighted1<TFloat>(
                                 dm_stripes_buf,dm_stripes_total_buf,
-#ifndef _OPENACC
-                                zcheck,
-#endif
+                                zcheck, stripe_sums,
                                 sums, embedded_proportions,
                                 filled_embs_els_round,idx, n_samples_r,
                                 k, l1);
