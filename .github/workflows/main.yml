@@ -88,6 +88,10 @@ jobs:
         popd
         pushd test
         ./capi_test 1
+        if [[ "$(uname -s)" == "Linux" ]];
+        then
+          (ldd ./capi_test |grep hdf ; test $? == 1)
+        fi
         popd
         pushd src/testdata
         conda install --yes -c conda-forge h5py
