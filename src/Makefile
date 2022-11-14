@@ -110,7 +110,7 @@ faithpd: faithpd.cpp tree.o biom.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_F
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o faithpd tree.o biom.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
 libssu.so: tree.o biom.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -lhdf5_cpp -llz4 $(BLASLIB) -L$(PREFIX)/lib
+	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp tree.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC

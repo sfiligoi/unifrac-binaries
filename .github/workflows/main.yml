@@ -88,6 +88,13 @@ jobs:
         popd
         pushd test
         ./capi_test 1
+        # explicitly check that we do not have hdf5 dependencies
+        if [[ "$(uname -s)" == "Linux" ]];
+        then
+          ldd ./capi_test |awk 'BEGIN{a=0}/hdf/{a=a+1;print $0}END{if (a==0) {print "No dynamic hdf5 found"} else {exit 2}}'
+        else
+          otool -L ./capi_test|awk 'BEGIN{a=0}/hdf/{a=a+1;print $0}END{if (a==0) {print "No dynamic hdf5 found"} else {exit 2}}'
+        fi
         popd
         pushd src/testdata
         conda install --yes -c conda-forge h5py
