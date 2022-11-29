@@ -509,8 +509,8 @@ void test_biom_constructor_from_sparse() {
     uint32_t index[] = {2, 0, 1, 3, 4, 5, 2, 3, 5, 0, 1, 2, 5, 1, 2};
     uint32_t indptr[] = {0,  1,  6,  9, 13, 15};
     double data[] = {1., 5., 1., 2., 3., 1., 1., 4., 2., 2., 1., 1., 1., 1., 1.};
-    char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
-    char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
+    const char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
+    const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
 
     su::biom table = su::biom(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
     _exercise_get_obs_data(table);
@@ -1838,7 +1838,7 @@ void test_bptree_cstyle_constructor() {
                                 //11101000
     bool structure[] = {true, true, true, false, true, false, false, false};
     double lengths[] = {0, 0, 1, 0, 2, 0, 0, 0};
-    char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};
+    const char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};
     su::BPTree tree = su::BPTree(structure, lengths, names, 8);
 
     unsigned int exp_nparens = 8;

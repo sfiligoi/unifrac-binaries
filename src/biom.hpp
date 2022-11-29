@@ -41,8 +41,8 @@ namespace su {
              * @param n_samples number of samples
              * @param nnz number of data points
              */
-            biom(char** obs_ids,
-                 char** samp_ids,
+            biom(const char* const * obs_ids,
+                 const char* const * samp_ids,
                  uint32_t* index,
                  uint32_t* indptr,
                  double* data,

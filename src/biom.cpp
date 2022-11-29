@@ -127,8 +127,8 @@ biom::biom() : has_hdf5_backing(false) {
 }
 
 // not using const on indices/indptr/data as the pointers are being borrowed
-biom::biom(char** obs_ids_in,
-           char** samp_ids_in,
+biom::biom(const char* const * obs_ids_in,
+          const  char* const * samp_ids_in,
            uint32_t* indices,
            uint32_t* indptr,
            double* data,

@@ -51,7 +51,7 @@ namespace su {
              * @param input_names A char* array of the names
              * @param n_parens The length of the topology
              */
-            BPTree(const bool* input_structure, const double* input_lengths, char** input_names, const int n_parens);
+            BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens);
 
             /* postorder tree traversal
              *
