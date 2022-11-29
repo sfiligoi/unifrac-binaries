@@ -52,7 +52,7 @@ BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_leng
     index_and_cache();
 }
 
-BPTree::BPTree(const bool* input_structure, const double* input_lengths, char** input_names, const int n_parens) {
+BPTree::BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens) {
     structure = std::vector<bool>();
     lengths = std::vector<double>();
     names = std::vector<std::string>();

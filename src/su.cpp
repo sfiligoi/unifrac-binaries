@@ -13,15 +13,15 @@
 enum Format {format_invalid,format_ascii, format_hdf5_fp32, format_hdf5_fp64};
 
 void usage() {
-    std::cout << "usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-n threads] [-a alpha] [-f]  [--vaw]" << std::endl;
-    std::cout << "    [--mode [MODE]] [--start starting-stripe] [--stop stopping-stripe] [--partial-pattern <glob>]" << std::endl;
+    std::cout << "usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-a alpha] [-f]  [--vaw]" << std::endl;
+    std::cout << "    [--mode MODE] [--start starting-stripe] [--stop stopping-stripe] [--partial-pattern <glob>]" << std::endl;
     std::cout << "    [--n-partials number_of_partitions] [--report-bare] [--format|-r out-mode]" << std::endl;
+    std::cout << "    [--n-substeps n] [--pcoa dims] [--diskbuf path]" << std::endl;
     std::cout << std::endl;
     std::cout << "    -i\t\tThe input BIOM table." << std::endl;
     std::cout << "    -t\t\tThe input phylogeny in newick." << std::endl;
     std::cout << "    -m\t\tThe method, [unweighted | weighted_normalized | weighted_unnormalized | generalized | unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 | generalized_fp32]." << std::endl;
     std::cout << "    -o\t\tThe output distance matrix." << std::endl;
-    std::cout << "    -n\t\t[OPTIONAL] The number of threads, default is 1." << std::endl;
     std::cout << "    -a\t\t[OPTIONAL] Generalized UniFrac alpha, default is 1." << std::endl;
     std::cout << "    -f\t\t[OPTIONAL] Bypass tips, reduces compute by about 50%." << std::endl;
     std::cout << "    --vaw\t[OPTIONAL] Variance adjusted, default is to not adjust for variance." << std::endl;
@@ -36,6 +36,7 @@ void usage() {
     std::cout << "    --partial-pattern\t[OPTIONAL] If mode==merge-partial or check-partial, a glob pattern for partial outputs to merge." << std::endl;
     std::cout << "    --n-partials\t[OPTIONAL] If mode==partial-report, the number of partitions to compute." << std::endl;
     std::cout << "    --report-bare\t[OPTIONAL] If mode==partial-report, produce barebones output." << std::endl;
+    std::cout << "    --n-substeps\t[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1." << std::endl;
     std::cout << "    --format|-r\t[OPTIONAL]  Output format:" << std::endl;
     std::cout << "    \t\t    ascii : [DEFAULT] Original ASCII format." << std::endl;
     std::cout << "    \t\t    hfd5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
@@ -43,9 +44,16 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
+    std::cout << "    -n\t\t[OPTIONAL] DEPRECATED, no-op." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Environment variables: " << std::endl;
+    std::cout << "    CPU parallelism is controlled by OMP_NUM_THREADS. If not defined, all detected core will be used." << std::endl;
+    std::cout << "    GPU offload can be disabled with UNIFRAC_USE_GPU=N. By default, if a NVIDIA GPU is detected, it will be used." << std::endl;
+    std::cout << "    A specific GPU can be selected with ACC_DEVICE_NUM. If not defined, the first GPU will be used." << std::endl;
     std::cout << std::endl;
     std::cout << "Citations: " << std::endl;
     std::cout << "    For UniFrac, please see:" << std::endl;
+    std::cout << "        Sfiligoi et al. mSystems 2022; DOI: 10.1128/msystems.00028-22" << std::endl;
     std::cout << "        McDonald et al. Nature Methods 2018; DOI: 10.1038/s41592-018-0187-8" << std::endl;
     std::cout << "        Lozupone and Knight Appl Environ Microbiol 2005; DOI: 10.1128/AEM.71.12.8228-8235.2005" << std::endl;
     std::cout << "        Lozupone et al. Appl Environ Microbiol 2007; DOI: 10.1128/AEM.01996-06" << std::endl;
@@ -296,7 +304,7 @@ int mode_check_partial(const std::string &partial_pattern) {
 int mode_partial(std::string table_filename, std::string tree_filename, 
                  std::string output_filename, std::string method_string,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips, 
-                 unsigned int nthreads, int start_stripe, int stop_stripe) {
+                 unsigned int nsubsteps, int start_stripe, int stop_stripe) {
     if(output_filename.empty()) {
         err("output filename missing");
         return EXIT_FAILURE;
@@ -329,7 +337,7 @@ int mode_partial(std::string table_filename, std::string tree_filename,
     partial_mat_t *result = NULL;
     compute_status status;
     status = partial(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                     vaw, g_unifrac_alpha, bypass_tips, nthreads, start_stripe, stop_stripe, &result);
+                     vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe, &result);
     if(status != okay || result == NULL) {
         fprintf(stderr, "Compute failed in partial: %s\n", compute_status_messages[status]);
         exit(EXIT_FAILURE);
@@ -350,7 +358,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
                  const std::string &output_filename, const std::string &format_str, Format format_val, 
                  const std::string &method_string, unsigned int pcoa_dims,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips,
-                 unsigned int nthreads, const std::string &mmap_dir) {
+                 unsigned int nsubsteps, const std::string &mmap_dir) {
     if(output_filename.empty()) {
         err("output filename missing");
         return EXIT_FAILURE;
@@ -376,7 +384,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
       mat_t *result = NULL;
 
       status = one_off(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                       vaw, g_unifrac_alpha, bypass_tips, nthreads, &result);
+                       vaw, g_unifrac_alpha, bypass_tips, nsubsteps, &result);
       if(status != okay || result == NULL) {
         fprintf(stderr, "Compute failed in one_off: %s\n", compute_status_messages[status]);
         exit(EXIT_FAILURE);
@@ -394,7 +402,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
       const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
 
       status = unifrac_to_file(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
-                               method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nthreads, format_str.c_str(),
+                               method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
                                pcoa_dims, mmap_dir_c);
 
       if (status != okay) {
@@ -439,12 +447,14 @@ int main(int argc, char **argv){
         return EXIT_SUCCESS;
     }
 
-    unsigned int nthreads;
+    unsigned int nsubsteps;
     std::string table_filename = input.getCmdOption("-i");
     std::string tree_filename = input.getCmdOption("-t");
     std::string output_filename = input.getCmdOption("-o");
     std::string method_string = input.getCmdOption("-m");
-    std::string nthreads_arg = input.getCmdOption("-n");
+    // deprecated, but we still want to support it, even as a no-op
+    std::string nold_arg = input.getCmdOption("-n");
+    std::string nsubsteps_arg = input.getCmdOption("--n-substeps");
     std::string gunifrac_arg = input.getCmdOption("-a");
     std::string mode_arg = input.getCmdOption("--mode");
     std::string start_arg = input.getCmdOption("--start");
@@ -457,10 +467,10 @@ int main(int argc, char **argv){
     std::string pcoa_arg = input.getCmdOption("--pcoa");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
-    if(nthreads_arg.empty()) {
-        nthreads = 1;
+    if(nsubsteps_arg.empty()) {
+        nsubsteps = 1;
     } else {
-        nthreads = atoi(nthreads_arg.c_str());
+        nsubsteps = atoi(nsubsteps_arg.c_str());
     }
     
     bool vaw = input.cmdOptionExists("--vaw"); 
@@ -521,9 +531,9 @@ int main(int argc, char **argv){
 
 
     if(mode_arg.empty() || mode_arg == "one-off")
-        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string, pcoa_dims, vaw, g_unifrac_alpha, bypass_tips, nthreads, diskbuf_arg);
+        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string, pcoa_dims, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
     else if(mode_arg == "partial")
-        return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nthreads, start_stripe, stop_stripe);
+        return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe);
     else if(mode_arg == "merge-partial")
         return mode_merge_partial(output_filename, format_val, pcoa_dims, partial_pattern, diskbuf_arg);
     else if(mode_arg == "check-partial")
