@@ -13,15 +13,15 @@
 enum Format {format_invalid,format_ascii, format_hdf5_fp32, format_hdf5_fp64};
 
 void usage() {
-    std::cout << "usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-n threads] [-a alpha] [-f]  [--vaw]" << std::endl;
-    std::cout << "    [--mode [MODE]] [--start starting-stripe] [--stop stopping-stripe] [--partial-pattern <glob>]" << std::endl;
+    std::cout << "usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-a alpha] [-f]  [--vaw]" << std::endl;
+    std::cout << "    [--mode MODE] [--start starting-stripe] [--stop stopping-stripe] [--partial-pattern <glob>]" << std::endl;
     std::cout << "    [--n-partials number_of_partitions] [--report-bare] [--format|-r out-mode]" << std::endl;
+    std::cout << "    [--n-substeps n] [--pcoa dims] [--diskbuf path]" << std::endl;
     std::cout << std::endl;
     std::cout << "    -i\t\tThe input BIOM table." << std::endl;
     std::cout << "    -t\t\tThe input phylogeny in newick." << std::endl;
     std::cout << "    -m\t\tThe method, [unweighted | weighted_normalized | weighted_unnormalized | generalized | unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 | generalized_fp32]." << std::endl;
     std::cout << "    -o\t\tThe output distance matrix." << std::endl;
-    std::cout << "    -n\t\t[OPTIONAL] The number of threads, default is 1." << std::endl;
     std::cout << "    -a\t\t[OPTIONAL] Generalized UniFrac alpha, default is 1." << std::endl;
     std::cout << "    -f\t\t[OPTIONAL] Bypass tips, reduces compute by about 50%." << std::endl;
     std::cout << "    --vaw\t[OPTIONAL] Variance adjusted, default is to not adjust for variance." << std::endl;
@@ -36,6 +36,7 @@ void usage() {
     std::cout << "    --partial-pattern\t[OPTIONAL] If mode==merge-partial or check-partial, a glob pattern for partial outputs to merge." << std::endl;
     std::cout << "    --n-partials\t[OPTIONAL] If mode==partial-report, the number of partitions to compute." << std::endl;
     std::cout << "    --report-bare\t[OPTIONAL] If mode==partial-report, produce barebones output." << std::endl;
+    std::cout << "    --n-substeps\t[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1." << std::endl;
     std::cout << "    --format|-r\t[OPTIONAL]  Output format:" << std::endl;
     std::cout << "    \t\t    ascii : [DEFAULT] Original ASCII format." << std::endl;
     std::cout << "    \t\t    hfd5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
@@ -43,6 +44,12 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
+    std::cout << "    -n\t\t[OPTIONAL] DEPRECATED, no-op." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Environment variables: " << std::endl;
+    std::cout << "    CPU parallelism is controlled by OMP_NUM_THREADS. If not defined, all detected core will be used." << std::endl;
+    std::cout << "    GPU offload can be disabled with UNIFRAC_USE_GPU=N. By default, if a NVIDIA GPU is detected, it will be used." << std::endl;
+    std::cout << "    A specific GPU can be selected with ACC_DEVICE_NUM. If not defined, the first GPU will be used." << std::endl;
     std::cout << std::endl;
     std::cout << "Citations: " << std::endl;
     std::cout << "    For UniFrac, please see:" << std::endl;
@@ -444,7 +451,10 @@ int main(int argc, char **argv){
     std::string tree_filename = input.getCmdOption("-t");
     std::string output_filename = input.getCmdOption("-o");
     std::string method_string = input.getCmdOption("-m");
-    std::string nthreads_arg = input.getCmdOption("-n");
+    // deprecated, but we still want to support it, even as a no-op
+    std::string nold_arg = input.getCmdOption("-n");
+    // named nthreads_arg for historical reasons
+    std::string nthreads_arg = input.getCmdOption("--n-substeps");
     std::string gunifrac_arg = input.getCmdOption("-a");
     std::string mode_arg = input.getCmdOption("--mode");
     std::string start_arg = input.getCmdOption("--start");
