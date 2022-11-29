@@ -304,7 +304,7 @@ int mode_check_partial(const std::string &partial_pattern) {
 int mode_partial(std::string table_filename, std::string tree_filename, 
                  std::string output_filename, std::string method_string,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips, 
-                 unsigned int nthreads, int start_stripe, int stop_stripe) {
+                 unsigned int nsubsteps, int start_stripe, int stop_stripe) {
     if(output_filename.empty()) {
         err("output filename missing");
         return EXIT_FAILURE;
@@ -337,7 +337,7 @@ int mode_partial(std::string table_filename, std::string tree_filename,
     partial_mat_t *result = NULL;
     compute_status status;
     status = partial(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                     vaw, g_unifrac_alpha, bypass_tips, nthreads, start_stripe, stop_stripe, &result);
+                     vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe, &result);
     if(status != okay || result == NULL) {
         fprintf(stderr, "Compute failed in partial: %s\n", compute_status_messages[status]);
         exit(EXIT_FAILURE);
@@ -358,7 +358,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
                  const std::string &output_filename, const std::string &format_str, Format format_val, 
                  const std::string &method_string, unsigned int pcoa_dims,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips,
-                 unsigned int nthreads, const std::string &mmap_dir) {
+                 unsigned int nsubsteps, const std::string &mmap_dir) {
     if(output_filename.empty()) {
         err("output filename missing");
         return EXIT_FAILURE;
@@ -384,7 +384,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
       mat_t *result = NULL;
 
       status = one_off(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                       vaw, g_unifrac_alpha, bypass_tips, nthreads, &result);
+                       vaw, g_unifrac_alpha, bypass_tips, nsubsteps, &result);
       if(status != okay || result == NULL) {
         fprintf(stderr, "Compute failed in one_off: %s\n", compute_status_messages[status]);
         exit(EXIT_FAILURE);
@@ -402,7 +402,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
       const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
 
       status = unifrac_to_file(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
-                               method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nthreads, format_str.c_str(),
+                               method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
                                pcoa_dims, mmap_dir_c);
 
       if (status != okay) {
@@ -447,15 +447,14 @@ int main(int argc, char **argv){
         return EXIT_SUCCESS;
     }
 
-    unsigned int nthreads;
+    unsigned int nsubsteps;
     std::string table_filename = input.getCmdOption("-i");
     std::string tree_filename = input.getCmdOption("-t");
     std::string output_filename = input.getCmdOption("-o");
     std::string method_string = input.getCmdOption("-m");
     // deprecated, but we still want to support it, even as a no-op
     std::string nold_arg = input.getCmdOption("-n");
-    // named nthreads_arg for historical reasons
-    std::string nthreads_arg = input.getCmdOption("--n-substeps");
+    std::string nsubsteps_arg = input.getCmdOption("--n-substeps");
     std::string gunifrac_arg = input.getCmdOption("-a");
     std::string mode_arg = input.getCmdOption("--mode");
     std::string start_arg = input.getCmdOption("--start");
@@ -468,10 +467,10 @@ int main(int argc, char **argv){
     std::string pcoa_arg = input.getCmdOption("--pcoa");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
-    if(nthreads_arg.empty()) {
-        nthreads = 1;
+    if(nsubsteps_arg.empty()) {
+        nsubsteps = 1;
     } else {
-        nthreads = atoi(nthreads_arg.c_str());
+        nsubsteps = atoi(nsubsteps_arg.c_str());
     }
     
     bool vaw = input.cmdOptionExists("--vaw"); 
@@ -532,9 +531,9 @@ int main(int argc, char **argv){
 
 
     if(mode_arg.empty() || mode_arg == "one-off")
-        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string, pcoa_dims, vaw, g_unifrac_alpha, bypass_tips, nthreads, diskbuf_arg);
+        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string, pcoa_dims, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
     else if(mode_arg == "partial")
-        return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nthreads, start_stripe, stop_stripe);
+        return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe);
     else if(mode_arg == "merge-partial")
         return mode_merge_partial(output_filename, format_val, pcoa_dims, partial_pattern, diskbuf_arg);
     else if(mode_arg == "check-partial")
