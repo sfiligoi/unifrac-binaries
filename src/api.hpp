@@ -171,7 +171,7 @@ EXTERN void destroy_results_vec(r_vec** result);
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads to use.
+ * n_substeps <uint> the number of substeps to use.
  * result <mat_t**> the resulting distance matrix in condensed form, this is initialized within the method so using **
  *
  * one_off returns the following error codes:
@@ -184,7 +184,7 @@ EXTERN void destroy_results_vec(r_vec** result);
  */
 EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int threads, mat_t** result);
+                             bool bypass_tips, unsigned int n_substeps, mat_t** result);
 
 
 /* Compute UniFrac - against in-memory objects returning full form matrix
@@ -195,7 +195,7 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads to use.
+ * n_substeps <uint> the number of substeps to use.
  * result <mat_full_fp64_t**> the resulting distance matrix in full form, this is initialized within the method so using **
  *
  * one_off_inmem returns the following error codes:
@@ -206,7 +206,7 @@ EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filenam
  */
 EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
-                                   bool bypass_tips, unsigned int threads, mat_full_fp64_t** result);
+                                   bool bypass_tips, unsigned int n_substeps, mat_full_fp64_t** result);
 
 /* Compute UniFrac - against in-memory objects returning full form matrix, fp32
  *
@@ -216,7 +216,7 @@ EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const suppo
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads to use.
+ * n_substeps <uint> the number of substeps to use.
  * result <mat_full_fp32_t**> the resulting distance matrix in full form, this is initialized within the method so using **
  *
  * one_off_inmem returns the following error codes:
@@ -227,7 +227,7 @@ EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const suppo
  */
 EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
-                                        bool bypass_tips, unsigned int threads, mat_full_fp32_t** result);
+                                        bool bypass_tips, unsigned int n_substeps, mat_full_fp32_t** result);
 
 /* Compute UniFrac - matrix form
  *
@@ -237,7 +237,7 @@ EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const 
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads/blocks to use.
+ * n_substeps <uint> the number of substeps/blocks to use.
  * mmap_dir <const char*> If not NULL, area to use for temp memory storage
  * result <mat_full_fp64_t**> the resulting distance matrix in matrix form, this is initialized within the method so using **
  *
@@ -251,7 +251,7 @@ EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const 
  */
 EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
                                     const char* unifrac_method, bool variance_adjust, double alpha,
-                                    bool bypass_tips, unsigned int nthreads,
+                                    bool bypass_tips, unsigned int n_substeps,
                                     const char *mmap_dir,
                                     mat_full_fp64_t** result);
 
@@ -263,7 +263,7 @@ EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads/blocks to use.
+ * n_substeps <uint> the number of substeps/blocks to use.
  * mmap_dir <const char*> If not NULL, area to use for temp memory storage
  * result <mat_full_fp32_t**> the resulting distance matrix in matrix form, this is initialized within the method so using **
  *
@@ -277,7 +277,7 @@ EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_
  */
 EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
                                          const char* unifrac_method, bool variance_adjust, double alpha,
-                                         bool bypass_tips, unsigned int nthreads,
+                                         bool bypass_tips, unsigned int n_substeps,
                                          const char *mmap_dir,
                                          mat_full_fp32_t** result);
 
@@ -306,7 +306,7 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads to use.
+ * n_substeps <uint> the number of substeps to use.
  * format <const char*> output format to use.
  * pcoa_dims <uint> if not 0, number of dimensions to use or PCoA
  * mmap_dir <const char*> if not empty, temp dir to use for disk-based memory 
@@ -322,7 +322,7 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  */
 EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                      const char* unifrac_method, bool variance_adjust, double alpha,
-                                     bool bypass_tips, unsigned int threads, const char* format,
+                                     bool bypass_tips, unsigned int n_substeps, const char* format,
                                      unsigned int pcoa_dims, const char *mmap_dir);
 
 /* Write a matrix object
@@ -429,7 +429,7 @@ EXTERN IOStatus write_vec(const char* filename, r_vec* result);
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * threads <uint> the number of threads to use.
+ * n_substeps <uint> the number of substeps to use.
  * stripe_start <uint> the starting stripe to compute
  * stripe_stop <uint> the last stripe to compute
  * dm_stripes <vector of double*> the unique branch length stripes. This is expected to be
@@ -448,7 +448,7 @@ EXTERN IOStatus write_vec(const char* filename, r_vec* result);
 
 EXTERN ComputeStatus partial(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int threads, unsigned int stripe_start,
+                             bool bypass_tips, unsigned int n_substeps, unsigned int stripe_start,
                              unsigned int stripe_stop, partial_mat_t** result);
 
 /* Write a partial matrix object
@@ -558,7 +558,7 @@ EXTERN MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mat
  * sample_id_consistency : samples described by stripes are inconsistent
  * square_mismatch       : inconsistency on denotation of square matrix
  */
-EXTERN MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int nthreads, mat_t** result);
+EXTERN MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result);
 
 /* Merge partial results
  *
@@ -651,6 +651,6 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
                unsigned int stripe_start,
                unsigned int stripe_stop,
                bool bypass_tips,
-               unsigned int nthreads);
+               unsigned int n_tasks);
 
 #endif

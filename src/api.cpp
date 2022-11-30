@@ -18,6 +18,9 @@
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
 
+// Note: Threading is now full controlled by OpenMP.
+// Any threads variable is really referring to n_substeps.
+// The old naming was retained to minimize code refactoring.
 
 #define SETUP_TDBG(method) const char *tdbg_method=method; \
                           bool print_tdbg = false;\
@@ -358,7 +361,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
                unsigned int stripe_start,
                unsigned int stripe_stop,
                bool bypass_tips,
-               unsigned int nthreads) {
+               unsigned int n_tasks) {
 
     // compute from start to the max possible stripe if stop doesn't make sense
     if(stripe_stop <= stripe_start)
@@ -369,16 +372,16 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
      *
      * we use the remaining the chunksize for bins which cannot be full maximally
      */
-    unsigned int fullchunk = ((stripe_stop - stripe_start) + nthreads - 1) / nthreads;  // this computes the ceiling
-    unsigned int smallchunk = (stripe_stop - stripe_start) / nthreads;
+    unsigned int fullchunk = ((stripe_stop - stripe_start) + n_tasks - 1) / n_tasks;  // this computes the ceiling
+    unsigned int smallchunk = (stripe_stop - stripe_start) / n_tasks;
 
-    unsigned int n_fullbins = (stripe_stop - stripe_start) % nthreads;
+    unsigned int n_fullbins = (stripe_stop - stripe_start) % n_tasks;
     if(n_fullbins == 0)
-        n_fullbins = nthreads;
+        n_fullbins = n_tasks;
 
     unsigned int start = stripe_start;
 
-    for(unsigned int tid = 0; tid < nthreads; tid++) {
+    for(unsigned int tid = 0; tid < n_tasks; tid++) {
         tasks[tid].tid = tid;
         tasks[tid].start = start; // stripe start
         tasks[tid].bypass_tips = bypass_tips;
@@ -1463,7 +1466,7 @@ MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int 
 }
 
 
-MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int nthreads, mat_t** result) {
+MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result) {
     MergeStatus err = check_partial(partial_mats, n_partials, false);
     if (err!=merge_okay) return err;
 
