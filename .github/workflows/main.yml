@@ -15,7 +15,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, linux-gpu]
     runs-on: ${{ matrix.os }}
-    miniconda-version: "latest"
     steps:
     - uses: actions/checkout@v2
     - uses: conda-incubator/setup-miniconda@v2
