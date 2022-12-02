@@ -53,22 +53,23 @@ namespace SUCMP_NM {
 
     public:
       const unsigned int start_idx;
+      const unsigned int stop_idx;
       const unsigned int n_samples;
       const uint64_t  n_samples_r;
       TFloat* const buf;
 
       UnifracTaskVector(std::vector<double*> &_dm_stripes, const su::task_parameters* _task_p)
       : dm_stripes(_dm_stripes), task_p(_task_p)
-      , start_idx(task_p->start), n_samples(task_p->n_samples)
+      , start_idx(task_p->start), stop_idx(task_p->stop), n_samples(task_p->n_samples)
       , n_samples_r(((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK) // round up
-      , buf((dm_stripes[start_idx]==NULL) ? NULL : new TFloat[n_samples_r*(task_p->stop-start_idx)]) // dm_stripes could be null, in which case keep it null
+      , buf((dm_stripes[start_idx]==NULL) ? NULL : new TFloat[n_samples_r*(stop_idx-start_idx)]) // dm_stripes could be null, in which case keep it null
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
 #ifdef _OPENACC
-          const uint64_t bufels = n_samples_r * (task_p->stop-start_idx);
+          const uint64_t bufels = n_samples_r * (stop_idx-start_idx);
 #endif
-          for(unsigned int stripe=start_idx; stripe < task_p->stop; stripe++) {
+          for(unsigned int stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
              TFloat * buf_stripe = this->operator[](stripe);
              for(unsigned int j=0; j<n_samples; j++) {
@@ -95,10 +96,10 @@ namespace SUCMP_NM {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
 #ifdef _OPENACC
-          const uint64_t bufels = n_samples_r * (task_p->stop-start_idx); 
+          const uint64_t bufels = n_samples_r * (stop_idx-start_idx); 
 #pragma acc exit data copyout(ibuf[:bufels])
 #endif    
-          for(unsigned int stripe=start_idx; stripe < task_p->stop; stripe++) {
+          for(unsigned int stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
              TFloat * buf_stripe = this->operator[](stripe);
              for(unsigned int j=0; j<n_samples; j++) {
