@@ -58,9 +58,9 @@ ifndef NOGPU
 	            ACCCPPFLAGS += -ta=tesla:ccall
 		else
 	            ACCCPPFLAGS += -ta=tesla
+		    # optional info
+		    ACCCPPFLAGS += -Minfo=accel
                 endif
-		# optional info
-		ACCCPPFLAGS += -Minfo=accel
 	        LDDFLAGS += -shlib -acc -Bstatic_pgi
 	        EXEFLAGS += -acc -Bstatic_pgi
 	endif
@@ -79,8 +79,10 @@ else
 endif
 
 ifeq (,$(findstring pgi,$(COMPILER)))
+    ifneq ($(PERFORMING_CONDA_BUILD),True)
 	# basically, not gcc
 	CPPFLAGS += -Wextra -Wno-unused-parameter
+    endif
 endif
 
 BLASLIB=-llapacke -lcblas
