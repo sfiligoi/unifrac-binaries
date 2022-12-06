@@ -35,9 +35,9 @@ jobs:
 
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          conda create --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
+          conda create -q --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
         else
-          conda create --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
+          conda create -q --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
         fi 
         conda activate unifrac
         echo "$(uname -s)"
@@ -53,7 +53,7 @@ jobs:
         which h5c++
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          ./scripts/install_hpc_sdk.sh
+          ./scripts/install_hpc_sdk.sh >/dev/null 2>/dev/null </dev/null
           source setup_nv_h5.sh
         fi
         export PERFORMING_CONDA_BUILD=True
@@ -65,7 +65,7 @@ jobs:
         if [[ "$(uname -s)" == "Linux" ]]; 
         then
           rm -f ~/.R/Makevars
-          conda install --yes -c conda-forge r-base
+          conda install -q --yes -c conda-forge r-base
           unset CXXFLAGS
           unset CFLAGS
           unset DEBUG_CXXFLAGS
