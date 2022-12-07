@@ -13,12 +13,13 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, linux-gpu-cuda]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - uses: conda-incubator/setup-miniconda@v2
-      with:        
+      with:
+        miniconda-version: "latest"
         auto-update-conda: true
     - name: Install 
       shell: bash -l {0}
@@ -32,12 +33,15 @@ jobs:
           sudo mv -f /Library/Developer/CommandLineTools /Library/Developer/CommandLineTools.org
         fi
 
+        df -h .
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          conda create --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
+          conda create -q --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
         else
-          conda create --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
+          conda create -q --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
         fi 
+        conda clean --yes -t
+        df -h .
         conda activate unifrac
         echo "$(uname -s)"
         if [[ "$(uname -s)" == "Linux" ]];
@@ -52,19 +56,21 @@ jobs:
         which h5c++
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          ./scripts/install_hpc_sdk.sh
+          ./scripts/install_hpc_sdk.sh >/dev/null 2>/dev/null </dev/null
           source setup_nv_h5.sh
         fi
+        df -h .
         export PERFORMING_CONDA_BUILD=True
         make api && \
         make main && \
         make install && \
         make test_binaries
+        df -h .
         pushd src
         if [[ "$(uname -s)" == "Linux" ]]; 
         then
           rm -f ~/.R/Makevars
-          conda install --yes -c conda-forge r-base
+          conda install -q --yes -c conda-forge r-base
           unset CXXFLAGS
           unset CFLAGS
           unset DEBUG_CXXFLAGS

@@ -29,10 +29,11 @@ static int sync_printf(const char *format, ...) {
     va_start(args, format);
 
     pthread_mutex_lock(&printf_mutex);
-    vprintf(format, args);
+    int cnt = vprintf(format, args);
     pthread_mutex_unlock(&printf_mutex);
 
     va_end(args);
+    return cnt;
 }
 
 static void sig_handler(int signo) {
