@@ -56,7 +56,7 @@ jobs:
         which h5c++
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          ./scripts/install_hpc_sdk.sh >/dev/null 2>/dev/null </dev/null
+          ./scripts/install_hpc_sdk.sh </dev/null
           source setup_nv_h5.sh
         fi
         df -h .
