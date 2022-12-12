@@ -123,4 +123,7 @@ source $PWD/setup_scripts/setup_nv_hpc_bins.sh
 PATH=${PWD}/conda_h5:\$PATH
 EOF
 
+# we don't need the install dir anymore
+rm -fr nvhpc_*
+
 echo "Setup script avaiabile in $PWD/setup_nv_h5.sh"
