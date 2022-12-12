@@ -41,6 +41,7 @@ if [ "x${NV_URL}" == "x" ]; then
   NV_URL=https://developer.download.nvidia.com/hpc-sdk/21.7/nvhpc_2021_217_Linux_x86_64_cuda_multi.tar.gz
 fi
 
+echo "Downloading the NVIDIA HPC SDK"
 # Defaults to using curl
 # set USE_CURL=N if you want to use aria2 or wget
 if [ "x${USE_CURL}" == "x" ]; then
@@ -51,7 +52,8 @@ if [ "x${USE_CURL}" == "x" ]; then
     tar xpzf nvhpc.tgz
     rm -f nvhpc.tgz
   else
-    curl "${NV_URL}" | tar xpzf -
+    # Do not unpack things we do not use for unifrac
+    curl -s "${NV_URL}" | tar xpzf - --exclude '*libcublas*' --exclude '*libcufft*' --exclude '*libcusparse*' --exclude '*libcusolver*' --exclude '*libcurand*' --exclude '*profilers*' --exclude '*comm_libs*' --exclude '*/doc/*' --exclude '*/plugin*'
   fi
 elif [ "x${USE_ARIA2}" == "x" ]; then
   aria2c "${NV_URL}"
@@ -62,6 +64,8 @@ else
   tar xpzf nvhpc_*.tar.gz
   rm -f nvhpc_*.tar.gz
 fi
+
+echo "Installing NVIDIA HPC SDK"
 
 # must patch the install scripts to find the right gcc
 for f in nvhpc_*/install_components/install nvhpc_*/install_components/*/*/compilers/bin/makelocalrc nvhpc_*/install_components/install_cuda; do
