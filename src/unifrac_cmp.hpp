@@ -19,6 +19,9 @@
 
 namespace SUCMP_NM {
 
+  // Returns True iff a GPU can be used
+  bool found_gpu();
+
   void unifrac(const su::biom_interface &table,
                const su::BPTree &tree,
                su::Method unifrac_method,
