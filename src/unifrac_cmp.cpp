@@ -25,6 +25,19 @@
 
 using namespace SUCMP_NM;
 
+#ifdef _OPENACC
+#include <openacc.h>
+
+bool SUCMP_NM::found_gpu() {
+  return acc_get_device_type() != acc_device_host;
+}
+
+#else
+bool SUCMP_NM::found_gpu() {
+  return false;
+}
+#endif
+
 template<class TFloat>
 inline void initialize_sample_counts(TFloat*& _counts, const su::task_parameters* task_p, const su::biom_interface &table) {
     const unsigned int n_samples = task_p->n_samples;

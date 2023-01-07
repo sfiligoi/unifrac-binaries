@@ -398,6 +398,12 @@ inline bool use_acc() {
    }
  }
 
+ if (has_nvidia_gpu_rc == 0) {
+    if (!su_acc::found_gpu()) {
+       has_nvidia_gpu_rc  = 1;
+       if (print_info) printf("INFO (unifrac): NVIDIA GPU listed but OpenACC cannot use it.\n");
+    }
+ } 
 
  if (has_nvidia_gpu_rc != 0) {
    if (print_info) printf("INFO (unifrac): GPU not found, using CPU\n");
