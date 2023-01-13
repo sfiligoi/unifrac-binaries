@@ -41,10 +41,10 @@ void usage() {
     std::cout << "    --n-substeps\t[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1." << std::endl;
     std::cout << "    --format|-r\t[OPTIONAL]  Output format:" << std::endl;
     std::cout << "    \t\t    ascii : [DEFAULT] Original ASCII format." << std::endl;
-    std::cout << "    \t\t    hfd5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
+    std::cout << "    \t\t    hdf5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
-    std::cout << "    \t\t    hfd5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
+    std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
     std::cout << "    -n\t\t[OPTIONAL] DEPRECATED, no-op." << std::endl;
