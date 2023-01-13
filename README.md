@@ -157,6 +157,7 @@ The methods can be used directly through the command line after install:
                                  hfd5 : HFD5 format.  May be fp32 or fp64, depending on method.
                                  hdf5_fp32 : HFD5 format, using fp32 precision.
                                  hdf5_fp64 : HFD5 format, using fp64 precision.
+                                 hfd5_nodist : HFD5 format, no distance matrix, just PCoA.
         --pcoa	[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)
         --diskbuf	[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe).
         -n		[OPTIONAL] DEPRECATED, no-op.

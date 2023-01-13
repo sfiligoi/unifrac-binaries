@@ -188,12 +188,18 @@ inline compute_status is_fp64_method(const std::string &method_string, bool &fp6
 }
 
 
-inline compute_status is_fp64(const std::string &method_string, const std::string &format_string, bool &fp64) {
+inline compute_status is_fp64(const std::string &method_string, const std::string &format_string, bool &fp64, bool &save_dist) {
   if (format_string == "hdf5_fp32") {
     fp64 = false;
+    save_dist = true;
   } else if (format_string == "hdf5_fp64") {
     fp64 = true;
+    save_dist = true;
   } else if (format_string == "hdf5") {
+    save_dist = true;
+    return is_fp64_method(method_string, fp64);
+  } else if (format_string == "hdf5_nodist") {
+    save_dist = false;
     return is_fp64_method(method_string, fp64);
   } else {
     return unknown_method; 
@@ -690,7 +696,8 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
                                unsigned int pcoa_dims, const char *mmap_dir)
 {
     bool fp64;
-    compute_status rc = is_fp64(unifrac_method, format, fp64);
+    bool save_dist;
+    compute_status rc = is_fp64(unifrac_method, format, fp64, save_dist);
 
     if (rc==okay) {
       if (fp64) {
@@ -702,7 +709,7 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
 
         if (rc==okay) {
           // we have no alternative to hdf5 right now
-          IOStatus iostatus = write_mat_from_matrix_hdf5(out_filename, result, pcoa_dims);
+          IOStatus iostatus = write_mat_from_matrix_hdf5_fp64(out_filename, result, pcoa_dims, save_dist);
           destroy_mat_full_fp64(&result);
 
           if (iostatus!=write_okay) rc=output_error;
@@ -716,7 +723,7 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
      
         if (rc==okay) {
           // we have no alternative to hdf5 right now 
-          IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims);
+          IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims, save_dist);
           destroy_mat_full_fp32(&result);
 
           if (iostatus!=write_okay) rc=output_error;
@@ -812,7 +819,7 @@ herr_t write_hdf5_string(hid_t output_file_id,const char *dname, const char *str
 
 // Internal: Make sure TReal and real_id match
 template<class TReal, class TMat>
-IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result, hid_t real_id, unsigned int pcoa_dims) {
+IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result, hid_t real_id, unsigned int pcoa_dims, bool save_dist) {
    /* Create a new file using default properties. */
    hid_t output_file_id = H5Fcreate(output_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
    if (output_file_id<0) return write_error;
@@ -857,7 +864,7 @@ IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result
    }
 
    // save the matrix
-   {
+   if (save_dist) {
      hsize_t     dims[2];
      dims[0] = result->n_samples;
      dims[1] = result->n_samples;
@@ -994,7 +1001,7 @@ IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result
 
 // Internal: Make sure TReal and real_id match
 template<class TReal, class TMat>
-IOStatus write_mat_hdf5_T(const char* output_filename, mat_t* result,hid_t real_id, unsigned int pcoa_dims) {
+IOStatus write_mat_hdf5_T(const char* output_filename, mat_t* result,hid_t real_id, unsigned int pcoa_dims, bool save_dist) {
      // compute the matrix
      TMat mat_full;
      mat_full.n_samples = result->n_samples;
@@ -1009,26 +1016,26 @@ IOStatus write_mat_hdf5_T(const char* output_filename, mat_t* result,hid_t real_
      mat_full.sample_ids = result->sample_ids; // just link
 
      condensed_form_to_matrix_T(result->condensed_form, n_samples, mat_full.matrix);
-     IOStatus err =  write_mat_from_matrix_hdf5_T<TReal,TMat>(output_filename, &mat_full, real_id, pcoa_dims);
+     IOStatus err =  write_mat_from_matrix_hdf5_T<TReal,TMat>(output_filename, &mat_full, real_id, pcoa_dims, save_dist);
 
      free(mat_full.matrix);
      return err;
 }
 
-IOStatus write_mat_hdf5(const char* output_filename, mat_t* result, unsigned int pcoa_dims) {
-  return write_mat_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,pcoa_dims);
+IOStatus write_mat_hdf5_fp64(const char* output_filename, mat_t* result, unsigned int pcoa_dims, int save_dist) {
+  return write_mat_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,pcoa_dims,save_dist);
 }
 
-IOStatus write_mat_hdf5_fp32(const char* output_filename, mat_t* result, unsigned int pcoa_dims) {
-  return write_mat_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims);
+IOStatus write_mat_hdf5_fp32(const char* output_filename, mat_t* result, unsigned int pcoa_dims, int save_dist) {
+  return write_mat_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims,save_dist);
 }
 
-IOStatus write_mat_from_matrix_hdf5(const char* output_filename, mat_full_fp64_t* result, unsigned int pcoa_dims) {
-  return write_mat_from_matrix_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,pcoa_dims);
+IOStatus write_mat_from_matrix_hdf5_fp64(const char* output_filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist) {
+  return write_mat_from_matrix_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,pcoa_dims,save_dist);
 }
 
-IOStatus write_mat_from_matrix_hdf5_fp32(const char* output_filename, mat_full_fp32_t* result, unsigned int pcoa_dims) {
-  return write_mat_from_matrix_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims);
+IOStatus write_mat_from_matrix_hdf5_fp32(const char* output_filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist) {
+  return write_mat_from_matrix_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims,save_dist);
 }
 
 IOStatus write_vec(const char* output_filename, r_vec* result) {

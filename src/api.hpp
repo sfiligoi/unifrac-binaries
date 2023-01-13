@@ -336,29 +336,31 @@ EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree
  */
 EXTERN IOStatus write_mat(const char* filename, mat_t* result);
 
-/* Write a matrix object using hdf5 format
+/* Write a matrix object using hdf5 format, using fp64 precision
  *
  * filename <const char*> the file to write into
  * result <mat_t*> the results object
  * pcoa_dims <uint> PCoAdimensions to compute, if >0
+ * save_dist <bool> If false, do not same the distance matrix data
  *
  * The following error codes are returned:
  *
  * write_okay : no problems
  */
-EXTERN IOStatus write_mat_hdf5(const char* filename, mat_t* result, unsigned int pcoa_dims);
+EXTERN IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object using hdf5 format, using fp32 precision
  *
  * filename <const char*> the file to write into
  * result <mat_t*> the results object
  * pcoa_dims <uint> PCoAdimensions to compute, if >0
+ * save_dist <bool> If false, do not same the distance matrix data
  *
  * The following error codes are returned:
  *
  * write_okay : no problems
  */
-EXTERN IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int pcoa_dims);
+EXTERN IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object
  *
@@ -372,29 +374,31 @@ EXTERN IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigne
 EXTERN IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result);
 
 
-/* Write a matrix object from buffer using hdf5 format
+/* Write a matrix object from buffer using hdf5 format, using fp64 precision
  *
  * filename <const char*> the file to write into
  * result <mat_full_t*> the results object
  * pcoa_dims <uint> PCoAdimensions to compute, if >0
+ * save_dist <bool> If false, do not same the distance matrix data
  *
  * The following error codes are returned:
  *
  * write_okay : no problems
  */
-EXTERN IOStatus write_mat_from_matrix_hdf5(const char* filename, mat_full_fp64_t* result, unsigned int pcoa_dims);
+EXTERN IOStatus write_mat_from_matrix_hdf5_fp64(const char* filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object from buffer using hdf5 format, using fp32 precision
  *
  * filename <const char*> the file to write into
  * result <mat_full_fp32_t*> the results object
  * pcoa_dims <uint> PCoAdimensions to compute, if >0
+ * save_dist <bool> If false, do not same the distance matrix data
  *
  * The following error codes are returned:
  *
  * write_okay : no problems
  */
-EXTERN IOStatus write_mat_from_matrix_hdf5_fp32(const char* filename, mat_full_fp32_t* result, unsigned int pcoa_dims);
+EXTERN IOStatus write_mat_from_matrix_hdf5_fp32(const char* filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a series
  *
