@@ -10,7 +10,7 @@
 #include "biom.hpp"
 #include "unifrac.hpp"
 
-enum Format {format_invalid,format_ascii, format_hdf5_fp32, format_hdf5_fp64};
+enum Format {format_invalid,format_ascii, format_hdf5_fp32, format_hdf5_fp64, format_hdf5_nodist};
 
 void usage() {
     std::cout << "usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-a alpha] [-f]  [--vaw]" << std::endl;
@@ -44,6 +44,7 @@ void usage() {
     std::cout << "    \t\t    hfd5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
+    std::cout << "    \t\t    hfd5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
     std::cout << "    -n\t\t[OPTIONAL] DEPRECATED, no-op." << std::endl;
@@ -168,7 +169,7 @@ int mode_merge_partial_fp32(const char * output_filename, Format format_val, uns
     }
 
     IOStatus iostatus;
-    iostatus = write_mat_from_matrix_hdf5_fp32(output_filename, result, pcoa_dims);
+    iostatus = write_mat_from_matrix_hdf5_fp32(output_filename, result, pcoa_dims, format_val!=format_hdf5_nodist);
     destroy_mat_full_fp32(&result);
     
     if(iostatus != write_okay) {
@@ -196,8 +197,8 @@ int mode_merge_partial_fp64(const char * output_filename, Format format_val, uns
     }
 
     IOStatus iostatus;
-    if (format_val==format_hdf5_fp64) {
-     iostatus = write_mat_from_matrix_hdf5(output_filename, result, pcoa_dims);
+    if (format_val!=format_ascii) {
+     iostatus = write_mat_from_matrix_hdf5_fp64(output_filename, result, pcoa_dims, format_val!=format_hdf5_nodist);
     } else {
      iostatus = write_mat_from_matrix(output_filename, result);
     }
@@ -431,6 +432,8 @@ Format get_format(const std::string &format_string, const std::string &method_st
         format_val = format_hdf5_fp32;
     } else if (format_string == "hdf5_fp64") {
         format_val = format_hdf5_fp64;
+    } else if (format_string == "hdf5_nodist") {
+        format_val = format_hdf5_nodist;
     } else if (format_string == "hdf5") {
         if ((method_string=="unweighted_fp64") || (method_string=="weighted_normalized_fp64") || (method_string=="weighted_unnormalized_fp64") || (method_string=="generalized_fp64"))
            format_val = format_hdf5_fp64;
@@ -521,7 +524,7 @@ int main(int argc, char **argv){
       format_arg=sformat_arg; // easier to use a single variable
     }
     if(format_val==format_invalid) {
-        err("Invalid format, must be one of ascii|hdf5|hdf5_fp32|hdf5_fp64");
+        err("Invalid format, must be one of ascii|hdf5|hdf5_fp32|hdf5_fp64|hdf5_nodist");
         return EXIT_FAILURE;
     }
 
