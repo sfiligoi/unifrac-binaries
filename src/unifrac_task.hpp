@@ -69,14 +69,14 @@ namespace SUCMP_NM {
 #ifdef _OPENACC
           const uint64_t bufels = n_samples_r * (stop_idx-start_idx);
 #endif
-          for(unsigned int stripe=start_idx; stripe < stop_idx; stripe++) {
+          for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
-             TFloat * buf_stripe = this->operator[](stripe);
-             for(unsigned int j=0; j<n_samples; j++) {
+             TFloat * buf_stripe = ibuf+buf_idx(stripe);
+             for(uint64_t j=0; j<n_samples; j++) {
                 // Note: We could probably just initialize to zero
                 buf_stripe[j] = dm_stripe[j];
              }
-             for(unsigned int j=n_samples; j<n_samples_r; j++) {
+             for(uint64_t j=n_samples; j<n_samples_r; j++) {
                 // Avoid NaNs
                 buf_stripe[j] = 0.0;
              }
@@ -90,8 +90,8 @@ namespace SUCMP_NM {
       UnifracTaskVector<TFloat>(const UnifracTaskVector<TFloat>& ) = delete;
       UnifracTaskVector<TFloat>& operator= (const UnifracTaskVector<TFloat>&) = delete;
 
-      TFloat * operator[](unsigned int idx) { return buf+((idx-start_idx)*n_samples_r);}
-      const TFloat * operator[](unsigned int idx) const { return buf+((idx-start_idx)*n_samples_r);}
+      TFloat * operator[](unsigned int idx) { return buf+buf_idx(idx);}
+      const TFloat * operator[](unsigned int idx) const { return buf+buf_idx(idx);}
 
 
       ~UnifracTaskVector()
@@ -102,10 +102,10 @@ namespace SUCMP_NM {
           const uint64_t bufels = n_samples_r * (stop_idx-start_idx); 
 #pragma acc exit data copyout(ibuf[:bufels])
 #endif    
-          for(unsigned int stripe=start_idx; stripe < stop_idx; stripe++) {
+          for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
-             TFloat * buf_stripe = this->operator[](stripe);
-             for(unsigned int j=0; j<n_samples; j++) {
+             TFloat * buf_stripe = ibuf+buf_idx(stripe);
+             for(uint64_t j=0; j<n_samples; j++) {
               dm_stripe[j] = buf_stripe[j];
              }
           }
@@ -116,6 +116,8 @@ namespace SUCMP_NM {
     private:
       UnifracTaskVector() = delete;
       UnifracTaskVector operator=(const UnifracTaskVector&other) const = delete;
+
+      uint64_t buf_idx(uint64_t idx) const { return ((idx-start_idx)*n_samples_r);}
     };
 
     // Base task class to be shared by all tasks
