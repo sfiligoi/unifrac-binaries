@@ -11,6 +11,8 @@
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
 
+static std::default_random_engine myRandomGenerator;
+
 // Compute the E_matrix with means
 // centered must be pre-allocated and same size as mat (n_samples*n_samples)...will work even if centered==mat
 // row_means must be pre-allocated and n_samples in size
@@ -207,9 +209,8 @@ inline void centered_randomize_T(const TReal * centered, const uint32_t n_sample
   // distributed Gaussian random variables of zero mean and unit variance
   TReal *G = tmp;
   {
-    std::default_random_engine generator;
     std::normal_distribution<TReal> distribution;
-    for (uint64_t i=0; i<matrix_els; i++) G[i] = distribution(generator);
+    for (uint64_t i=0; i<matrix_els; i++) G[i] = distribution(myRandomGenerator);
   }
 
   // Note: Using the transposed version for efficiency (COL_ORDER)
