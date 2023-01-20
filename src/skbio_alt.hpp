@@ -9,6 +9,10 @@
 
 namespace su {
 
+// Set random seed used by any and all the functions
+// in this module
+void set_random_seed(uint32_t new_seed);
+
 // Center the matrix
 // mat and center must be nxn and symmetric
 // centered must be pre-allocated and same size as mat...will work even if centered==mat

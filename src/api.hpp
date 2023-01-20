@@ -14,6 +14,10 @@
 #define PARTIAL_MAGIC "SSU-PARTIAL-01"
 #define PARTIAL_MAGIC_V2 0x088ABA02
 
+/*
+ * Set random seed used by this library.
+ */
+EXTERN void ssu_set_random_seed(unsigned int new_seed);
 
 /* a result matrix
  *

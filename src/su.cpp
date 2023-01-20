@@ -46,6 +46,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
+    std::cout << "    --seed\t[OPTIONAL] Seed to use for initializing the random gnerator" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
     std::cout << "    -n\t\t[OPTIONAL] DEPRECATED, no-op." << std::endl;
     std::cout << std::endl;
@@ -470,6 +471,7 @@ int main(int argc, char **argv){
     std::string format_arg = input.getCmdOption("--format");
     std::string sformat_arg = input.getCmdOption("-r");
     std::string pcoa_arg = input.getCmdOption("--pcoa");
+    std::string seed_arg = input.getCmdOption("--seed");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
     if(nsubsteps_arg.empty()) {
@@ -533,6 +535,10 @@ int main(int argc, char **argv){
         pcoa_dims = 10;
     else
         pcoa_dims = atoi(pcoa_arg.c_str());
+
+    if(!seed_arg.empty()) {
+         ssu_set_random_seed(atoi(seed_arg.c_str()));
+    }
 
 
     if(mode_arg.empty() || mode_arg == "one-off")
