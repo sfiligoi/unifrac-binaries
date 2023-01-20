@@ -95,6 +95,10 @@
 using namespace su;
 using namespace std;
 
+void ssu_set_random_seed(unsigned int new_seed) {
+  su::set_random_seed(new_seed);
+}
+
 // https://stackoverflow.com/a/19841704/19741
 bool is_file_exists(const char *fileName) {
     std::ifstream infile(fileName);

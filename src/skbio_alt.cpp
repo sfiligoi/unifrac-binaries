@@ -13,6 +13,11 @@
 
 static std::default_random_engine myRandomGenerator;
 
+
+void su::set_random_seed(uint32_t new_seed) {
+  myRandomGenerator.seed(new_seed);
+}
+
 // Compute the E_matrix with means
 // centered must be pre-allocated and same size as mat (n_samples*n_samples)...will work even if centered==mat
 // row_means must be pre-allocated and n_samples in size
