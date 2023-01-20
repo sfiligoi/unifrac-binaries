@@ -18,6 +18,10 @@ void su::set_random_seed(uint32_t new_seed) {
   myRandomGenerator.seed(new_seed);
 }
 
+//
+// ======================= PCoA ========================
+//
+
 // Compute the E_matrix with means
 // centered must be pre-allocated and same size as mat (n_samples*n_samples)...will work even if centered==mat
 // row_means must be pre-allocated and n_samples in size
@@ -619,5 +623,52 @@ void su::pcoa_inplace(double * mat, const uint32_t n_samples, const uint32_t n_d
 void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_dims, float  * &eigenvalues, float  * &samples, float  * &proportion_explained) {
   su::InPlaceCentered<float> cobj(mat);
   pcoa_T(mat, cobj, n_samples, n_dims, eigenvalues, samples, proportion_explained);
+}
+
+//
+// ======================= permanova ========================
+//
+
+// Compute one row of PERMANOVA pseudo-F 
+// Note: Using 64-bit integers since we use multiply in the code
+template<class TRealIn, class TRealOut>
+inline TRealOut permanova_f_stat_row_T(const TRealIn * mat, const uint32_t *grouping, const uint64_t n_dims,
+                                       const uint32_t *group_sizes,
+                                       const uint64_t row) {
+  const TRealIn * mat_row = mat + row*n_dims;
+  const uint64_t group_idx = grouping[row];
+  TRealOut local_s_W = 0.0;
+  for (uint64_t col=row+1; col<n_dims; col++) {
+    if (grouping[col] == group_idx) {
+      TRealOut val = mat_row[col]; // mat[row,col];
+      local_s_W = local_s_W + val * val;
+    }
+  } // for col
+  return local_s_W/group_sizes[group_idx];
+}
+
+// Compute PERMANOVA pseudo-F partial statistic
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+// group_sizes is an array of size maxel(groupings)
+template<class TRealIn, class TRealOut>
+inline TRealOut permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t *grouping, const uint32_t n_dims,
+                                      const uint32_t *group_sizes) {
+  TRealOut s_W = 0.0;
+
+#pragma omp parallel for reduction(+:s_W) default(shared)
+  for (uint32_t rowi=0; rowi < (n_dims/2); rowi++) {
+    // since columns get shorter, combine top and bottom
+    s_W += permanova_f_stat_row_T<TRealIn,TRealOut>(mat,grouping,n_dims,group_sizes,rowi);
+    {
+      // reminder: No elements in the last row
+      const uint32_t row = n_dims-rowi-2;
+      if (row!=rowi) { // don't double count
+        s_W += permanova_f_stat_row_T<TRealIn,TRealOut>(mat,grouping,n_dims,group_sizes,row);
+      }
+    }
+  } // for rowi
+
+  return s_W;
 }
 
