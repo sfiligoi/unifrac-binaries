@@ -629,45 +629,37 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 // ======================= permanova ========================
 //
 
-// Compute one row of PERMANOVA pseudo-F 
-// Note: Using 64-bit integers since we use multiply in the code
-template<class TRealIn, class TRealOut>
-inline TRealOut permanova_f_stat_row_T(const TRealIn * mat, const uint32_t *grouping, const uint64_t n_dims,
-                                       const uint32_t *group_sizes,
-                                       const uint64_t row) {
-  const TRealIn * mat_row = mat + row*n_dims;
-  const uint64_t group_idx = grouping[row];
-  TRealOut local_s_W = 0.0;
-  for (uint64_t col=row+1; col<n_dims; col++) {
-    if (grouping[col] == group_idx) {
-      TRealOut val = mat_row[col]; // mat[row,col];
-      local_s_W = local_s_W + val * val;
-    }
-  } // for col
-  return local_s_W/group_sizes[group_idx];
-}
-
 // Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
 // group_sizes is an array of size maxel(groupings)
-template<class TRealIn, class TRealOut>
+template<class TRealIn, class TRealOut, uint32_t TILE>
 inline TRealOut permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t *grouping, const uint32_t n_dims,
                                       const uint32_t *group_sizes) {
   TRealOut s_W = 0.0;
 
-#pragma omp parallel for reduction(+:s_W) default(shared)
-  for (uint32_t rowi=0; rowi < (n_dims/2); rowi++) {
-    // since columns get shorter, combine top and bottom
-    s_W += permanova_f_stat_row_T<TRealIn,TRealOut>(mat,grouping,n_dims,group_sizes,rowi);
-    {
-      // reminder: No elements in the last row
-      const uint32_t row = n_dims-rowi-2;
-      if (row!=rowi) { // don't double count
-        s_W += permanova_f_stat_row_T<TRealIn,TRealOut>(mat,grouping,n_dims,group_sizes,row);
-      }
-    }
-  } // for rowi
+#pragma omp parallel for collapse(2) reduction(+:s_W) default(shared)
+  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
+    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
+      const uint32_t max_row = std::min(trow+TILE,n_dims);
+      const uint32_t max_col = std::min(tcol+TILE,n_dims);
+
+      // using tiling to improve memory locality
+      for (uint32_t row=trow; row < max_row; row++) {
+        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+        const uint32_t group_idx = grouping[row];
+        TRealOut local_s_W = 0.0;
+        for (uint32_t col=tcol; col < max_col; col++) {
+          if (grouping[col] == group_idx) {
+            TRealOut val = mat_row[col]; // mat[row,col];
+            local_s_W = local_s_W + val * val;
+          }
+        } // for col
+        s_W += local_s_W/group_sizes[group_idx];
+      } // for row
+
+    } // for tcol
+  } // for trow
 
   return s_W;
 }
