@@ -4,6 +4,7 @@
 
 #include "skbio_alt.hpp"
 #include <stdlib.h> 
+#include <omp.h>
 
 #include <random>
 
@@ -629,38 +630,93 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 // ======================= permanova ========================
 //
 
+
 // Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x n_dims
-// grouping is an array of size n_dims
+// grouping is a matrix of size n_dims x n_grouping_dims
 // group_sizes is an array of size maxel(groupings)
-template<class TRealIn, class TRealOut, uint32_t TILE>
-inline TRealOut permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t *grouping, const uint32_t n_dims,
-                                      const uint32_t *group_sizes) {
-  TRealOut s_W = 0.0;
+// TILE is the loop tiling parameter
+// Results in group_sWs, and array of size n_grouping_dims
+// Note: Best results when TILE is about cache line and n_grouping_dims fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const uint32_t *group_sizes,
+                                  uint32_t TILE,
+                                  TRealOut *group_sWs) {
+  uint32_t max_threads = omp_get_max_threads();
+  uint64_t thread_line = ((n_grouping_dims+15)/16)*16; // round up for cache line alignment
 
-#pragma omp parallel for collapse(2) reduction(+:s_W) default(shared)
+  TRealOut *threaded_sWs = new TRealOut[uint64_t(max_threads)*thread_line];
+
+#pragma omp parallel for schedule(static,1) default(shared)
+  for (uint64_t thread_idx=0; thread_idx<max_threads; thread_idx++) {
+     // by using static schedule,we are likely matching the actual thread_id
+     // initialize inside thread to maximize memory locality
+     TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
+     for (uint64_t grouping_el=0; grouping_el < thread_line; grouping_el++) {
+       my_sWs[grouping_el] = 0.0;
+     }
+  }
+
+#pragma omp parallel for collapse(2) default(shared)
   for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
     for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
+      uint64_t thread_idx = omp_get_thread_num();
+      TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
+
       const uint32_t max_row = std::min(trow+TILE,n_dims);
       const uint32_t max_col = std::min(tcol+TILE,n_dims);
 
-      // using tiling to improve memory locality
-      for (uint32_t row=trow; row < max_row; row++) {
-        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
-        const uint32_t group_idx = grouping[row];
-        TRealOut local_s_W = 0.0;
-        for (uint32_t col=tcol; col < max_col; col++) {
-          if (grouping[col] == group_idx) {
-            TRealOut val = mat_row[col]; // mat[row,col];
-            local_s_W = local_s_W + val * val;
-          }
-        } // for col
-        s_W += local_s_W/group_sizes[group_idx];
-      } // for row
+      // Using tiling to improve memory locality of mat and group reads
+      for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
+        const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+        TRealOut group_s_W = 0.0;
+        for (uint32_t row=trow; row < max_row; row++) {
+          const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+          const uint32_t group_idx = grouping[row];
+          TRealOut local_s_W = 0.0;
+          for (uint32_t col=tcol; col < max_col; col++) {
+            if (grouping[col] == group_idx) {
+              TRealOut val = mat_row[col]; // mat[row,col];
+              local_s_W = local_s_W + val * val;
+            }
+          } // for col
+          group_s_W += local_s_W/group_sizes[group_idx];
+        } // for row
+        my_sWs[grouping_el] += group_s_W;
+      } // for grouping_el
 
     } // for tcol
   } // for trow
 
-  return s_W;
+  // reduction into final storage, vectorized
+  for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el+=4) {
+     TRealOut group_s_W0 = 0.0;
+     TRealOut group_s_W1 = 0.0;
+     TRealOut group_s_W2 = 0.0;
+     TRealOut group_s_W3 = 0.0;
+     for (uint64_t thread_idx=0; thread_idx<max_threads; thread_idx++) {
+        TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
+        // We are rounded up to 16, so always legitimate
+        group_s_W0 += my_sWs[grouping_el];
+        group_s_W1 += my_sWs[grouping_el+1];
+        group_s_W2 += my_sWs[grouping_el+2];
+        group_s_W3 += my_sWs[grouping_el+3];
+     }
+     if ((grouping_el+3)<n_grouping_dims) { // most of the time
+        group_sWs[grouping_el]   = group_s_W0;
+        group_sWs[grouping_el+1] = group_s_W1;
+        group_sWs[grouping_el+2] = group_s_W2;
+        group_sWs[grouping_el+3] = group_s_W3;
+     } else {
+        // oh well, use less efficient method
+        group_sWs[grouping_el]   = group_s_W0;
+        if ((grouping_el+1) < n_grouping_dims) group_sWs[grouping_el+1] = group_s_W1;
+        if ((grouping_el+2) < n_grouping_dims) group_sWs[grouping_el+2] = group_s_W2;
+     }
+  }
+
+  delete[] threaded_sWs;
 }
 
