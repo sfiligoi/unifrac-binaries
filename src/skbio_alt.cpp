@@ -737,6 +737,7 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                    const uint32_t n_perm,
                                    const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
                                    TRealOut *permutted_sWs) {
+  // need temp bufffer for bulk processing
   const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
   uint32_t *permutted_groupings = new uint32_t[uint64_t(n_dims)*uint64_t(step_perms)];
 
@@ -745,6 +746,14 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
   for (uint32_t grouping_el=0; grouping_el < step_perms; grouping_el++) {
     uint32_t *my_grouping = permutted_groupings + uint64_t(grouping_el)*uint64_t(n_dims);
     for (uint32_t i=0; i<n_dims; i++) my_grouping[i] = grouping[i];
+  }
+
+  // will also use dedicated generators for deterministic behavior in threaded environment
+  std::default_random_engine *randomGenerators = new std::default_random_engine[step_perms];
+
+  for (uint32_t grouping_el=0; grouping_el < step_perms; grouping_el++) {
+    auto new_seed = myRandomGenerator();
+    randomGenerators[grouping_el].seed(new_seed);
   }
 
   // now permute and compute sWs
@@ -758,7 +767,7 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
          if (p!=0) { // do not permute the first one
            const uint32_t grouping_el = p-tp;
            uint32_t *my_grouping = permutted_groupings + uint64_t(grouping_el)*uint64_t(n_dims);
-           std::shuffle(my_grouping, my_grouping+n_dims, myRandomGenerator);
+           std::shuffle(my_grouping, my_grouping+n_dims, randomGenerators[grouping_el]);
          }
       }
       // now call the actual permanova
@@ -768,6 +777,7 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                               permutted_sWs+tp);
   }
 
+  delete[] randomGenerators;
   delete[] permutted_groupings;
 }
 
