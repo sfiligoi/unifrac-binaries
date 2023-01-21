@@ -7,6 +7,7 @@
 #include <omp.h>
 
 #include <random>
+#include <algorithm>
 
 // Not using anything mkl specific, but this is what we get from Conda
 #include <mkl_cblas.h>
@@ -633,7 +634,7 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 
 // Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x n_dims
-// grouping is a matrix of size n_dims x n_grouping_dims
+// groupings is a matrix of size n_dims x n_grouping_dims
 // group_sizes is an array of size maxel(groupings)
 // TILE is the loop tiling parameter
 // Results in group_sWs, and array of size n_grouping_dims
@@ -642,7 +643,7 @@ template<class TRealIn, class TRealOut>
 inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                   const uint32_t *groupings, const uint32_t n_grouping_dims,
                                   const uint32_t *group_sizes,
-                                  uint32_t TILE,
+                                  const uint32_t TILE,
                                   TRealOut *group_sWs) {
   uint32_t max_threads = omp_get_max_threads();
   uint64_t thread_line = ((n_grouping_dims+15)/16)*16; // round up for cache line alignment
@@ -718,5 +719,55 @@ inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
   }
 
   delete[] threaded_sWs;
+}
+
+// Compute PERMANOVA pseudo-F partial statistic using permutations
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+// group_sizes is an array of size maxel(grouping)
+//
+// MAT_TILE is the matrix loop tiling parameter
+// PERM_CHUNK is the permutation tiling parameter
+// Results in permutted_sWs, and array of size (n_perm+1)
+// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
+                                   const uint32_t *grouping, 
+                                   const uint32_t *group_sizes,
+                                   const uint32_t n_perm,
+                                   const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                                   TRealOut *permutted_sWs) {
+  const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
+  uint32_t *permutted_groupings = new uint32_t[uint64_t(n_dims)*uint64_t(step_perms)];
+
+  // first copy the original in all of the buffer rows
+#pragma omp parallel for schedule(static,1) default(shared)
+  for (uint32_t grouping_el=0; grouping_el < step_perms; grouping_el++) {
+    uint32_t *my_grouping = permutted_groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+    for (uint32_t i=0; i<n_dims; i++) my_grouping[i] = grouping[i];
+  }
+
+  // now permute and compute sWs
+  for (uint32_t tp=0; tp < (n_perm+1); tp+=step_perms) {
+      const uint32_t max_p = std::min(tp+step_perms,n_perm+1);
+      // Split in chunks for data locality
+
+      // first, permute the buffers
+#pragma omp parallel for schedule(static,1) default(shared)
+      for (uint32_t p=tp; p<max_p; p++) {
+         if (p!=0) { // do not permute the first one
+           const uint32_t grouping_el = p-tp;
+           uint32_t *my_grouping = permutted_groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+           std::shuffle(my_grouping, my_grouping+n_dims, myRandomGenerator);
+         }
+      }
+      // now call the actual permanova
+      permanova_f_stat_sW_T<TRealIn,TRealOut>(mat, n_dims,
+                                              permutted_groupings, max_p-tp,
+                                              group_sizes, MAT_TILE,
+                                              permutted_sWs+tp);
+  }
+
+  delete[] permutted_groupings;
 }
 
