@@ -858,3 +858,56 @@ inline void permanova_all_T(const TRealIn * mat, const uint32_t n_dims,
   delete[] group_sizes;
 }
 
+// Compute the permanova values for all of the permutations
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+//
+// MAT_TILE is the matrix loop tiling parameter
+// PERM_CHUNK is the permutation tiling parameter
+// Results in permutted_fstats, and array of size (n_perm+1)
+// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_T(const TRealIn * mat, const uint32_t n_dims,
+                        const uint32_t *grouping, 
+                        const uint32_t n_perm,
+                        const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                        TRealOut &fstat, TRealOut &pvalue) {
+  // First compute all the permutations
+  TRealOut *permutted_fstats = new TRealOut[n_perm+1];
+  permanova_all_T<TRealIn,TRealOut>(mat,n_dims,grouping,n_perm,MAT_TILE,PERM_CHUNK,permutted_fstats);
+
+  // keep the first one and compute p_value, too
+  TRealOut myfstat = permutted_fstats[0];
+  fstat = myfstat;
+  if (n_perm>0) {
+    uint32_t count_larger = 0;
+    for (uint32_t i=0; i<n_perm; i++) {
+      if (permutted_fstats[i+1] >= myfstat) count_larger++;
+    }
+    pvalue = (TRealOut(1.0)*(count_larger+1))/(n_perm+1);
+  } else {
+    pvalue = 0.0; // just to have a deterministic value
+  }
+
+  delete[] permutted_fstats;
+}
+
+void permanova(double * mat, unsigned int n_dims,
+               uint32_t *grouping,
+               unsigned int n_perm,
+               double *fstat_out, double *pvalue_out) {
+  permanova_T<double,double>(mat,n_dims,grouping, n_perm,
+                             16,128,  // theses seem reasona ble tilling values
+                             *fstat_out,*pvalue_out);
+}
+
+void permanova_fp32(float * mat, unsigned int n_dims,
+                    uint32_t *grouping,
+                    unsigned int n_perm,
+                    double *fstat_out, double *pvalue_out) {
+  permanova_T<float,double>(mat,n_dims,grouping, n_perm,
+                            16,128,  // theses seem reasona ble tilling values
+                            *fstat_out,*pvalue_out);
+}
+
+
