@@ -635,14 +635,14 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 // Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x n_dims
 // groupings is a matrix of size n_dims x n_grouping_dims
-// group_sizes is an array of size maxel(groupings)
+// inv_group_sizes is an array of size maxel(groupings)
 // TILE is the loop tiling parameter
 // Results in group_sWs, and array of size n_grouping_dims
 // Note: Best results when TILE is about cache line and n_grouping_dims fits in L1 cache
 template<class TRealIn, class TRealOut>
 inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                   const uint32_t *groupings, const uint32_t n_grouping_dims,
-                                  const uint32_t *group_sizes,
+                                  const TRealOut *inv_group_sizes,
                                   const uint32_t TILE,
                                   TRealOut *group_sWs) {
   uint32_t max_threads = omp_get_max_threads();
@@ -683,7 +683,7 @@ inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
               local_s_W = local_s_W + val * val;
             }
           } // for col
-          group_s_W += local_s_W/group_sizes[group_idx];
+          group_s_W += local_s_W*inv_group_sizes[group_idx];
         } // for row
         my_sWs[grouping_el] += group_s_W;
       } // for grouping_el
@@ -733,7 +733,7 @@ inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
 template<class TRealIn, class TRealOut>
 inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                    const uint32_t *grouping, 
-                                   const uint32_t *group_sizes,
+                                   const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
                                    const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
                                    TRealOut *permutted_sWs) {
@@ -756,6 +756,12 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
     randomGenerators[grouping_el].seed(new_seed);
   }
 
+  // We will use only 1/N, so pre-process
+  TRealOut *inv_group_sizes = new TRealOut[n_groups];
+  for (uint32_t i=0; i<n_groups; i++) {
+    inv_group_sizes[i] = TRealOut(1.0)/group_sizes[i];
+  }
+
   // now permute and compute sWs
   for (uint32_t tp=0; tp < (n_perm+1); tp+=step_perms) {
       const uint32_t max_p = std::min(tp+step_perms,n_perm+1);
@@ -773,10 +779,11 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
       // now call the actual permanova
       permanova_f_stat_sW_T<TRealIn,TRealOut>(mat, n_dims,
                                               permutted_groupings, max_p-tp,
-                                              group_sizes, MAT_TILE,
+                                              inv_group_sizes, MAT_TILE,
                                               permutted_sWs+tp);
   }
 
+  delete[] inv_group_sizes;
   delete[] randomGenerators;
   delete[] permutted_groupings;
 }
