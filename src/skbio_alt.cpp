@@ -788,3 +788,73 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
   delete[] permutted_groupings;
 }
 
+// Compute the square sum of the upper triangle
+template<class TRealIn, class TRealOut>
+inline TRealOut sum_upper_square(const TRealIn * mat, const uint32_t n_dims, const uint32_t TILE) {
+  TRealOut sum = 0.0;
+#pragma omp parallel for collapse(2) reduction(+:sum) default(shared)
+  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
+    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
+      const uint32_t max_row = std::min(trow+TILE,n_dims);
+      const uint32_t max_col = std::min(tcol+TILE,n_dims);
+
+      // Using tiling to be consistent with the rest of the code above
+      // Also likely improves vectorization
+      for (uint32_t row=trow; row < max_row; row++) {
+        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+        for (uint32_t col=tcol; col < max_col; col++) {
+          TRealOut val = mat_row[col]; // mat[row,col];
+          sum+=val*val;
+        }
+      }
+
+    } // for tcol
+  } // for trow
+  return sum;
+}
+
+// Compute the permanova values for all of the permutations
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+//
+// MAT_TILE is the matrix loop tiling parameter
+// PERM_CHUNK is the permutation tiling parameter
+// Results in permutted_fstats, and array of size (n_perm+1)
+// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_all_T(const TRealIn * mat, const uint32_t n_dims,
+                            const uint32_t *grouping, 
+                            const uint32_t n_perm,
+                            const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                            TRealOut *permutted_fstats) {
+  // first count the elements in the grouping
+  uint32_t n_groups = (*std::max_element(grouping,grouping+n_dims)) + 1;
+  uint32_t *group_sizes = new uint32_t[n_groups];
+  for (uint32_t i=0; i<n_groups; i++) group_sizes[i] = 0;
+  for (uint32_t i=0; i<n_dims; i++) group_sizes[grouping[i]]++;
+
+  // compute the pseudo-F partial statistics
+  {
+    // Use the same buffer as the output
+    TRealOut *permutted_sWs = permutted_fstats;
+    permanova_perm_fp_sW_T<TRealIn,TRealOut>(mat,n_dims,grouping,
+                                             group_sizes,n_groups,
+                                             n_perm,MAT_TILE,PERM_CHUNK,
+                                             permutted_sWs);
+  }
+
+  // get the normalization factor
+  TRealOut s_T = sum_upper_square<TRealIn,TRealOut>(mat,n_dims,MAT_TILE);
+ 
+  TRealOut inv_ngroups_1 = TRealOut(1.0)/ (n_groups - 1);
+  TRealOut inv_dg =   TRealOut(1.0)/  (n_dims - n_groups);
+  for (uint32_t i=0; i<(n_perm+1); i++) {
+     // reminder permutted_sWs == permutted_fstats
+     TRealOut s_W = permutted_fstats[i];
+     TRealOut s_A = s_T - s_W;
+     permutted_fstats[i] = (s_A * inv_ngroups_1) / (s_W * inv_dg);
+  }
+
+  delete[] group_sizes;
+}
+
