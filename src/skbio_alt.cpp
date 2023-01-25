@@ -895,19 +895,27 @@ inline void permanova_T(const TRealIn * mat, const uint32_t n_dims,
 void permanova(double * mat, unsigned int n_dims,
                uint32_t *grouping,
                unsigned int n_perm,
-               double *fstat_out, double *pvalue_out) {
-  permanova_T<double,double>(mat,n_dims,grouping, n_perm,
-                             16,128,  // theses seem reasona ble tilling values
-                             *fstat_out,*pvalue_out);
+               double &fstat_out, double &pvalue_out) {
+  permanova_T<double,double>(mat, n_dims, grouping, n_perm,
+                             16, 128,  // theses seem reasona ble tilling values
+                             fstat_out, pvalue_out);
 }
 
-void permanova_fp32(float * mat, unsigned int n_dims,
-                    uint32_t *grouping,
-                    unsigned int n_perm,
-                    double *fstat_out, double *pvalue_out) {
-  permanova_T<float,double>(mat,n_dims,grouping, n_perm,
-                            16,128,  // theses seem reasona ble tilling values
-                            *fstat_out,*pvalue_out);
+void permanova(float * mat, unsigned int n_dims,
+               uint32_t *grouping,
+               unsigned int n_perm,
+               double &fstat_out, double &pvalue_out) {
+  permanova_T<float,double>(mat, n_dims, grouping, n_perm,
+                            16, 128,  // theses seem reasona ble tilling values
+                            fstat_out, pvalue_out);
 }
 
+void permanova(float * mat, unsigned int n_dims,
+               uint32_t *grouping,
+               unsigned int n_perm,
+               float &fstat_out, float &pvalue_out) {
+  permanova_T<float,float>(mat, n_dims, grouping, n_perm,
+                           16, 128,  // theses seem reasona ble tilling values
+                           fstat_out, pvalue_out);
+}
 
