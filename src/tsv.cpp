@@ -35,7 +35,7 @@ std::vector<const char *> su::tsv::get_next_line() {
   if ((fd<0) || (buf_filled<=0)) {
     // EOF or error, return empty vector
     std::vector<const char *> empty;
-    return empty;;
+    return empty;
   }
 
   char * pnewline;
@@ -49,7 +49,7 @@ std::vector<const char *> su::tsv::get_next_line() {
        buf_used = 0;
        buf_filled = diff;
        // read more
-       int cnt = read(fd,buf,4096-diff);
+       int cnt = read(fd,buf+buf_filled,4096-buf_filled);
        if (cnt>0) buf_filled += cnt;
        // try again
        pnewline = std::find(buf,buf+buf_filled,'\n');
@@ -58,6 +58,11 @@ std::vector<const char *> su::tsv::get_next_line() {
     // read another chunk
     buf_used = 0;
     buf_filled=read(fd,buf,4096);
+    if (buf_filled<=0) {
+      // EOF or error, return empty vector
+      std::vector<const char *> empty;
+      return empty;
+    }
     // search
     pnewline = std::find(buf,buf+buf_filled,'\n');
   } 
@@ -77,10 +82,11 @@ std::vector<const char *> su::tsv::get_next_line() {
   for (int i=1; i<n_tabs; i++) {
      char *pnext = std::find(plast,pnewline,'\t');
      pnext[0] = 0; // terminate prev string
-     outval[i] = pnext;
+     outval[i] = pnext+1;
      plast = pnext+1;
   }
   pnewline[0] = 0; // terminate last string
+  buf_used = pnewline+1-buf;
 
   return outval;
 }
@@ -119,7 +125,7 @@ void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *groupin
      std::vector<const char *> header_line = tsv_obj.get_next_line();
      for (int i=1; i< header_line.size(); i++) {
        if (column==header_line[i]) {
-          column_idx = 1;
+          column_idx = i;
           break; // found
        }
      }
@@ -148,7 +154,7 @@ void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *groupin
      }
      uint32_t row_idx = row_itr->second;
 
-     const char *column_val = row.at(column_idx); // will throw, if not found/valid
+     const std::string column_val = row.at(column_idx); // will throw, if not found/valid
      uint32_t column_grouping_nr;
      auto column_itr = column_map.find(column_val);
      if (column_itr != column_map.end()) {

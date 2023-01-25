@@ -313,6 +313,9 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * n_substeps <uint> the number of substeps to use.
  * format <const char*> output format to use.
  * pcoa_dims <uint> if not 0, number of dimensions to use or PCoA
+ * permanova_perms <uint> If not 0, compute PERMANOVA using that many permutations
+ * grouping_filename <const char*> the TSV filename containing grouping information
+ * grouping_columns <const char *> the columns to use for grouping
  * mmap_dir <const char*> if not empty, temp dir to use for disk-based memory 
  *
  * unifrac_to_file returns the following error codes:
@@ -324,10 +327,58 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * table_empty    : the table does not have any entries
  * output_error   : failed to properly write the output file
  */
+EXTERN ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int threads, const char* format,
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir);
+
+// backwards compatible version
 EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                      const char* unifrac_method, bool variance_adjust, double alpha,
                                      bool bypass_tips, unsigned int n_substeps, const char* format,
                                      unsigned int pcoa_dims, const char *mmap_dir);
+
+/* Compute PERMANOVA - fp64 variant
+ *
+ * grouping_filename <const char*> the filename to the grouping TSV file
+ * n_columns <uint> the number of grouping columns to process
+ * columns <const char**> the grouping columns, array of size n_columns
+ * mmap_dir <const char*> If not NULL, area to use for temp memory storage
+ * result <mat_full_fp64_t*> the distance matrix in matrix form
+ * permanova_perms <uint> the number of permutations, should be >0
+ * fstats <double *> the resulting PERMANOVA fstats, array of size n_columns
+ * pvalues <double *> the resulting PERMANOVA pvalues, array of size n_columns
+ *
+ * compute_permanova_fp64 returns the following error codes:
+ *
+ * okay               : no problems encountered
+ * grouping_missing  : the filename for the grouping does not exist or is not valid
+ */
+EXTERN ComputeStatus compute_permanova_fp64(const char *grouping_filename, unsigned int n_columns, const char* *columns,
+                                            mat_full_fp64_t * result, unsigned int permanova_perms,
+                                            double *fstats, double *pvalues);
+
+/* Compute PERMANOVA - fp32 variant
+ *
+ * grouping_filename <const char*> the filename to the grouping TSV file
+ * n_columns <uint> the number of grouping columns to process
+ * columns <const char**> the grouping columns, array of size n_columns
+ * mmap_dir <const char*> If not NULL, area to use for temp memory storage
+ * result <mat_full_fp32_t*> the distance matrix in matrix form
+ * permanova_perms <uint> the number of permutations, should be >0
+ * fstats <float *> the resulting PERMANOVA fstats, array of size n_columns
+ * pvalues <float *> the resulting PERMANOVA pvalues, array of size n_columns
+ *
+ * compute_permanova_fp32 returns the following error codes:
+ *
+ * okay               : no problems encountered
+ * grouping_missing  : the filename for the grouping does not exist or is not valid
+ */
+EXTERN ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int n_columns, const char* const* columns,
+                                            mat_full_fp32_t * result, unsigned int permanova_perms,
+                                            float *fstats, float *pvalues);
 
 /* Write a matrix object
  *
@@ -351,6 +402,7 @@ EXTERN IOStatus write_mat(const char* filename, mat_t* result);
  *
  * write_okay : no problems
  */
+// backwards compatible version, deprecated
 EXTERN IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object using hdf5 format, using fp32 precision
@@ -364,6 +416,7 @@ EXTERN IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigne
  *
  * write_okay : no problems
  */
+// backwards compatible version, deprecated
 EXTERN IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object
@@ -382,26 +435,46 @@ EXTERN IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* res
  *
  * filename <const char*> the file to write into
  * result <mat_full_t*> the results object
- * pcoa_dims <uint> PCoAdimensions to compute, if >0
+ * permanova_n_columns <uint> Number of PERMANOVA columns
+ * permanova_columns <const char**> Array of column names of size permanova_n_columns
+ * permanova_fstats <double*> Array of PERMANOVA f-stats of size permanova_n_columns
+ * permanova_pvalues <double*> Array of PERMANOVA p-values of size permanova_n_columns
+ * pcoa_dims <uint> PCoA dimensions to compute, if >0
  * save_dist <bool> If false, do not same the distance matrix data
  *
  * The following error codes are returned:
  *
  * write_okay : no problems
+ * write_error : something went wrong
  */
+EXTERN IOStatus write_mat_from_matrix_hdf5_fp64_v2(const char* output_filename, mat_full_fp64_t* result,
+                                                   unsigned int permanova_n_columns, const char* *permanova_columns, double *permanova_fstats, double *permanova_pvalues,
+                                                   unsigned int pcoa_dims, int save_dist);
+
+// backwards compatible version, deprecated
 EXTERN IOStatus write_mat_from_matrix_hdf5_fp64(const char* filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object from buffer using hdf5 format, using fp32 precision
  *
  * filename <const char*> the file to write into
  * result <mat_full_fp32_t*> the results object
+ * permanova_n_columns <uint> Number of PERMANOVA columns
+ * permanova_columns <const char**> Array of column names of size permanova_n_columns
+ * permanova_fstats <float*> Array of PERMANOVA f-stats of size permanova_n_columns
+ * permanova_pvalues <float*> Array of PERMANOVA p-values of size permanova_n_columns
  * pcoa_dims <uint> PCoAdimensions to compute, if >0
  * save_dist <bool> If false, do not same the distance matrix data
  *
  * The following error codes are returned:
  *
  * write_okay : no problems
+ * write_error : something went wrong
  */
+EXTERN IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_full_fp32_t* result,
+                                                   unsigned int permanova_n_columns, const char* *permanova_columns, float *permanova_fstats, float *permanova_pvalues,
+                                                   unsigned int pcoa_dims, int save_dist);
+
+// backwards compatible version, deprecated
 EXTERN IOStatus write_mat_from_matrix_hdf5_fp32(const char* filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a series

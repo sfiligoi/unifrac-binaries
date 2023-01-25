@@ -1,6 +1,7 @@
 #include "api.hpp"
 #include "biom.hpp"
 #include "tree.hpp"
+#include "tsv.hpp"
 #include "unifrac.hpp"
 #include "skbio_alt.hpp"
 #include <fstream>
@@ -8,6 +9,10 @@
 #include <thread>
 #include <cstring>
 #include <stdlib.h> 
+#include <string.h> 
+#include <string> 
+#include <vector>
+#include <stdexcept>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -694,10 +699,83 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
     return one_off_inmem_matrix_fp32(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
-compute_status unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
-                               const char* unifrac_method, bool variance_adjust, double alpha,
-                               bool bypass_tips, unsigned int threads, const char* format,
-                               unsigned int pcoa_dims, const char *mmap_dir)
+// Internal 
+inline std::vector<std::string> stringlist_to_vector(const char *stringlist) {
+  char *str = strdup(stringlist);
+  unsigned int n_els = 1;
+  for (const char *p = str; p[0]!=0; ++p) {
+    if (p[0]==',') n_els++;
+  }
+
+  std::vector<std::string> out(n_els);
+  char *prev=str;
+  n_els = 0;
+  for (char *p = str; p[0]!=0; ++p) {
+    if (p[0]==',') {
+       p[0] = 0;
+       out[n_els] = prev;
+       n_els++;
+       prev = p+1;
+    }
+  }
+  out[n_els] = prev;
+
+  free(str);
+  return out;  
+}
+
+
+// Internal: Make sure TReal and real_id match
+template<class TReal, class TMat>
+inline compute_status compute_permanova_T(const char *grouping_filename, unsigned int n_columns, const char* const* columns,
+                                          TMat * result, unsigned int permanova_perms,
+                                          TReal *fstats, TReal *pvalues) {
+     const uint32_t n_samples = result->n_samples;
+     uint32_t *grouping = new uint32_t[n_samples];
+
+     indexed_tsv tsv_obj(grouping_filename, n_samples, result->sample_ids);
+
+     // compute each column separately
+     for (unsigned int i=0; i<n_columns; i++) {
+       try {
+         tsv_obj.read_grouping(columns[i], grouping);
+       } catch(...) {
+         delete[] grouping;
+         return grouping_missing;
+       }
+
+       // always use double for intermediate compute, adds trivial cost
+       double my_fstat;
+       double my_pvalue;
+       su::permanova(result->matrix, n_samples,
+                     grouping, permanova_perms,
+                     my_fstat,my_pvalue);
+       fstats[i] = my_fstat;
+       pvalues[i] = my_pvalue;
+     }
+     delete[] grouping;
+
+     return okay;
+}
+
+compute_status compute_permanova_fp64(const char *grouping_filename, unsigned int n_columns, const char* *columns,
+                                      mat_full_fp64_t * result, unsigned int permanova_perms,
+                                      double *fstats, double *pvalues) {
+  return compute_permanova_T<double,mat_full_fp64_t>(grouping_filename,n_columns,columns,result,permanova_perms,fstats,pvalues);
+}
+
+compute_status compute_permanova_fp32(const char *grouping_filename, unsigned int n_columns, const char* *columns,
+                                      mat_full_fp32_t * result, unsigned int permanova_perms,
+                                      float *fstats, float *pvalues) {
+  return compute_permanova_T<float,mat_full_fp32_t>(grouping_filename,n_columns,columns,result,permanova_perms,fstats,pvalues);
+}
+
+compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, unsigned int threads, const char* format,
+                                  unsigned int pcoa_dims,
+                                  unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                  const char *mmap_dir)
 {
     bool fp64;
     bool save_dist;
@@ -712,11 +790,32 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
                             &result);
 
         if (rc==okay) {
-          // we have no alternative to hdf5 right now
-          IOStatus iostatus = write_mat_from_matrix_hdf5_fp64(out_filename, result, pcoa_dims, save_dist);
-          destroy_mat_full_fp64(&result);
+          if (permanova_perms>0) {
+            typedef const char* Tcstring;
 
-          if (iostatus!=write_okay) rc=output_error;
+            const auto columns = stringlist_to_vector(grouping_columns);
+            const unsigned int n_columns = columns.size();
+            Tcstring *columns_c = new Tcstring[n_columns];
+            for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
+            double *fstats = new double[n_columns];
+            double *pvalues = new double[n_columns];
+
+            rc = compute_permanova_fp64(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues);
+
+            if (rc==okay) {
+               IOStatus iostatus = write_mat_from_matrix_hdf5_fp64_v2(out_filename, result,
+                                                                      n_columns, columns_c, fstats, pvalues,
+                                                                      pcoa_dims, save_dist);
+               if (iostatus!=write_okay) rc=output_error;
+            }
+            delete[] pvalues;
+            delete[] fstats;
+            delete[] columns_c;
+          } else {
+            IOStatus iostatus = write_mat_from_matrix_hdf5_fp64(out_filename, result, pcoa_dims, save_dist);
+            if (iostatus!=write_okay) rc=output_error;
+          }
+          destroy_mat_full_fp64(&result);
         }
       } else {
         mat_full_fp32_t* result = NULL;
@@ -726,17 +825,48 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
                                  &result);
      
         if (rc==okay) {
-          // we have no alternative to hdf5 right now 
-          IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims, save_dist);
-          destroy_mat_full_fp32(&result);
+          if (permanova_perms>0) {
+            typedef const char* Tcstring;
 
-          if (iostatus!=write_okay) rc=output_error;
+            const auto columns = stringlist_to_vector(grouping_columns);
+            const unsigned int n_columns = columns.size();
+            Tcstring *columns_c = new Tcstring[n_columns];
+            for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
+            float *fstats = new float[n_columns];
+            float *pvalues = new float[n_columns];
+
+            rc = compute_permanova_fp32(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues);
+
+            if (rc==okay) {
+              IOStatus iostatus = write_mat_from_matrix_hdf5_fp32_v2(out_filename, result,
+                                                                     n_columns, columns_c, fstats, pvalues,
+                                                                     pcoa_dims, save_dist);
+              if (iostatus!=write_okay) rc=output_error;
+            }
+            delete[] pvalues;
+            delete[] fstats;
+            delete[] columns_c;
+          } else {
+            IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims, save_dist);
+            if (iostatus!=write_okay) rc=output_error;
+          }
+          destroy_mat_full_fp32(&result);
         }
       }
     }
 
     return rc;
 }
+
+// for backwards compatibility
+compute_status unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                               const char* unifrac_method, bool variance_adjust, double alpha,
+                               bool bypass_tips, unsigned int threads, const char* format,
+                               unsigned int pcoa_dims, const char *mmap_dir) {
+  return unifrac_to_file_v2(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,bypass_tips,
+                            threads,format,pcoa_dims,0,NULL,NULL,mmap_dir);
+}
+
 
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
@@ -821,12 +951,90 @@ herr_t write_hdf5_string(hid_t output_file_id,const char *dname, const char *str
   return status;
 }
 
+// Internal
+inline herr_t write_hdf5_stringarray(hid_t output_file_id,
+                                     const char *label,
+                                     hsize_t n_els, const char * const *els) {
+  hsize_t   dims[1];
+  dims[0] = n_els;
+  hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
+
+  // this is the convoluted way to store an array of strings
+  hid_t datatype_id = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype_id,H5T_VARIABLE);
+
+  hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
+
+  hid_t dataset_id = H5Dcreate1(output_file_id, label , datatype_id, dataspace_id, dcpl_id);
+
+  herr_t status = H5Dwrite(dataset_id, datatype_id, H5S_ALL, H5S_ALL,
+                           H5P_DEFAULT, els);
+
+  H5Dclose(dataset_id);
+  H5Tclose(datatype_id);
+  H5Sclose(dataspace_id);
+  H5Pclose(dcpl_id);
+
+  return status;
+}
+
+// Internal: Make sure TReal and real_id match
+template<class TReal>
+inline herr_t write_hdf5_array(hid_t output_file_id, hid_t real_id,
+                               const char *label,
+                               hsize_t n_els, const TReal *els) {
+  hsize_t   dims[1];
+  dims[0] = n_els;
+  hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
+
+  hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
+
+  hid_t dataset_id = H5Dcreate2(output_file_id, label, real_id, dataspace_id,
+                                H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
+  herr_t status = H5Dwrite(dataset_id, real_id, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                           els);
+
+  H5Pclose(dcpl_id);
+  H5Dclose(dataset_id);
+  H5Sclose(dataspace_id);
+
+  return status;
+}
+
+// Internal: Make sure TReal and real_id match
+template<class TReal>
+inline herr_t write_hdf5_array2D(hid_t output_file_id, hid_t real_id,
+                                 const char *label,
+                                 hsize_t dim1, hsize_t dim2, const TReal *els) {
+  hsize_t   dims[2];
+  dims[0] = dim1;
+  dims[1] = dim2;
+  hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+
+  hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
+
+  hid_t dataset_id = H5Dcreate2(output_file_id, label ,real_id, dataspace_id,
+                                H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
+  herr_t status = H5Dwrite(dataset_id, real_id, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                           els);
+
+  H5Pclose(dcpl_id);
+  H5Dclose(dataset_id);
+  H5Sclose(dataspace_id);
+
+  return status;
+}
+
 // Internal: Make sure TReal and real_id match
 template<class TReal, class TMat>
-IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result, hid_t real_id, unsigned int pcoa_dims, bool save_dist) {
+inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result, hid_t real_id,
+                                             uint32_t permanova_n_columns, const char* const *permanova_columns,TReal *permanova_fstats, TReal *permanova_pvalues,
+                                             unsigned int pcoa_dims, bool save_dist) {
    /* Create a new file using default properties. */
    hid_t output_file_id = H5Fcreate(output_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
    if (output_file_id<0) return write_error;
+
+   const auto n_samples = result->n_samples;
 
    // simple header
    if (write_hdf5_string(output_file_id,"format","BDSM")<0) {
@@ -840,27 +1048,8 @@ IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result
 
    // save the ids
    {
-     hsize_t     dims[1];
-     dims[0] = result->n_samples;
-     hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
-
-     // this is the convoluted way to store an array of strings
-     hid_t datatype_id = H5Tcopy(H5T_C_S1);
-     H5Tset_size(datatype_id,H5T_VARIABLE);
-
-     hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
-
-     hid_t dataset_id = H5Dcreate1(output_file_id, "order", datatype_id, dataspace_id, dcpl_id);
-
-     herr_t status = H5Dwrite(dataset_id, datatype_id, H5S_ALL, H5S_ALL,
-                              H5P_DEFAULT, result->sample_ids);
-
-     H5Dclose(dataset_id);
-     H5Tclose(datatype_id);
-     H5Sclose(dataspace_id);
-     H5Pclose(dcpl_id);
-
-     // check status after cleanup, for simplicity
+     herr_t status = write_hdf5_stringarray(output_file_id,
+                         "order", n_samples, result->sample_ids);
      if (status<0) {
        H5Fclose (output_file_id);
        return write_error;
@@ -869,29 +1058,49 @@ IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result
 
    // save the matrix
    if (save_dist) {
-     hsize_t     dims[2];
-     dims[0] = result->n_samples;
-     dims[1] = result->n_samples;
-     hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
-
-     hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
-
-     hid_t dataset_id = H5Dcreate2(output_file_id, "matrix",real_id, dataspace_id,
-                                   H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
-     herr_t status = H5Dwrite(dataset_id, real_id, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                              result->matrix);
-
-
-     H5Pclose(dcpl_id);
-     H5Dclose(dataset_id);
-     H5Sclose(dataspace_id);
-
-     // check status after cleanup, for simplicity
+     herr_t status = write_hdf5_array2D<TReal>(output_file_id,real_id,
+                         "matrix", n_samples, n_samples, result->matrix);
      if (status<0) {
        H5Fclose (output_file_id);
        return write_error;
      }
    }
+
+   if (permanova_n_columns>0) {
+     // save the columns used to compute permanova
+     {
+       herr_t status = write_hdf5_stringarray(output_file_id,
+                         "permanova_order", permanova_n_columns, permanova_columns);
+
+       // check status after cleanup, for simplicity
+       if (status<0) {
+         H5Fclose (output_file_id);
+         return write_error;
+       }
+     }
+
+     // save the actual data
+     {
+       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
+                         "permanova_fstats", permanova_n_columns, permanova_fstats);
+
+       // check status after cleanup, for simplicity
+       if (status<0) {
+         H5Fclose (output_file_id);
+         return write_error;
+       }
+     }
+     {
+       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
+                         "permanova_pvalues", permanova_n_columns, permanova_pvalues);
+
+       // check status after cleanup, for simplicity
+       if (status<0) {
+         H5Fclose (output_file_id);
+         return write_error;
+       }
+     }
+   } // if permanova_n_columns
 
    if (pcoa_dims>0) {
      // compute pcoa and save it in the file
@@ -900,112 +1109,63 @@ IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result
      TReal * samples;
      TReal * proportion_explained;
 
-     su::pcoa_inplace(result->matrix, result->n_samples, pcoa_dims, eigenvalues, samples, proportion_explained);
-
+     su::pcoa_inplace(result->matrix, n_samples, pcoa_dims, eigenvalues, samples, proportion_explained);
 
      if (write_hdf5_string(output_file_id,"pcoa_method","FSVD")<0) {
+       free(eigenvalues);
+       free(proportion_explained);
+       free(samples);
        H5Fclose (output_file_id);
        return write_error;
      }
 
      // save the eigenvalues
      {
-       hsize_t     dims[1];
-       dims[0] = pcoa_dims;
-       hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
-
-       hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
-
-       hid_t dataset_id = H5Dcreate2(output_file_id, "pcoa_eigvals",real_id, dataspace_id,
-                                     H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
-       herr_t status = H5Dwrite(dataset_id, real_id, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                                eigenvalues);
-
-
-       H5Pclose(dcpl_id);
-       H5Dclose(dataset_id);
-       H5Sclose(dataspace_id);
-
-       // check status after cleanup, for simplicity
+       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
+                         "pcoa_eigvals", pcoa_dims, eigenvalues);
+       free(eigenvalues);
        if (status<0) {
          H5Fclose (output_file_id);
-         free(samples);
          free(proportion_explained);
-         free(eigenvalues);
+         free(samples);
          return write_error;
        }
      }
 
      // save the proportion_explained
      {
-       hsize_t     dims[1];
-       dims[0] = pcoa_dims;
-       hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
-
-       hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
-
-       hid_t dataset_id = H5Dcreate2(output_file_id, "pcoa_proportion_explained",real_id, dataspace_id,
-                                     H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
-       herr_t status = H5Dwrite(dataset_id, real_id, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                                proportion_explained);
-
-
-       H5Pclose(dcpl_id);
-       H5Dclose(dataset_id);
-       H5Sclose(dataspace_id);
-
-       // check status after cleanup, for simplicity
+       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
+                         "pcoa_proportion_explained", pcoa_dims, proportion_explained);
+       free(proportion_explained);
        if (status<0) {
          H5Fclose (output_file_id);
          free(samples);
-         free(proportion_explained);
-         free(eigenvalues);
          return write_error;
        }
      }
 
      // save the samples
      {
-       hsize_t     dims[2];
-       dims[0] = result->n_samples;
-       dims[1] = pcoa_dims;
-       hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
-
-       hid_t dcpl_id = H5Pcreate (H5P_DATASET_CREATE);
-
-       hid_t dataset_id = H5Dcreate2(output_file_id, "pcoa_samples",real_id, dataspace_id,
-                                     H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
-       herr_t status = H5Dwrite(dataset_id, real_id, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                                samples);
-
-
-       H5Pclose(dcpl_id);
-       H5Dclose(dataset_id);
-       H5Sclose(dataspace_id);
-
-       // check status after cleanup, for simplicity
+       herr_t status = write_hdf5_array2D<TReal>(output_file_id,real_id,
+                         "pcoa_samples", n_samples, pcoa_dims, samples);
+       free(samples);
        if (status<0) {
          H5Fclose (output_file_id);
-         free(samples);
-         free(proportion_explained);
-         free(eigenvalues);
          return write_error;
        }
      }
 
-     free(samples);
-     free(proportion_explained);
-     free(eigenvalues);
+   } // if pcoa
 
-   }
 
    H5Fclose (output_file_id);
    return write_okay;
 }
 
 // Internal: Make sure TReal and real_id match
+// Note: Deprecated, for backwards compatibility only
 template<class TReal, class TMat>
-IOStatus write_mat_hdf5_T(const char* output_filename, mat_t* result,hid_t real_id, unsigned int pcoa_dims, bool save_dist) {
+inline IOStatus write_mat_hdf5_T(const char* output_filename, mat_t* result,hid_t real_id, unsigned int pcoa_dims, bool save_dist) {
      // compute the matrix
      TMat mat_full;
      mat_full.n_samples = result->n_samples;
@@ -1020,26 +1180,46 @@ IOStatus write_mat_hdf5_T(const char* output_filename, mat_t* result,hid_t real_
      mat_full.sample_ids = result->sample_ids; // just link
 
      condensed_form_to_matrix_T(result->condensed_form, n_samples, mat_full.matrix);
-     IOStatus err =  write_mat_from_matrix_hdf5_T<TReal,TMat>(output_filename, &mat_full, real_id, pcoa_dims, save_dist);
+     IOStatus err =  write_mat_from_matrix_hdf5_T<TReal,TMat>(output_filename, &mat_full, real_id, 0, NULL, NULL, NULL, pcoa_dims, save_dist);
 
      free(mat_full.matrix);
      return err;
 }
 
+// Note: Deprecated, for backwards compatibility only
 IOStatus write_mat_hdf5_fp64(const char* output_filename, mat_t* result, unsigned int pcoa_dims, int save_dist) {
   return write_mat_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,pcoa_dims,save_dist);
 }
 
+// Note: Deprecated, for backwards compatibility only
 IOStatus write_mat_hdf5_fp32(const char* output_filename, mat_t* result, unsigned int pcoa_dims, int save_dist) {
   return write_mat_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims,save_dist);
 }
 
-IOStatus write_mat_from_matrix_hdf5_fp64(const char* output_filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist) {
-  return write_mat_from_matrix_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,pcoa_dims,save_dist);
+IOStatus write_mat_from_matrix_hdf5_fp64_v2(const char* output_filename, mat_full_fp64_t* result,
+                                            unsigned int permanova_n_columns, const char* *permanova_columns, double *permanova_fstats, double *permanova_pvalues,
+                                            unsigned int pcoa_dims, int save_dist) {
+  return write_mat_from_matrix_hdf5_T<double,mat_full_fp64_t>(output_filename,result,H5T_IEEE_F64LE,
+                        permanova_n_columns,permanova_columns,permanova_fstats,permanova_pvalues,
+                        pcoa_dims,save_dist);
 }
 
+IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_full_fp32_t* result,
+                                            unsigned int permanova_n_columns, const char* *permanova_columns, float *permanova_fstats, float *permanova_pvalues,
+                                            unsigned int pcoa_dims, int save_dist) {
+  return write_mat_from_matrix_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,
+                        permanova_n_columns,permanova_columns,permanova_fstats,permanova_pvalues,
+                        pcoa_dims,save_dist);
+}
+
+// Backwards compatibility
+IOStatus write_mat_from_matrix_hdf5_fp64(const char* output_filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist) {
+  return write_mat_from_matrix_hdf5_fp64_v2(output_filename,result,0,NULL,NULL,NULL,pcoa_dims,save_dist);
+}
+
+// Backwards compatibility
 IOStatus write_mat_from_matrix_hdf5_fp32(const char* output_filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist) {
-  return write_mat_from_matrix_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims,save_dist);
+  return write_mat_from_matrix_hdf5_fp32_v2(output_filename,result,0,NULL,NULL,NULL,pcoa_dims,save_dist);
 }
 
 IOStatus write_vec(const char* output_filename, r_vec* result) {
