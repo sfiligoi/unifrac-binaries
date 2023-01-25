@@ -12,9 +12,11 @@
 #define _UNIFRAC_TSV_H
 
 #include <vector>
+#include <map>
 #include <string>
 
 namespace su {
+    // simple, row-by-row TSV parser
     class tsv {
         public:
             /* default constructor
@@ -41,6 +43,43 @@ namespace su {
             int buf_filled;
             int buf_used;
             char buf[4096];
+    };
+
+    // Indexed tsv parser
+    class indexed_tsv {
+        public:
+            /* main constructor
+             *
+             * @param filename The path to the TSV file to read
+             * @param n_filter_els Number of filter elements
+             * @param filter_els Only load rows having this filter index
+             *
+             * Note: All filter elements must be unique
+             */
+            indexed_tsv(const std::string &i_filename,
+                        uint32_t _n_filter_els, const char * const* filter_els);
+
+            /* constructor variant
+             *
+             * @param filename The path to the TSV file to read
+             * @param filter_els Only load rows having this filter index
+             *
+             * Note: All filter elements must be unique
+             */
+            indexed_tsv(const std::string &_filename,
+                        const std::vector<std::string> &filter_els);
+
+            /* Read TSV file and group by column
+             *
+             * @param column The column to use
+             * @param grouping Store the grouping here, array of size n_filter_els
+             *
+             */
+            void read_grouping(const std::string &column, uint32_t *grouping) const;
+        private:
+            const std::string filename;
+            const uint32_t n_filter_els;
+            std::map<const std::string,uint32_t> filter_map;
     };
 }
 
