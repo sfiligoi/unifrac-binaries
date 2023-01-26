@@ -897,7 +897,7 @@ void su::permanova(double * mat, unsigned int n_dims,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
   permanova_T<double,double>(mat, n_dims, grouping, n_perm,
-                             16, 128,  // theses seem reasona ble tilling values
+                             48, 128,  // 48*48*8= 18k, 128*8=1k, sum <32k (L1 size)
                              fstat_out, pvalue_out);
 }
 
@@ -906,7 +906,7 @@ void su::permanova(float * mat, unsigned int n_dims,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
   permanova_T<float,double>(mat, n_dims, grouping, n_perm,
-                            16, 128,  // theses seem reasona ble tilling values
+                            64, 128,  // 64*64*8= 16k, 128*8=1k, sum <32k (L1 size)
                             fstat_out, pvalue_out);
 }
 
@@ -915,7 +915,7 @@ void su::permanova(float * mat, unsigned int n_dims,
                    unsigned int n_perm,
                    float &fstat_out, float &pvalue_out) {
   permanova_T<float,float>(mat, n_dims, grouping, n_perm,
-                           16, 128,  // theses seem reasona ble tilling values
+                           64, 128,  // 64*64*8= 16k, 128*8=1k, sum <32k (L1 size)
                            fstat_out, pvalue_out);
 }
 
