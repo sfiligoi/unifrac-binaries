@@ -777,6 +777,8 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
                                   unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                                   const char *mmap_dir)
 {
+    SETUP_TDBG("unifrac_to_file")
+
     bool fp64;
     bool save_dist;
     compute_status rc = is_fp64(unifrac_method, format, fp64, save_dist);
@@ -788,6 +790,7 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
                             unifrac_method, variance_adjust, alpha,
                             bypass_tips, threads, mmap_dir,
                             &result);
+        TDBG_STEP("matrix_fp64 computed")
 
         if (rc==okay) {
           if (permanova_perms>0) {
@@ -801,11 +804,13 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
             double *pvalues = new double[n_columns];
 
             rc = compute_permanova_fp64(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues);
+            TDBG_STEP("permanova_fp64 computed")
 
             if (rc==okay) {
                IOStatus iostatus = write_mat_from_matrix_hdf5_fp64_v2(out_filename, result,
                                                                       n_columns, columns_c, fstats, pvalues,
                                                                       pcoa_dims, save_dist);
+               TDBG_STEP("file saved")
                if (iostatus!=write_okay) rc=output_error;
             }
             delete[] pvalues;
@@ -813,6 +818,7 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
             delete[] columns_c;
           } else {
             IOStatus iostatus = write_mat_from_matrix_hdf5_fp64(out_filename, result, pcoa_dims, save_dist);
+            TDBG_STEP("file saved")
             if (iostatus!=write_okay) rc=output_error;
           }
           destroy_mat_full_fp64(&result);
@@ -823,6 +829,7 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
                                  unifrac_method, variance_adjust, alpha,
                                  bypass_tips, threads, mmap_dir,
                                  &result);
+        TDBG_STEP("matrix_fp32 computed")
      
         if (rc==okay) {
           if (permanova_perms>0) {
@@ -836,11 +843,13 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
             float *pvalues = new float[n_columns];
 
             rc = compute_permanova_fp32(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues);
+            TDBG_STEP("permanova_fp32 computed")
 
             if (rc==okay) {
               IOStatus iostatus = write_mat_from_matrix_hdf5_fp32_v2(out_filename, result,
                                                                      n_columns, columns_c, fstats, pvalues,
                                                                      pcoa_dims, save_dist);
+              TDBG_STEP("file saved")
               if (iostatus!=write_okay) rc=output_error;
             }
             delete[] pvalues;
@@ -848,6 +857,7 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
             delete[] columns_c;
           } else {
             IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims, save_dist);
+            TDBG_STEP("file saved")
             if (iostatus!=write_okay) rc=output_error;
           }
           destroy_mat_full_fp32(&result);
@@ -1030,6 +1040,7 @@ template<class TReal, class TMat>
 inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result, hid_t real_id,
                                              uint32_t permanova_n_columns, const char* const *permanova_columns,TReal *permanova_fstats, TReal *permanova_pvalues,
                                              unsigned int pcoa_dims, bool save_dist) {
+   SETUP_TDBG("write_mat_from_matrix")
    /* Create a new file using default properties. */
    hid_t output_file_id = H5Fcreate(output_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
    if (output_file_id<0) return write_error;
@@ -1055,6 +1066,7 @@ inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat *
        return write_error;
      }
    }
+   TDBG_STEP("header saved")
 
    // save the matrix
    if (save_dist) {
@@ -1064,6 +1076,7 @@ inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat *
        H5Fclose (output_file_id);
        return write_error;
      }
+     TDBG_STEP("matrix saved")
    }
 
    if (permanova_n_columns>0) {
@@ -1100,6 +1113,7 @@ inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat *
          return write_error;
        }
      }
+     TDBG_STEP("permanova saved")
    } // if permanova_n_columns
 
    if (pcoa_dims>0) {
@@ -1110,6 +1124,7 @@ inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat *
      TReal * proportion_explained;
 
      su::pcoa_inplace(result->matrix, n_samples, pcoa_dims, eigenvalues, samples, proportion_explained);
+     TDBG_STEP("pcoa computed")
 
      if (write_hdf5_string(output_file_id,"pcoa_method","FSVD")<0) {
        free(eigenvalues);
@@ -1154,7 +1169,7 @@ inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat *
          return write_error;
        }
      }
-
+     TDBG_STEP("pcoa saved")
    } // if pcoa
 
 
