@@ -633,6 +633,43 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 
 
 // Compute PERMANOVA pseudo-F partial statistic
+// mat is symmetric matrix of size n_dims x in_n
+// grouping is an array of size in_n
+// inv_group_sizes is an array of size maxel(grouping)
+// TILE is the loop tiling parameter
+template<class TRealIn, class TRealOut>
+inline TRealOut permanova_f_stat_sW_T_one(const TRealIn * mat, const uint32_t n_dims,
+                                  const uint32_t *grouping,
+                                  const TRealOut *inv_group_sizes,
+                                  const uint32_t TILE) {
+  TRealOut s_W = 0.0;
+
+  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
+    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
+      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
+      const uint32_t max_col = std::min(tcol+TILE,n_dims);
+
+      for (uint32_t row=trow; row < max_row; row++) {
+        const uint32_t min_col = std::max(tcol,row+1);
+        uint32_t group_idx = grouping[row];
+
+        TRealOut local_s_W = 0.0;
+        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+        for (uint32_t col=min_col; col < max_col; col++) {
+            if (grouping[col] == group_idx) {
+                TRealOut val = mat_row[col];
+                local_s_W += val * val;
+            }
+        }
+        s_W += local_s_W*inv_group_sizes[group_idx];
+      }
+    }
+  }
+
+  return s_W;
+}
+
+// Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x n_dims
 // groupings is a matrix of size n_dims x n_grouping_dims
 // inv_group_sizes is an array of size maxel(groupings)
@@ -645,82 +682,11 @@ inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                   const TRealOut *inv_group_sizes,
                                   const uint32_t TILE,
                                   TRealOut *group_sWs) {
-  uint32_t max_threads = omp_get_max_threads();
-  uint64_t thread_line = ((n_grouping_dims+15)/16)*16; // round up for cache line alignment
-
-  TRealOut *threaded_sWs = new TRealOut[uint64_t(max_threads)*thread_line];
-
-#pragma omp parallel for schedule(static,1) default(shared)
-  for (uint64_t thread_idx=0; thread_idx<max_threads; thread_idx++) {
-     // by using static schedule,we are likely matching the actual thread_id
-     // initialize inside thread to maximize memory locality
-     TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
-     for (uint64_t grouping_el=0; grouping_el < thread_line; grouping_el++) {
-       my_sWs[grouping_el] = 0.0;
-     }
-  }
-
-#pragma omp parallel for collapse(2) default(shared)
-  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
-    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
-      uint64_t thread_idx = omp_get_thread_num();
-      TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
-
-      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
-      const uint32_t max_col = std::min(tcol+TILE,n_dims);
-
-      // Using tiling to improve memory locality of mat and group reads
-      for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
-        const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
-        TRealOut group_s_W = 0.0;
-        for (uint32_t row=trow; row < max_row; row++) {
-          const uint32_t min_col = std::max(tcol,row+1);
-
-          const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
-          const uint32_t group_idx = grouping[row];
-          TRealOut local_s_W = 0.0;
-          for (uint32_t col=min_col; col < max_col; col++) {
-            if (grouping[col] == group_idx) {
-              TRealOut val = mat_row[col]; // mat[row,col];
-              local_s_W += val * val;
-            }
-          } // for col
-          group_s_W += local_s_W*inv_group_sizes[group_idx];
-        } // for row
-        my_sWs[grouping_el] += group_s_W;
-      } // for grouping_el
-
-    } // for tcol
-  } // for trow
-
-  // reduction into final storage, vectorized
-  for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el+=4) {
-     TRealOut group_s_W0 = 0.0;
-     TRealOut group_s_W1 = 0.0;
-     TRealOut group_s_W2 = 0.0;
-     TRealOut group_s_W3 = 0.0;
-     for (uint64_t thread_idx=0; thread_idx<max_threads; thread_idx++) {
-        TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
-        // We are rounded up to 16, so always legitimate
-        group_s_W0 += my_sWs[grouping_el];
-        group_s_W1 += my_sWs[grouping_el+1];
-        group_s_W2 += my_sWs[grouping_el+2];
-        group_s_W3 += my_sWs[grouping_el+3];
-     }
-     if ((grouping_el+3)<n_grouping_dims) { // most of the time
-        group_sWs[grouping_el]   = group_s_W0;
-        group_sWs[grouping_el+1] = group_s_W1;
-        group_sWs[grouping_el+2] = group_s_W2;
-        group_sWs[grouping_el+3] = group_s_W3;
-     } else {
-        // oh well, use less efficient method
-        group_sWs[grouping_el]   = group_s_W0;
-        if ((grouping_el+1) < n_grouping_dims) group_sWs[grouping_el+1] = group_s_W1;
-        if ((grouping_el+2) < n_grouping_dims) group_sWs[grouping_el+2] = group_s_W2;
-     }
-  }
-
-  delete[] threaded_sWs;
+#pragma omp parallel for
+ for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
+    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+    group_sWs[grouping_el] = permanova_f_stat_sW_T_one(mat,n_dims,grouping,inv_group_sizes,TILE);
+ } 
 }
 
 // Compute PERMANOVA pseudo-F partial statistic using permutations
@@ -900,8 +866,9 @@ void su::permanova(double * mat, unsigned int n_dims,
                    uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
+  uint32_t max_threads = omp_get_max_threads();
   permanova_T<double,double>(mat, n_dims, grouping, n_perm,
-                             48, 128,  // 48*48*8= 18k, 128*8=1k, sum <32k (L1 size)
+                             512, max_threads, // 512 grouping els fit nicely in L1 cache
                              fstat_out, pvalue_out);
 }
 
@@ -909,8 +876,9 @@ void su::permanova(float * mat, unsigned int n_dims,
                    uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
+  uint32_t max_threads = omp_get_max_threads();
   permanova_T<float,double>(mat, n_dims, grouping, n_perm,
-                            64, 128,  // 64*64*8= 16k, 128*8=1k, sum <32k (L1 size)
+                            1024, max_threads,   // 1k grouping els fit nicely in L1 cache
                             fstat_out, pvalue_out);
 }
 
@@ -918,8 +886,9 @@ void su::permanova(float * mat, unsigned int n_dims,
                    uint32_t *grouping,
                    unsigned int n_perm,
                    float &fstat_out, float &pvalue_out) {
+  uint32_t max_threads = omp_get_max_threads();
   permanova_T<float,float>(mat, n_dims, grouping, n_perm,
-                           64, 128,  // 64*64*8= 16k, 128*8=1k, sum <32k (L1 size)
+                           1024, max_threads,  // 1k grouping els fit nicely in L1 cache
                            fstat_out, pvalue_out);
 }
 
