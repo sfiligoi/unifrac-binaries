@@ -666,7 +666,7 @@ inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
       uint64_t thread_idx = omp_get_thread_num();
       TRealOut *my_sWs = threaded_sWs + thread_idx*thread_line;
 
-      const uint32_t max_row = std::min(trow+TILE,n_dims);
+      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
       const uint32_t max_col = std::min(tcol+TILE,n_dims);
 
       // Using tiling to improve memory locality of mat and group reads
@@ -674,13 +674,15 @@ inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
         const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
         TRealOut group_s_W = 0.0;
         for (uint32_t row=trow; row < max_row; row++) {
+          const uint32_t min_col = std::max(tcol,row+1);
+
           const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
           const uint32_t group_idx = grouping[row];
           TRealOut local_s_W = 0.0;
-          for (uint32_t col=tcol; col < max_col; col++) {
+          for (uint32_t col=min_col; col < max_col; col++) {
             if (grouping[col] == group_idx) {
               TRealOut val = mat_row[col]; // mat[row,col];
-              local_s_W = local_s_W + val * val;
+              local_s_W += val * val;
             }
           } // for col
           group_s_W += local_s_W*inv_group_sizes[group_idx];
