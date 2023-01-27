@@ -74,15 +74,15 @@ std::vector<const char *> su::tsv::get_next_line() {
 
   // construct the outval
   int n_tabs = std::count(buf+buf_used,pnewline,'\t');
-  std::vector<const char *> outval(n_tabs);
+  std::vector<const char *> outval(n_tabs+1);
 
   // return pointers to buffer
   char *plast = buf+buf_used;
   outval[0] = plast;
-  for (int i=1; i<n_tabs; i++) {
+  for (int i=0; i<n_tabs; i++) {
      char *pnext = std::find(plast,pnewline,'\t');
      pnext[0] = 0; // terminate prev string
-     outval[i] = pnext+1;
+     outval[i+1] = pnext+1;
      plast = pnext+1;
   }
   pnewline[0] = 0; // terminate last string
