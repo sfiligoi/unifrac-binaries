@@ -143,7 +143,18 @@ jobs:
         ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 3 0.1
         ls -l t1.h5
         rm -f t1.h5
+        # permanova
+        echo "permanova"
+        time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5 --permanova 127 -g test500.tsv -c empo_2 -o t1.h5
+        python compare_unifrac_stats.py t1.h5 5 127 1.0 0.484 0.01
+        ls -l t1.h5
+        rm -f t1.h5
+        time ssu -m weighted_unnormalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_nodist --permanova 1023 -g test500.tsv -c empo_3 -o t1.h5
+        python compare_unifrac_stats.py t1.h5 17 1023 0.891 0.86 0.01
+        ls -l t1.h5
+        rm -f t1.h5
         # partials
+        echo "partials"
         ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode partial-report --n-partials 2
         time ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode partial --start 0 --stop 125 -o t1.partial.1
         time ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode partial --start 125 --stop 250 -o t1.partial.2
