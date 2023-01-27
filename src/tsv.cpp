@@ -115,7 +115,7 @@ su::indexed_tsv::indexed_tsv(const std::string &_filename,
 }
 
 
-void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *grouping) const {
+void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *grouping, uint32_t &n_groups) const {
   su::tsv tsv_obj(filename);
 
   // first find the column id
@@ -173,6 +173,8 @@ void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *groupin
   for (int i=1; i< n_filter_els; i++) {
      if (grouping[i] == n_filter_els) throw std::runtime_error("Not all elements found");
   }
+
+  n_groups = last_grouping_nr;
 }
 
 

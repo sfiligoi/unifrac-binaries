@@ -73,9 +73,10 @@ namespace su {
              *
              * @param column The column to use
              * @param grouping Store the grouping here, array of size n_filter_els
+             * @param n_groups Number of distinct elements in the grouping (out)
              *
              */
-            void read_grouping(const std::string &column, uint32_t *grouping) const;
+            void read_grouping(const std::string &column, uint32_t *grouping, uint32_t &n_groups) const;
         private:
             const std::string filename;
             const uint32_t n_filter_els;

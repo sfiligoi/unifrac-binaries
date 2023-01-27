@@ -435,12 +435,16 @@ EXTERN IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* res
  *
  * filename <const char*> the file to write into
  * result <mat_full_t*> the results object
- * permanova_n_columns <uint> Number of PERMANOVA columns
- * permanova_columns <const char**> Array of column names of size permanova_n_columns
- * permanova_fstats <double*> Array of PERMANOVA f-stats of size permanova_n_columns
- * permanova_pvalues <double*> Array of PERMANOVA p-values of size permanova_n_columns
  * pcoa_dims <uint> PCoA dimensions to compute, if >0
  * save_dist <bool> If false, do not same the distance matrix data
+ * stat_n_vals <uint> Number of statistics to save
+ * stat_method_arr <const char**> Array of stat. methods names
+ * stat_name_arr   <const char**> Array of stat. test names
+ * stat_val_arr   <float*>        Array of stat. values
+ * stat_pval_arr  <float*>        Array of stat. p-values
+ * stat_perm_count_arr <uint*>    Array of the number of permutations used
+ * stat_group_name_arr <const char**> Array group names used for the grouping
+ * stat_group_count_arr <uint*>       Array number of groups used for the statistics
  *
  * The following error codes are returned:
  *
@@ -448,8 +452,11 @@ EXTERN IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* res
  * write_error : something went wrong
  */
 EXTERN IOStatus write_mat_from_matrix_hdf5_fp64_v2(const char* output_filename, mat_full_fp64_t* result,
-                                                   unsigned int permanova_n_columns, const char* *permanova_columns, double *permanova_fstats, double *permanova_pvalues,
-                                                   unsigned int pcoa_dims, int save_dist);
+                                                   unsigned int pcoa_dims, int save_dist,
+                                                   unsigned int stat_n_vals,
+                                                   const char*  *stat_method_arr,     const char*        *stat_name_arr,
+                                                   const double *stat_val_arr,        const double       *stat_pval_arr, const unsigned int *stat_perm_count_arr,
+                                                   const char*  *stat_group_name_arr, const unsigned int *stat_group_count_arr);
 
 // backwards compatible version, deprecated
 EXTERN IOStatus write_mat_from_matrix_hdf5_fp64(const char* filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist);
@@ -458,12 +465,16 @@ EXTERN IOStatus write_mat_from_matrix_hdf5_fp64(const char* filename, mat_full_f
  *
  * filename <const char*> the file to write into
  * result <mat_full_fp32_t*> the results object
- * permanova_n_columns <uint> Number of PERMANOVA columns
- * permanova_columns <const char**> Array of column names of size permanova_n_columns
- * permanova_fstats <float*> Array of PERMANOVA f-stats of size permanova_n_columns
- * permanova_pvalues <float*> Array of PERMANOVA p-values of size permanova_n_columns
  * pcoa_dims <uint> PCoAdimensions to compute, if >0
  * save_dist <bool> If false, do not same the distance matrix data
+ * stat_n_vals <uint> Number of statistics to save
+ * stat_method_arr <const char**> Array of stat. methods names
+ * stat_name_arr   <const char**> Array of stat. test names
+ * stat_val_arr   <float*>        Array of stat. values
+ * stat_pval_arr  <float*>        Array of stat. p-values
+ * stat_perm_count_arr <uint*>    Array of the number of permutations used
+ * stat_group_name_arr <const char**> Array group names used for the grouping
+ * stat_group_count_arr <uint*>       Array number of groups used for the statistics
  *
  * The following error codes are returned:
  *
@@ -471,8 +482,11 @@ EXTERN IOStatus write_mat_from_matrix_hdf5_fp64(const char* filename, mat_full_f
  * write_error : something went wrong
  */
 EXTERN IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_full_fp32_t* result,
-                                                   unsigned int permanova_n_columns, const char* *permanova_columns, float *permanova_fstats, float *permanova_pvalues,
-                                                   unsigned int pcoa_dims, int save_dist);
+                                                   unsigned int pcoa_dims, int save_dist,
+                                                   unsigned int stat_n_vals,
+                                                   const char*  *stat_method_arr,     const char*        *stat_name_arr,
+                                                   const float  *stat_val_arr,        const float        *stat_pval_arr, const unsigned int *stat_perm_count_arr,
+                                                   const char*  *stat_group_name_arr, const unsigned int *stat_group_count_arr);
 
 // backwards compatible version, deprecated
 EXTERN IOStatus write_mat_from_matrix_hdf5_fp32(const char* filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist);
