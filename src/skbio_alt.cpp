@@ -760,7 +760,7 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
 template<class TRealIn, class TRealOut>
 inline TRealOut sum_upper_square(const TRealIn * mat, const uint32_t n_dims, const uint32_t TILE) {
   TRealOut sum = 0.0;
-#pragma omp parallel for collapse(2) shared(mat) reduction(+:sum) default(none)
+#pragma omp parallel for collapse(2) shared(mat) reduction(+:sum)
   for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
     for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
       const uint32_t max_row = std::min(trow+TILE,n_dims-1);
