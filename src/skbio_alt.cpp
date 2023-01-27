@@ -792,17 +792,19 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
 template<class TRealIn, class TRealOut>
 inline TRealOut sum_upper_square(const TRealIn * mat, const uint32_t n_dims, const uint32_t TILE) {
   TRealOut sum = 0.0;
-#pragma omp parallel for collapse(2) reduction(+:sum) default(shared)
+#pragma omp parallel for collapse(2) shared(mat) reduction(+:sum) default(none)
   for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
     for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
-      const uint32_t max_row = std::min(trow+TILE,n_dims);
+      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
       const uint32_t max_col = std::min(tcol+TILE,n_dims);
 
       // Using tiling to be consistent with the rest of the code above
       // Also likely improves vectorization
       for (uint32_t row=trow; row < max_row; row++) {
+        const uint32_t min_col = std::max(tcol,row+1);
+
         const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
-        for (uint32_t col=tcol; col < max_col; col++) {
+        for (uint32_t col=min_col; col < max_col; col++) {
           TRealOut val = mat_row[col]; // mat[row,col];
           sum+=val*val;
         }
@@ -844,7 +846,7 @@ inline void permanova_all_T(const TRealIn * mat, const uint32_t n_dims,
   }
 
   // get the normalization factor
-  TRealOut s_T = sum_upper_square<TRealIn,TRealOut>(mat,n_dims,MAT_TILE);
+  TRealOut s_T = sum_upper_square<TRealIn,TRealOut>(mat,n_dims,MAT_TILE)/n_dims;
  
   TRealOut inv_ngroups_1 = TRealOut(1.0)/ (n_groups - 1);
   TRealOut inv_dg =   TRealOut(1.0)/  (n_dims - n_groups);
