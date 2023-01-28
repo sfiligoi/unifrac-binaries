@@ -25,7 +25,7 @@ void usage() {
     std::cout << "                       unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 | generalized_fp32]." << std::endl;
     std::cout << "    -o\t\tThe output distance matrix." << std::endl;
     std::cout << "    -g\t\t[OPTIONAL] The input grouping in TSV." << std::endl;
-    std::cout << "    -c\t\t[OPTIONAL] The columns(s) to use for grouping, multiple values coma separted." << std::endl;
+    std::cout << "    -c\t\t[OPTIONAL] The columns(s) to use for grouping, multiple values comma separated." << std::endl;
     std::cout << "    -a\t\t[OPTIONAL] Generalized UniFrac alpha, default is 1." << std::endl;
     std::cout << "    -f\t\t[OPTIONAL] Bypass tips, reduces compute by about 50%." << std::endl;
     std::cout << "    --vaw\t[OPTIONAL] Variance adjusted, default is to not adjust for variance." << std::endl;
@@ -47,7 +47,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
-    std::cout << "    --permanova\t[OPTIONAL] Number of Permanova permutations to compute (default: 1023 with -g, do not compute if 0)" << std::endl;
+    std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 1023 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --seed\t[OPTIONAL] Seed to use for initializing the random gnerator" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;

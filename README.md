@@ -139,7 +139,7 @@ The methods can be used directly through the command line after install:
                                  unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 | generalized_fp32].
         -o		The output distance matrix.
         -g		[OPTIONAL] The input grouping in TSV.
-        -c		[OPTIONAL] The columns(s) to use for grouping, multiple values coma separted.
+        -c		[OPTIONAL] The columns(s) to use for grouping, multiple values comma separated.
         -a		[OPTIONAL] Generalized UniFrac alpha, default is 1.
         -f		[OPTIONAL] Bypass tips, reduces compute by about 50%.
         --vaw	[OPTIONAL] Variance adjusted, default is to not adjust for variance.
@@ -160,7 +160,7 @@ The methods can be used directly through the command line after install:
                                  hdf5_fp32 : HFD5 format, using fp32 precision.
                                  hdf5_fp64 : HFD5 format, using fp64 precision.
                                  hdf5_nodist : HFD5 format, no distance matrix, just PCoA.
-        --permanova	[OPTIONAL] Number of Permanova permutations to compute (default: 1023 with -g, do not compute if 0)
+        --permanova	[OPTIONAL] Number of PERMANOVA permutations to compute (default: 1023 with -g, do not compute if 0)
         --pcoa	[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)
         --seed	[OPTIONAL] Seed to use for initializing the random gnerator
         --diskbuf	[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe).
