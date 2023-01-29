@@ -47,7 +47,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
-    std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 1023 with -g, do not compute if 0)" << std::endl;
+    std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --seed\t[OPTIONAL] Seed to use for initializing the random gnerator" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
@@ -588,7 +588,7 @@ int main(int argc, char **argv){
             // cannot compute permanova without the grouping file and columns
             permanova_perms = 0;
         } else {
-            permanova_perms = 1023;
+            permanova_perms = 999;
         }
     } else {
         permanova_perms = atoi(permanova_arg.c_str());
