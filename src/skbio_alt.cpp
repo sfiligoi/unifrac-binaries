@@ -862,8 +862,8 @@ inline void permanova_T(const TRealIn * mat, const uint32_t n_dims,
   delete[] permutted_fstats;
 }
 
-void su::permanova(double * mat, unsigned int n_dims,
-                   uint32_t *grouping,
+void su::permanova(const double * mat, unsigned int n_dims,
+                   const uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
   uint32_t max_threads = omp_get_max_threads();
@@ -872,8 +872,8 @@ void su::permanova(double * mat, unsigned int n_dims,
                              fstat_out, pvalue_out);
 }
 
-void su::permanova(float * mat, unsigned int n_dims,
-                   uint32_t *grouping,
+void su::permanova(const float * mat, unsigned int n_dims,
+                   const uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
   uint32_t max_threads = omp_get_max_threads();
@@ -882,8 +882,8 @@ void su::permanova(float * mat, unsigned int n_dims,
                             fstat_out, pvalue_out);
 }
 
-void su::permanova(float * mat, unsigned int n_dims,
-                   uint32_t *grouping,
+void su::permanova(const float * mat, unsigned int n_dims,
+                   const uint32_t *grouping,
                    unsigned int n_perm,
                    float &fstat_out, float &pvalue_out) {
   uint32_t max_threads = omp_get_max_threads();

@@ -44,9 +44,9 @@ void pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_dims,
 
 
 // Compute Permanova
-void permanova(double * mat, unsigned int n_dims, uint32_t *grouping, unsigned int n_perm, double &fstat_out, double &pvalue_out);
-void permanova(float  * mat, unsigned int n_dims, uint32_t *grouping, unsigned int n_perm, double &fstat_out, double &pvalue_out);
-void permanova(float  * mat, unsigned int n_dims, uint32_t *grouping, unsigned int n_perm, float  &fstat_out, float  &pvalue_out);
+void permanova(const double * mat, unsigned int n_dims, const uint32_t *grouping, unsigned int n_perm, double &fstat_out, double &pvalue_out);
+void permanova(const float  * mat, unsigned int n_dims, const uint32_t *grouping, unsigned int n_perm, double &fstat_out, double &pvalue_out);
+void permanova(const float  * mat, unsigned int n_dims, const uint32_t *grouping, unsigned int n_perm, float  &fstat_out, float  &pvalue_out);
 }
 
 #endif
