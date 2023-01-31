@@ -4,8 +4,10 @@
 
 #include "skbio_alt.hpp"
 #include <stdlib.h> 
+#include <omp.h>
 
 #include <random>
+#include <algorithm>
 
 // Not using anything mkl specific, but this is what we get from Conda
 #include <mkl_cblas.h>
@@ -17,6 +19,10 @@ static std::default_random_engine myRandomGenerator;
 void su::set_random_seed(uint32_t new_seed) {
   myRandomGenerator.seed(new_seed);
 }
+
+//
+// ======================= PCoA ========================
+//
 
 // Compute the E_matrix with means
 // centered must be pre-allocated and same size as mat (n_samples*n_samples)...will work even if centered==mat
@@ -619,5 +625,270 @@ void su::pcoa_inplace(double * mat, const uint32_t n_samples, const uint32_t n_d
 void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_dims, float  * &eigenvalues, float  * &samples, float  * &proportion_explained) {
   su::InPlaceCentered<float> cobj(mat);
   pcoa_T(mat, cobj, n_samples, n_dims, eigenvalues, samples, proportion_explained);
+}
+
+//
+// ======================= permanova ========================
+//
+
+
+// Compute PERMANOVA pseudo-F partial statistic
+// mat is symmetric matrix of size n_dims x in_n
+// grouping is an array of size in_n
+// inv_group_sizes is an array of size maxel(grouping)
+// TILE is the loop tiling parameter
+template<class TRealIn, class TRealOut>
+inline TRealOut permanova_f_stat_sW_T_one(const TRealIn * mat, const uint32_t n_dims,
+                                  const uint32_t *grouping,
+                                  const TRealOut *inv_group_sizes,
+                                  const uint32_t TILE) {
+  TRealOut s_W = 0.0;
+
+  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
+    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
+      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
+      const uint32_t max_col = std::min(tcol+TILE,n_dims);
+
+      for (uint32_t row=trow; row < max_row; row++) {
+        const uint32_t min_col = std::max(tcol,row+1);
+        uint32_t group_idx = grouping[row];
+
+        TRealOut local_s_W = 0.0;
+        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+        for (uint32_t col=min_col; col < max_col; col++) {
+            if (grouping[col] == group_idx) {
+                TRealOut val = mat_row[col];
+                local_s_W += val * val;
+            }
+        }
+        s_W += local_s_W*inv_group_sizes[group_idx];
+      }
+    }
+  }
+
+  return s_W;
+}
+
+// Compute PERMANOVA pseudo-F partial statistic
+// mat is symmetric matrix of size n_dims x n_dims
+// groupings is a matrix of size n_dims x n_grouping_dims
+// inv_group_sizes is an array of size maxel(groupings)
+// TILE is the loop tiling parameter
+// Results in group_sWs, and array of size n_grouping_dims
+// Note: Best results when TILE is about cache line and n_grouping_dims fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const TRealOut *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  TRealOut *group_sWs) {
+#pragma omp parallel for
+ for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
+    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+    group_sWs[grouping_el] = permanova_f_stat_sW_T_one(mat,n_dims,grouping,inv_group_sizes,TILE);
+ } 
+}
+
+// Compute PERMANOVA pseudo-F partial statistic using permutations
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+// group_sizes is an array of size maxel(grouping)
+//
+// MAT_TILE is the matrix loop tiling parameter
+// PERM_CHUNK is the permutation tiling parameter
+// Results in permutted_sWs, and array of size (n_perm+1)
+// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
+                                   const uint32_t *grouping, 
+                                   const uint32_t *group_sizes, uint32_t n_groups,
+                                   const uint32_t n_perm,
+                                   const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                                   TRealOut *permutted_sWs) {
+  // need temp bufffer for bulk processing
+  const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
+  uint32_t *permutted_groupings = new uint32_t[uint64_t(n_dims)*uint64_t(step_perms)];
+
+  // first copy the original in all of the buffer rows
+#pragma omp parallel for schedule(static,1) default(shared)
+  for (uint32_t grouping_el=0; grouping_el < step_perms; grouping_el++) {
+    uint32_t *my_grouping = permutted_groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+    for (uint32_t i=0; i<n_dims; i++) my_grouping[i] = grouping[i];
+  }
+
+  // will also use dedicated generators for deterministic behavior in threaded environment
+  std::default_random_engine *randomGenerators = new std::default_random_engine[step_perms];
+
+  for (uint32_t grouping_el=0; grouping_el < step_perms; grouping_el++) {
+    auto new_seed = myRandomGenerator();
+    randomGenerators[grouping_el].seed(new_seed);
+  }
+
+  // We will use only 1/N, so pre-process
+  TRealOut *inv_group_sizes = new TRealOut[n_groups];
+  for (uint32_t i=0; i<n_groups; i++) {
+    inv_group_sizes[i] = TRealOut(1.0)/group_sizes[i];
+  }
+
+  // now permute and compute sWs
+  for (uint32_t tp=0; tp < (n_perm+1); tp+=step_perms) {
+      const uint32_t max_p = std::min(tp+step_perms,n_perm+1);
+      // Split in chunks for data locality
+
+      // first, permute the buffers
+#pragma omp parallel for schedule(static,1) default(shared)
+      for (uint32_t p=tp; p<max_p; p++) {
+         if (p!=0) { // do not permute the first one
+           const uint32_t grouping_el = p-tp;
+           uint32_t *my_grouping = permutted_groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+           std::shuffle(my_grouping, my_grouping+n_dims, randomGenerators[grouping_el]);
+         }
+      }
+      // now call the actual permanova
+      permanova_f_stat_sW_T<TRealIn,TRealOut>(mat, n_dims,
+                                              permutted_groupings, max_p-tp,
+                                              inv_group_sizes, MAT_TILE,
+                                              permutted_sWs+tp);
+  }
+
+  delete[] inv_group_sizes;
+  delete[] randomGenerators;
+  delete[] permutted_groupings;
+}
+
+// Compute the square sum of the upper triangle
+template<class TRealIn, class TRealOut>
+inline TRealOut sum_upper_square(const TRealIn * mat, const uint32_t n_dims, const uint32_t TILE) {
+  TRealOut sum = 0.0;
+#pragma omp parallel for collapse(2) shared(mat) reduction(+:sum)
+  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
+    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
+      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
+      const uint32_t max_col = std::min(tcol+TILE,n_dims);
+
+      // Using tiling to be consistent with the rest of the code above
+      // Also likely improves vectorization
+      for (uint32_t row=trow; row < max_row; row++) {
+        const uint32_t min_col = std::max(tcol,row+1);
+
+        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+        for (uint32_t col=min_col; col < max_col; col++) {
+          TRealOut val = mat_row[col]; // mat[row,col];
+          sum+=val*val;
+        }
+      }
+
+    } // for tcol
+  } // for trow
+  return sum;
+}
+
+// Compute the permanova values for all of the permutations
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+//
+// MAT_TILE is the matrix loop tiling parameter
+// PERM_CHUNK is the permutation tiling parameter
+// Results in permutted_fstats, and array of size (n_perm+1)
+// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_all_T(const TRealIn * mat, const uint32_t n_dims,
+                            const uint32_t *grouping, 
+                            const uint32_t n_perm,
+                            const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                            TRealOut *permutted_fstats) {
+  // first count the elements in the grouping
+  uint32_t n_groups = (*std::max_element(grouping,grouping+n_dims)) + 1;
+  uint32_t *group_sizes = new uint32_t[n_groups];
+  for (uint32_t i=0; i<n_groups; i++) group_sizes[i] = 0;
+  for (uint32_t i=0; i<n_dims; i++) group_sizes[grouping[i]]++;
+
+  // compute the pseudo-F partial statistics
+  {
+    // Use the same buffer as the output
+    TRealOut *permutted_sWs = permutted_fstats;
+    permanova_perm_fp_sW_T<TRealIn,TRealOut>(mat,n_dims,grouping,
+                                             group_sizes,n_groups,
+                                             n_perm,MAT_TILE,PERM_CHUNK,
+                                             permutted_sWs);
+  }
+
+  // get the normalization factor
+  TRealOut s_T = sum_upper_square<TRealIn,TRealOut>(mat,n_dims,MAT_TILE)/n_dims;
+ 
+  TRealOut inv_ngroups_1 = TRealOut(1.0)/ (n_groups - 1);
+  TRealOut inv_dg =   TRealOut(1.0)/  (n_dims - n_groups);
+  for (uint32_t i=0; i<(n_perm+1); i++) {
+     // reminder permutted_sWs == permutted_fstats
+     TRealOut s_W = permutted_fstats[i];
+     TRealOut s_A = s_T - s_W;
+     permutted_fstats[i] = (s_A * inv_ngroups_1) / (s_W * inv_dg);
+  }
+
+  delete[] group_sizes;
+}
+
+// Compute the permanova values for all of the permutations
+// mat is symmetric matrix of size n_dims x n_dims
+// grouping is an array of size n_dims
+//
+// MAT_TILE is the matrix loop tiling parameter
+// PERM_CHUNK is the permutation tiling parameter
+// Results in permutted_fstats, and array of size (n_perm+1)
+// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+template<class TRealIn, class TRealOut>
+inline void permanova_T(const TRealIn * mat, const uint32_t n_dims,
+                        const uint32_t *grouping, 
+                        const uint32_t n_perm,
+                        const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                        TRealOut &fstat, TRealOut &pvalue) {
+  // First compute all the permutations
+  TRealOut *permutted_fstats = new TRealOut[n_perm+1];
+  permanova_all_T<TRealIn,TRealOut>(mat,n_dims,grouping,n_perm,MAT_TILE,PERM_CHUNK,permutted_fstats);
+
+  // keep the first one and compute p_value, too
+  TRealOut myfstat = permutted_fstats[0];
+  fstat = myfstat;
+  if (n_perm>0) {
+    uint32_t count_larger = 0;
+    for (uint32_t i=0; i<n_perm; i++) {
+      if (permutted_fstats[i+1] >= myfstat) count_larger++;
+    }
+    pvalue = (TRealOut(1.0)*(count_larger+1))/(n_perm+1);
+  } else {
+    pvalue = 0.0; // just to have a deterministic value
+  }
+
+  delete[] permutted_fstats;
+}
+
+void su::permanova(const double * mat, unsigned int n_dims,
+                   const uint32_t *grouping,
+                   unsigned int n_perm,
+                   double &fstat_out, double &pvalue_out) {
+  uint32_t max_threads = omp_get_max_threads();
+  permanova_T<double,double>(mat, n_dims, grouping, n_perm,
+                             512, max_threads, // 512 grouping els fit nicely in L1 cache
+                             fstat_out, pvalue_out);
+}
+
+void su::permanova(const float * mat, unsigned int n_dims,
+                   const uint32_t *grouping,
+                   unsigned int n_perm,
+                   double &fstat_out, double &pvalue_out) {
+  uint32_t max_threads = omp_get_max_threads();
+  permanova_T<float,double>(mat, n_dims, grouping, n_perm,
+                            1024, max_threads,   // 1k grouping els fit nicely in L1 cache
+                            fstat_out, pvalue_out);
+}
+
+void su::permanova(const float * mat, unsigned int n_dims,
+                   const uint32_t *grouping,
+                   unsigned int n_perm,
+                   float &fstat_out, float &pvalue_out) {
+  uint32_t max_threads = omp_get_max_threads();
+  permanova_T<float,float>(mat, n_dims, grouping, n_perm,
+                           1024, max_threads,  // 1k grouping els fit nicely in L1 cache
+                           fstat_out, pvalue_out);
 }
 

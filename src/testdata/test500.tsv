@@ -1,0 +1,744 @@
+#SampleID	ph	empo_0	empo_1	empo_2	empo_3	sulfate_umol_per_l
+550.L1S137.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S2.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S302.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S303.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S350.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S382.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S44.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S52.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L1S60.s.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+550.L2S102.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S126.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S161.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S263.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S329.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S366.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S372.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L2S380.s.2.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S1.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S126.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S2.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S215.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S24.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S242.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S292.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S310.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S334.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S341.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S345.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L3S378.s.3.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L4S1.s.4.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L4S147.s.4.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L4S152.s.4.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L4S200.s.4.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L4S238.s.4.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L4S53.s.4.sequence		EMP sample	Host-associated	Animal	Animal surface	
+550.L5S156.s.5.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L5S221.s.5.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L5S247.s.5.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L5S257.s.5.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L5S279.s.5.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S117.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S147.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S219.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S261.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S312.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S317.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S321.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S82.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+550.L6S88.s.6.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+638.RMK.ENR.11.2		EMP sample	Free-living	Non-saline	Water (non-saline)	
+662.M14		EMP sample	Free-living	Saline	Surface (saline)	
+678.OA.mesocosm.439	6.77	EMP sample	Free-living	Saline	Sediment (saline)	
+678.seasonal.insitu.sample.507		EMP sample	Free-living	Saline	Sediment (saline)	
+678.T.RFLP.Sample.610		EMP sample	Free-living	Saline	Sediment (saline)	
+678.T.RFLP.Sample.726		EMP sample	Free-living	Saline	Sediment (saline)	
+678.T.RFLP.Sample.727		EMP sample	Free-living	Saline	Sediment (saline)	
+713.TL11.19	12.37	EMP sample	Free-living	Saline	Sediment (saline)	
+713.TL10.48	10.5	EMP sample	Free-living	Saline	Sediment (saline)	
+722.NP2.2.s.2.1.sequence		EMP sample	Free-living	Saline	Water (saline)	
+722.TRRsed1.2.s.2.1.sequence		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+722.AQC4cm.4.s.4.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+722.TS29.5.s.6.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+722.F11Tong.7.s.8.1.sequence		EMP sample	Host-associated	Animal	Animal secretion	
+722.TS29.7.s.8.1.sequence		EMP sample	Host-associated	Animal	Animal distal gut	
+723.C1.5m.G3.Catlin1.16Spool.110602.HWI.EAS137R.0375.s.3.1.sequence		EMP sample	Free-living	Saline	Water (saline)	
+723.C6.10m.G3.Catlin1.16Spool.110602.HWI.EAS137R.0375.s.3.1.sequence		EMP sample	Free-living	Saline	Water (saline)	
+755.LSSF.ZETA.D45.22.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.LSSF.EPSILON.D45.22.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.LSSF.GAMMA.D30.22.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.LSSF.BETA.D15.09.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L1.D5.18.10.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.D1.19.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.LSSF.ALPHA.D30.09.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.INA.06.07.11.lane1.NoIndex.L001	7.2	EMP sample	Free-living	Non-saline	Water (non-saline)	
+755.SSFA.L2.D30.06.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L1.2.D10.21.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L3.3.D3.21.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L3.2.D30.21.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L3.D40.7.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.D3.14.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L3.D20.07.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.EFA.14.06.11.lane1.NoIndex.L001	7.38	EMP sample	Free-living	Non-saline	Water (non-saline)	
+755.SSFA.L1.D10.21.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.LSSF.BETA.D1.09.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.LSSF.BETA.D45.14.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.D1.20.09.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L1.D20.18.10.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L3.D3.07.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.D40.31.05.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.D3.31.05.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L2.D10.31.05.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.D1.10.05.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L3.D20.03.05.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFA.L2.D30.12.07.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSFB.L1.3.D3.21.06.11.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+755.SSF.uneven.mix6.lane3.NoIndex.L003		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+776.SN.BE.T1B		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+776.Ant.Solo.cont.C		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+804.H03.072705.R0229		EMP sample	Free-living	Saline	Surface (saline)	
+805.pH.5.0.year.2006	5.0	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+807.C.S.11.a	8.21	EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+846.Fagna24102011Soil12C3		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+846.Fagna24102011Soil4C2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+861.X52.jul09		EMP sample	Free-living	Saline	Water (saline)	
+864.12.C.addH.addV.2010a.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.14.CON.addV.noG.addW.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.14.OTC.addV.noG.noW.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.6.C.addG.addV.2010a.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.6.C.addG.noV.2010a.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.7.CON.addV.noG.noW.A.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.9.CON.addV.noG.addW.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.LSFS1control.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.R001control.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+864.SFS1.2010.OTC.ET.b.lane2.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+894.YY1141.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OS451.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1609.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY728.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.MR326.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OR386.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OS625.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY731.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV2010.lane2.NoIndex.L002		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1308.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.GV1043.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY712.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1302.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OR410.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1590.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1587.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.C1506.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY934.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.MR949.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1642.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SL891.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY17.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.GV1020.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.F1431.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1767.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SL876.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.MR225.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1201.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OS1223.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY129.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY88.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY152.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1285.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY1371.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY650.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY1351.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1729.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OS479.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1620.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY978.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.GV1059.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OR357.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1082.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY34.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1756.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1066.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OR355.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OS1718.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1831.lane2.NoIndex.L002		EMP sample	Host-associated	Animal	Animal distal gut	
+894.MR508.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SL846.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OR347.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY1350.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.YY1653.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.UY85.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+894.SV1417.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.OS1209.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal distal gut	
+894.MR205.lane3.NoIndex.L003		EMP sample	Host-associated	Animal	Animal distal gut	
+905.PLO6.t0B	7.8	EMP sample	Free-living	Saline	Sediment (saline)	
+905.PLO6.t2.OSCANOX.0to1cm.2	7.8	EMP sample	Free-living	Saline	Sediment (saline)	
+905.PLO6.t3.OSCANOX.0to1cm.2	7.8	EMP sample	Free-living	Saline	Sediment (saline)	
+910.PocLT2		EMP sample	Host-associated	Animal	Animal corpus	
+910.CuracaoTurf4C		EMP sample	Host-associated	Plant	Plant corpus	
+925.SI2y		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.SH4y		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.SH1y		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.SE3x		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.SD5y		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.SA5y		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.SA4z		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.IH1z	8.79	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.IG1y	8.75	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.IF1y	8.91	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.ID2z	9.0	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.IM1x	9.0	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.IL1z	8.94	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+925.IB1x	8.76	EMP sample	Free-living	Non-saline	Surface (non-saline)	
+933.BbA		EMP sample	Host-associated	Plant	Plant surface	
+933.BuG		EMP sample	Host-associated	Plant	Plant surface	
+933.W.1.3.S.E.3		EMP sample	Host-associated	Plant	Plant surface	
+933.W.1.1.S.E.3		EMP sample	Host-associated	Plant	Plant surface	
+933.Phylospora.comosa.3.2		EMP sample	Host-associated	Plant	Plant surface	
+933.W.2.3.S.E.1		EMP sample	Host-associated	Plant	Plant surface	
+933.W.2.2.H.E.4		EMP sample	Host-associated	Plant	Plant surface	
+933.T.3.3.S.E.5		EMP sample	Host-associated	Plant	Plant surface	
+933.T.3.1.H.E.5		EMP sample	Host-associated	Plant	Plant surface	
+933.N.2.3.H.P.4		EMP sample	Host-associated	Plant	Plant surface	
+933.N.1.3.S.E.1		EMP sample	Host-associated	Plant	Plant surface	
+933.N.1.2.H.E.1		EMP sample	Host-associated	Plant	Plant surface	
+940.CR.59.Fecal		EMP sample	Host-associated	Animal	Animal distal gut	
+940.P.11.Fecal		EMP sample	Host-associated	Animal	Animal distal gut	
+940.RD.09.Gill		EMP sample	Host-associated	Animal	Animal surface	
+940.RD.26.Oral		EMP sample	Host-associated	Animal	Animal surface	
+940.CR.13.Ventral		EMP sample	Host-associated	Animal	Animal surface	
+940.CR.28.Ventral		EMP sample	Host-associated	Animal	Animal surface	
+940.GH.04.Ventral		EMP sample	Host-associated	Animal	Animal surface	
+940.Blank08		EMP sample	Control	Negative	Sterile water blank	
+945.P6.C11.lane2.NoIndex.L002	4.92	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P6.F11.lane2.NoIndex.L002	5.95	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P6.F5.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P6.G10.lane2.NoIndex.L002	4.82	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P7.A2.lane2.NoIndex.L002	6.2	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P7.B10.lane2.NoIndex.L002	5.83	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P7.E3.lane2.NoIndex.L002	6.81	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P7.H3.lane2.NoIndex.L002	4.65	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P8.B12.lane2.NoIndex.L002	7.33	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P8.D12.lane2.NoIndex.L002	5.36	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P8.D3.lane2.NoIndex.L002	4.55	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P9.B2.lane2.NoIndex.L002	6.24	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P13.B4.lane5.NoIndex.L005	8.77	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P9.H10.lane3.NoIndex.L003	8.29	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P9.H11.lane3.NoIndex.L003	8.3	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P11.A11.lane3.NoIndex.L003	8.18	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P11.F10.lane3.NoIndex.L003	8.24	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P12.B2.lane3.NoIndex.L003	8.67	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P12.C4.lane3.NoIndex.L003	8.57	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P12.G4.lane5.NoIndex.L005	8.62	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P14.E11.lane3.NoIndex.L003	8.02	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P14.G9.lane3.NoIndex.L003	8.2	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P1.B5.lane2.NoIndex.L002	8.3	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P1.F2.lane2.NoIndex.L002	8.53	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P1.G11.lane2.NoIndex.L002	8.08	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P2.D2.lane2.NoIndex.L002	8.04	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P2.G5.lane2.NoIndex.L002	7.97	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P2.G6.lane2.NoIndex.L002	7.63	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P3.B2.lane2.NoIndex.L002	8.43	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P4.A10.lane2.NoIndex.L002	8.01	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P4.C3.lane2.NoIndex.L002	7.86	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P4.C4.lane2.NoIndex.L002	7.75	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P5.C2.lane2.NoIndex.L002	8.07	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P5.D6.lane2.NoIndex.L002	7.88	EMP sample	Free-living	Non-saline	Water (non-saline)	
+945.P5.H7.lane2.NoIndex.L002	7.76	EMP sample	Free-living	Non-saline	Water (non-saline)	
+958.N.08		EMP sample	Host-associated	Animal	Animal secretion	
+958.O.14		EMP sample	Host-associated	Animal	Animal secretion	
+958.O.01		EMP sample	Host-associated	Animal	Animal secretion	
+963.Iguana.20.052010.LAB.vial.65		EMP sample	Host-associated	Animal	Animal distal gut	
+963.Iguana.79.051011.LAB.vial.626		EMP sample	Host-associated	Animal	Animal distal gut	
+990.KA2F.C.15		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA1F.C.02		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2F.B.21		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3F.D.16		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3U.C.18		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2U.C.18		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3F.B.18		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2U.C.23		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3U.A.19		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2F.D.21		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2F.E.14		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3U.A.05		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2U.A.06		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3U.B.09		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3U.D.21		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3U.A.15		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2F.A.19		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA3F.C.12		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA1U.D.20		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+990.KA2U.E.11		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1001.SKM2	6.82	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1024.DPOO1.C1.HA.4.441.bulk.4.12.G1.L00	7.09	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1024.SH005.C3.RH.5.175.flw.6.11.G1.L00		EMP sample	Host-associated	Plant	Plant corpus	
+1024.SH005.C3.RH.3.173.flw.6.11.G1.L00		EMP sample	Host-associated	Plant	Plant corpus	
+1024.SH008.C6.HA.4.341.bulk.9.11.G1.L00	7.29	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1024.RU006.C181.RH.1.141.bulk.6.11.G1.L00	6.3	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1024.HE003.C181.HA.2.125.bulk.6.11.G1.L00	6.74	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1024.SH004.C1.RH.4.13.bulk.6.11.G1.L00	7.28	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1030.TVF.2004.Loc4.D10.Rep3		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1030.TVF.2004.Loc2.D0.Rep2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1030.TVF.2004.Loc4.D0.Rep2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1030.TVF.2004.Loc5.D0.Rep1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1030.TVF.Control.Loc3.D10.Rep2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1030.TVF.2004.Loc3.D0.Rep4		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1031.CHRA3	3.6	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1034.ZKD1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1034.ZKG1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1035.UQ832	8.8	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1035.UQ841	8.95	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1035.UQ861	8.44	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1036.P.C.2.1.s.4.1.sequences	6.2	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1036.P.C.14.1.s.4.1.sequences	6.2	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1036.P.Ac.7.1.s.4.1.sequences	6.2	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1038.MF2.1	4.8	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1039.P.Abraao.SA.		EMP sample	Free-living	Saline	Water (saline)	
+1041.S001.50	7.772	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1043.Tabonuco.26C.Control.TP1.01		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1043.Tabonuco.20C.Start.T0.01		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1043.Start.Hopland.14C.T0.02		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1056.Myr.tri.Mont.1.1		EMP sample	Host-associated	Animal	Animal distal gut	
+1056.Myr.tri.Seat.24.04L12		EMP sample	Host-associated	Animal	Animal distal gut	
+1056.Ory.afe.Colch.7		EMP sample	Host-associated	Animal	Animal distal gut	
+1064.H.CV330		EMP sample	Host-associated	Animal	Animal corpus	
+1064.H.CV302		EMP sample	Host-associated	Animal	Animal corpus	
+1064.H.CJV175		EMP sample	Host-associated	Animal	Animal corpus	
+1064.G.CJV174		EMP sample	Host-associated	Animal	Animal corpus	
+1064.H.CV344		EMP sample	Host-associated	Animal	Animal corpus	
+1197.SE.20101002.GY.FF005.BC.147.a		EMP sample	Free-living	Saline	Sediment (saline)	
+1197.SE.20101008.GY.D015S.BC.178		EMP sample	Free-living	Saline	Sediment (saline)	
+1197.SE.20101011.GY.D064S.BC.245		EMP sample	Free-living	Saline	Sediment (saline)	
+1197.SE.20101018.GY.D002S.BC.382.a		EMP sample	Free-living	Saline	Sediment (saline)	
+1197.SE.20101019.GY.LBNL10.BC.501		EMP sample	Free-living	Saline	Sediment (saline)	
+1198.NOR07.STA1.CORE2.3of3		EMP sample	Free-living	Saline	Sediment (saline)	
+1235.sp0350		EMP sample	Free-living	Saline	Water (saline)	
+1235.sp1010		EMP sample	Free-living	Saline	Water (saline)	
+1235.sp1031		EMP sample	Free-living	Saline	Water (saline)	
+1235.sp1275		EMP sample	Free-living	Saline	Water (saline)	
+1235.sp1552		EMP sample	Free-living	Saline	Water (saline)	
+1235.sp1635		EMP sample	Free-living	Saline	Water (saline)	
+1240.1503T		EMP sample	Free-living	Saline	Water (saline)	
+1240.2610BCDNA		EMP sample	Free-living	Saline	Water (saline)	
+1240.2809TCDNA		EMP sample	Free-living	Saline	Water (saline)	
+1242.ME17Aug00EB2R1		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.CBE10Sept07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.CBE21June07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.CBH27July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.7.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.FBE10July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.FBE25July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.FBE27July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.FBH07June07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.7.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.FBH13June07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.FBH17Sept07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.HKE04July07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.8.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.HKH26July07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.8.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.MAE01Oct07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.7.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.MAH08Sept08.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSB09sep08H.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSB12jul08H.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSB15sep08H.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSB22jul08E.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSBE11June09.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.8.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSBE23Aug07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.2.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.NSBH21July09.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.2.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSB17aug09E.McMahon.Pool.4.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.4.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSB29jun09E.McMahon.Pool.4.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.4.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSBE07July08.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSBE22Oct07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.2.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSBH07Aug07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.2.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSBH24July07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.2.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSBH30Apr08.McMahon.Pool.3.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.3.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.SSBH31July07.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.8.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBE01Oct07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBE12Aug08.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.8.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBE15Aug08.McMahon.Pool.2.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.2.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBE21June07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBH03Aug05.McMahon.Pool.4.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.4.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBH07Nov07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBH10Nov07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.TBH24Aug05.McMahon.Pool.4.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.4.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.WSBE03July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.WSBE11July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.WSBE19July07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.WSBE23Aug07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.WSBH10Sept07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.7.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1288.WSBH23Aug07.McMahon.Pool.1.and.1percentPhiX.110310.HWUSI.EAS552R.0357.s.1.1.sequence		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1289.KH62		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1289.KH24		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1453.54432SDZ2.A3.Tfran.duod		EMP sample	Host-associated	Animal	Animal proximal gut	
+1453.54323SDZ1.C5.Cguer.feces		EMP sample	Host-associated	Animal	Animal proximal gut	
+1453.48000SDZ4.A1.Cang.stom		EMP sample	Host-associated	Animal	Animal proximal gut	
+1453.45560SDZ2.D5.Pnem.stom		EMP sample	Host-associated	Animal	Animal proximal gut	
+1453.44899SDZ3.G8.Pnem.cecum		EMP sample	Host-associated	Animal	Animal proximal gut	
+1481.PO3.3.T8		EMP sample	Host-associated	Animal	Animal distal gut	
+1481.NA.06.T8		EMP sample	Host-associated	Animal	Animal distal gut	
+1481.NA.24.T0		EMP sample	Host-associated	Animal	Animal distal gut	
+1521.Sample22.s.7.1.sequences		EMP sample	Host-associated	Animal	Animal secretion	
+1521.Sample163.s.7.1.sequences		EMP sample	Host-associated	Animal	Animal secretion	
+1521.332.5.s.7.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1521.331.9.s.7.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1521.229.1.s.7.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1521.228.4.s.7.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1521.227.4.s.7.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1521.SK1.s.6.1.sequences	5.45	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.NTP8.s.6.1.sequences	4.32	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.NTP18.s.6.1.sequences	6.22	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.MP1.s.6.1.sequences	4.56	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.SPL.Fall.9.s.8.1.sequences		EMP sample	Free-living	Non-saline	Aerosol (non-saline)	
+1521.MZ.101a.s.8.1.sequences		EMP sample	Free-living	Non-saline	Aerosol (non-saline)	
+1521.EB137.s.6.1.sequences		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.EB114.s.6.1.sequences		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.EB077.s.6.1.sequences		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.EB066.s.6.1.sequences		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1521.91.W.s.6.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1521.79.W.s.6.1.sequences		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1526.HCanyon11R1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1578.O1.low.06to0.1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1579.H.2.0	6.43	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1579.MF.1.15		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1579.D.3.0	6.38	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1621.K8827		EMP sample	Host-associated	Animal	Animal distal gut	
+1621.M8817		EMP sample	Host-associated	Animal	Animal distal gut	
+1621.1BLK		EMP sample	Control	Negative	Sterile water blank	
+1621.T8873		EMP sample	Host-associated	Animal	Animal distal gut	
+1621.T8827		EMP sample	Host-associated	Animal	Animal distal gut	
+1622.UPMain.80.81		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPMain.40.41B		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPMain.29.30B		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPSub.231.232A		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPSub.107.108		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPSub.58.59		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.DP.41.42A.2		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPSub.42.43		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPSub.28.29		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1622.UPSub.22.23		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1632.E3B02.r.EMPbird.v4.NoIndex.L001		EMP sample	Host-associated	Animal	Animal surface	
+1632.E4C11.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E3G09.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E3F07.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E3C02.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E2H01.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E2E12.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E2B03.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E1H11.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E1G10.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E6H04.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E6F09.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E6C09.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E6C06.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E5H07.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E5E03.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E5C04.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E1B12.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1632.E1A09.Knight16sV4.JuannaBirdEMP.NoIndex.L005.R1.001.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1642.MS00486		EMP sample	Host-associated	Plant	Plant rhizosphere	
+1642.MS00433		EMP sample	Host-associated	Plant	Plant rhizosphere	
+1642.MS00378		EMP sample	Host-associated	Plant	Plant rhizosphere	
+1642.MS00375		EMP sample	Host-associated	Plant	Plant rhizosphere	
+1642.MS00287		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00609		EMP sample	Host-associated	Plant	Plant rhizosphere	
+1642.MS00190		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00170		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00117		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00080		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00073		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00056		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1642.MS00366		EMP sample	Host-associated	Plant	Plant rhizosphere	
+1642.MS00012		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1665.CCS2012.002		EMP sample	Host-associated	Animal	Animal surface	
+1665.RWB2011OCT31.01		EMP sample	Host-associated	Animal	Animal surface	
+1665.RWB2012AUG16.07		EMP sample	Host-associated	Animal	Animal surface	
+1674.McG.F110714Ch2R3		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1674.McG.F110715Ly5H3		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1674.McG.F110715Ly6H1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1674.McG.G110713Sj2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1674.McG.G110713Sp6		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1674.McG.P110714Hi1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1674.McG.P110715Ly1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1692.Biofilm.A.E1.1.C.2012	4.63	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1692.Biofilm.C.E2.2.W.2012	5.01	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1692.Biofilm.B.DC.2.C.2012	4.38	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1692.Soil.Ael.Medium.2011		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1694.St5A11.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St4H2.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St3D7.r.EMPbird.v4.NoIndex.L001		EMP sample	Host-associated	Animal	Animal surface	
+1694.St3D5.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St3D12.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St3A11.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St2G10.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St2A1.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St1F4.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St1F1.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St1E8.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St3E6.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1694.St1B5.Pmoss.Jstar.16s.NoIndex.sequences		EMP sample	Host-associated	Animal	Animal surface	
+1696.FTA.A.12		EMP sample	Host-associated	Animal	Animal distal gut	
+1696.FTA.D.12a		EMP sample	Host-associated	Animal	Animal distal gut	
+1696.VH0012A		EMP sample	Host-associated	Animal	Animal distal gut	
+1696.VH0028B		EMP sample	Host-associated	Animal	Animal distal gut	
+1711.KAJ1.1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1711.KAJ3.1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1711.KAJ6.1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1713.McG.L2M1020		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1714.McG.LB210		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1714.McG.LB02		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1715.McG.NR1		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1716.McG.PAPrS37	6.2	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1717.2L.low.fertilizer		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.B24B	4.9	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.B26T	4.9	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.B30B		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.S10M	4.7	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.S14B	4.8	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.BMC.7.1T.26.3		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.BMC.8.5T.17.2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1721.BMC.7.5T.21.2		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1734.BD.ERD511		EMP sample	Host-associated	Animal	Animal distal gut	
+1734.LD.DTS1222		EMP sample	Host-associated	Animal	Animal distal gut	
+1734.BLANK.15		EMP sample	Control	Negative	Sterile water blank	
+1736.R41.0311		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.O7.1110		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.B46.0610		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.B42b.0610		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.B30.0711		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.B18.1210		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.Y3.0811		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.O38.0711		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.O36.1109		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.O35.0709		EMP sample	Host-associated	Animal	Animal distal gut	
+1736.B12.0610		EMP sample	Host-associated	Animal	Animal distal gut	
+1747.207495.10512.skin		EMP sample	Host-associated	Animal	Animal surface	
+1747.DZF.6272012.KK.mulch.substrate		EMP sample	Host-associated	Plant	Plant corpus	
+1748.4.24.12.FR.2.V		EMP sample	Host-associated	Animal	Animal surface	
+1748.5.18.12.R.16.D		EMP sample	Host-associated	Animal	Animal surface	
+1748.5.18.12.R.8.V		EMP sample	Host-associated	Animal	Animal surface	
+1748.BLANK20		EMP sample	Control	Negative	Sterile water blank	
+1773.Zono.capensis2.lgi		EMP sample	Host-associated	Animal	Animal distal gut	
+1773.Columb.passer6.lgi		EMP sample	Host-associated	Animal	Animal distal gut	
+1773.Columb.passer7.ugi		EMP sample	Host-associated	Animal	Animal proximal gut	
+1773.Columb.passer8.lgi		EMP sample	Host-associated	Animal	Animal distal gut	
+1773.Platy.flav1.gizz		EMP sample	Host-associated	Animal	Animal proximal gut	
+1773.Chirox.lance2.gizz		EMP sample	Host-associated	Animal	Animal proximal gut	
+1774.114.Skin.Puer		EMP sample	Host-associated	Animal	Animal surface	
+1774.15BI22.10.09		EMP sample	Host-associated	Animal	Animal surface	
+1774.17Nasal22.10.09		EMP sample	Host-associated	Animal	Animal secretion	
+1774.21Nasal22.10.09		EMP sample	Host-associated	Animal	Animal secretion	
+1774.229.Skin.Puer		EMP sample	Host-associated	Animal	Animal surface	
+1774.25Oral22.10.09		EMP sample	Host-associated	Animal	Animal secretion	
+1774.3.Skin.Puer		EMP sample	Host-associated	Animal	Animal surface	
+1774.302.Inte.Puer		EMP sample	Host-associated	Animal	Animal distal gut	
+1774.314.Vagi.Puer		EMP sample	Host-associated	Animal	Animal secretion	
+1774.34BI23.10.09		EMP sample	Host-associated	Animal	Animal surface	
+1774.39Oral23.10.09		EMP sample	Host-associated	Animal	Animal secretion	
+1774.433.Skin.Puer		EMP sample	Host-associated	Animal	Animal surface	
+1774.445.Inte.Puer		EMP sample	Host-associated	Animal	Animal distal gut	
+1774.448.Skin.Puer		EMP sample	Host-associated	Animal	Animal surface	
+1774.4BI22.10.09		EMP sample	Host-associated	Animal	Animal surface	
+1774.533.Inte.Puer		EMP sample	Host-associated	Animal	Animal distal gut	
+1774.59.Skin.Puer		EMP sample	Host-associated	Animal	Animal surface	
+1774.7Nasal22.10.09		EMP sample	Host-associated	Animal	Animal secretion	
+1774.BLANK25		EMP sample	Control	Negative	Sterile water blank	
+1774.L525.Inte.Puer		EMP sample	Host-associated	Animal	Animal distal gut	
+1774.L581.Oral.Puer		EMP sample	Host-associated	Animal	Animal secretion	
+1799.48.SD17		EMP sample	Host-associated	Animal	Animal corpus	
+1799.97.SD.Pum4		EMP sample	Host-associated	Animal	Animal corpus	
+1883.2011.217.Crump.Artic.LTREB.main.lane4.NoIndex	8.2	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2010.292A.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1883.2009.083.Crump.Artic.LTREB.main.lane3.NoIndex	6.9	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.005.Crump.Artic.LTREB.main.lane3.NoIndex	7.4	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.46.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.027.Crump.Artic.LTREB.main.lane1.NoIndex	6.6	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2006.286.Crump.Artic.LTREB.main.lane1.NoIndex	7.4	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2005.169.Crump.Artic.LTREB.main.lane4.NoIndex	6.3	EMP sample	Free-living	Non-saline	Water (non-saline)	3.2
+1883.2005.076.Crump.Artic.LTREB.main.lane1.NoIndex	6.4	EMP sample	Free-living	Non-saline	Water (non-saline)	7.5
+1883.2003.063.Crump.Artic.LTREB.main.lane1.NoIndex	7.4	EMP sample	Free-living	Non-saline	Water (non-saline)	2.8
+1883.2002.097.Crump.Artic.LTREB.main.lane1.NoIndex	7.2	EMP sample	Free-living	Non-saline	Water (non-saline)	3.6
+1883.2011.367.Crump.Artic.LTREB.main.lane4.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2011.174.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2010.219.Crump.Artic.LTREB.main.lane3.NoIndex	7.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.387.Crump.Artic.LTREB.main.lane4.NoIndex	8.0	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.335.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1883.2005.034.Crump.Artic.LTREB.main.lane1.NoIndex	7.6	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2005.021.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.072.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Soil (non-saline)	
+1883.2004.115.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2001.153.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2011.091.Crump.Artic.LTREB.main.lane3.NoIndex	7.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2010.184.Crump.Artic.LTREB.main.lane3.NoIndex	7.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.055.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.568.Crump.Artic.LTREB.main.lane4.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.306.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2008.157.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2008.138.Crump.Artic.LTREB.main.lane2.NoIndex	7.3	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.439.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.048.Crump.Artic.LTREB.main.lane1.NoIndex	8.7	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.221.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2007.128.Crump.Artic.LTREB.main.lane2.NoIndex	6.7	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2003.119.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	6.2
+1883.2007.279.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2010.012.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.496.Crump.Artic.LTREB.main.lane3.NoIndex	6.8	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.481.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.236.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Sediment (non-saline)	
+1883.2007.16.Crump.Artic.LTREB.main.lane2.NoIndex	8.4	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.143.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.125.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2004.041.Crump.Artic.LTREB.main.lane1.NoIndex	7.6	EMP sample	Free-living	Non-saline	Water (non-saline)	38.3
+1883.2003.091.Crump.Artic.LTREB.main.lane1.NoIndex	7.1	EMP sample	Free-living	Non-saline	Water (non-saline)	2.5
+1883.2011.531.Crump.Artic.LTREB.main.lane4.NoIndex.r		EMP sample	Free-living	Saline	Sediment (saline)	
+1883.2011.481.Crump.Artic.LTREB.main.lane4.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2010.308A.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2009.009.Crump.Artic.LTREB.main.lane3.NoIndex	6.8	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.012.Crump.Artic.LTREB.main.lane2.NoIndex	7.2	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.005.Crump.Artic.LTREB.main.lane2.NoIndex	6.3	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.376.Crump.Artic.LTREB.main.lane2.NoIndex	7.0	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.464.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.005.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.253.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2006.01.Crump.Artic.LTREB.main.lane1.NoIndex	6.9	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2005.098.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2003.098.Crump.Artic.LTREB.main.lane1.NoIndex	7.1	EMP sample	Free-living	Non-saline	Water (non-saline)	6.5
+1883.2002.009.Crump.Artic.LTREB.main.lane1.NoIndex	6.4	EMP sample	Free-living	Non-saline	Water (non-saline)	3.4
+1883.2002.059.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2011.38.Crump.Artic.LTREB.main.lane4.NoIndex	8.0	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2010.302A.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2009.135.Crump.Artic.LTREB.main.lane3.NoIndex	8.1	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.093.Crump.Artic.LTREB.main.lane3.NoIndex	7.2	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.039.Crump.Artic.LTREB.main.lane3.NoIndex	7.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.002.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.57.Crump.Artic.LTREB.main.lane4.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2006.1.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2001.042.Crump.Artic.LTREB.main.lane1.NoIndex	7.5	EMP sample	Free-living	Non-saline	Water (non-saline)	5.9
+1883.2001.014.Crump.Artic.LTREB.main.lane1.NoIndex	6.9	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2010.149.Crump.Artic.LTREB.main.lane3.NoIndex	7.6	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2008.075.Crump.Artic.LTREB.main.lane2.NoIndex	7.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.56.Crump.Artic.LTREB.main.lane4.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.5.Crump.Artic.LTREB.main.lane2.NoIndex	6.9	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.016.Crump.Artic.LTREB.main.lane1.NoIndex	6.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.087.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+1883.2007.063.Crump.Artic.LTREB.main.lane1.NoIndex	8.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2006.027.Crump.Artic.LTREB.main.lane1.NoIndex	8.3	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2002.046.Crump.Artic.LTREB.main.lane1.NoIndex	7.7	EMP sample	Free-living	Non-saline	Water (non-saline)	5.4
+1883.2000.007.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.349.Crump.Artic.LTREB.main.lane3.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2009.172.Crump.Artic.LTREB.main.lane3.NoIndex	8.4	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.499.Crump.Artic.LTREB.main.lane2.NoIndex	6.9	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.495.Crump.Artic.LTREB.main.lane2.NoIndex	6.5	EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2004.163.Crump.Artic.LTREB.main.lane1.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+1883.2007.247.Crump.Artic.LTREB.main.lane2.NoIndex		EMP sample	Free-living	Non-saline	Water (non-saline)	
+2080.S33D365		EMP sample	Free-living	Saline	Water (saline)	
+2182.VHBBC0002		EMP sample	Host-associated	Animal	Animal distal gut	
+2182.Z2RA		EMP sample	Host-associated	Animal	Animal distal gut	
+2192.H01a.Front.Door.Knob.125.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H01a.Kitchen.Floor.146.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H01a.Kitchen.Light.Switch.147.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H02a.Bedroom.Floor.820.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H02a.Front.Door.Knob.845.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H02a.Front.Door.Knob.917.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H03a.Kitchen.Light.Switch.1371.lane5.NoIndex.L005		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H04a.Kitchen.Floor.1826.lane5.NoIndex.L005		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H05b.Kitchen.Light.Switch.2403.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H05b.Front.Door.Knob.2573.lane5.NoIndex.L005		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H05b.Front.Door.Knob.2885.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H05b.Kitchen.Floor.2954.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H06a.Kitchen.Floor.3026.lane1.NoIndex.L001		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H06b.Bathroom.Door.Knob.3198.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H06b.Kitchen.Floor.3266.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H06b.Kitchen.Floor.3362.lane5.NoIndex.L005		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H07a.Front.Door.Knob.3725.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H07b.Kitchen.Counter.4033.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H07b.Bathroom.Door.Knob.4062.lane2.NoIndex.L002		EMP sample	Free-living	Non-saline	Surface (non-saline)	
+2192.H01a.Nose.87.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H01a.Nose.129.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H01a.Nose.303.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H02a.Nose.921.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H03a.Nose.1401.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H04a.Nose.1815.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H04a.Nose.1932.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H04a.Nose.2073.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H05b.Nose.2457.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H05b.Nose.2532.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H06b.Nose.3084.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H06b.Nose.3369.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H01a.Foot.209.lane2.NoIndex.L002		EMP sample	Host-associated	Animal	Animal surface	
+2192.H01a.Hand.223.lane2.NoIndex.L002		EMP sample	Host-associated	Animal	Animal surface	
+2192.H01a.Foot.224.lane2.NoIndex.L002		EMP sample	Host-associated	Animal	Animal surface	
+2192.H02a.Foot.632.lane2.NoIndex.L002		EMP sample	Host-associated	Animal	Animal surface	
+2192.H02a.Hand.871.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H02a.Foot.872.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H03a.Foot.1208.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H03a.Foot.1262.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H03a.Hand.1378.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H04a.Hand.1906.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H04a.Dog.Nose.1944.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H04a.Dog.Nose.1962.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal secretion	
+2192.H05b.Foot.2459.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H05b.Hand.2671.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H05b.Foot.2672.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H05b.Hand.2674.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H05b.Hand.2794.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H06a.Foot.3011.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H06b.Hand.3058.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H06b.Hand.3175.lane5.NoIndex.L005		EMP sample	Host-associated	Animal	Animal surface	
+2192.H06b.Foot.3224.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H06b.Foot.3227.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H07a.Foot.3752.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H07a.Foot.3755.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H07b.Foot.3848.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H07b.Foot.3947.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H07b.Hand.3991.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2192.H07b.Hand.4042.lane6.NoIndex.L006		EMP sample	Host-associated	Animal	Animal surface	
+2229.S1.N1.7.HE1.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S1.N12.EH3.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.S1.N33.EH3.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.S1.T1.5.HP2.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S1.T11.PH4.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S1.T23.ES5.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S1.T3.4.HP5.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.N1.6.HP1.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.N2.6.HE2.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.N3.6.HP3.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.T11.PS3.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.T22.ES4.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.T23.PH9.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.S2.T3.6.HP1.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.N1.4.SE4.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.N13.EH5.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.N2.5.SP5.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.N23.EH2.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.T13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.T23.PH2.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.W1.T3.6.HP2.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.N1.4.HP5.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.N1.9.HE2.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.N13.EH2*.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.N22.EH5.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.N3.4.SE1.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.T12.PH2.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.T22.EH3.Thomas.CMB.Seaweed.lane5.NoIndex.L005		EMP sample	Host-associated	Plant	Plant surface	
+2229.W2.T3.5.HP2.Thomas.CMB.Seaweed.lane6.NoIndex.L006		EMP sample	Host-associated	Plant	Plant surface	
+2300.BB.2213.lavage20		EMP sample	Host-associated	Animal	Animal distal gut	
+2338.0625.1.E		EMP sample	Host-associated	Animal	Animal distal gut	
+2338.0626.1.I2		EMP sample	Host-associated	Animal	Animal distal gut	
+2338.0627.11.I		EMP sample	Host-associated	Animal	Animal distal gut	
+2338.0702.8.I		EMP sample	Host-associated	Animal	Animal distal gut	
+2338.BLANK.B.19		EMP sample	Control	Negative	Sterile water blank	
+2382.SH008.C6.HA.4.343.root.9.11.lane1.NoIndex.L001.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.SH008.C6.HA.1.SH008.rhizo.rhizo.9.12.lane7.NoIndex.L007.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.SH007.C6.RH.4.318.root.9.11.lane1.NoIndex.L001.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.SH007.C6.RH.1.701.bulk.9.12.lane7.NoIndex.L007.sequences	7.43	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+2382.SH005.C3.RH.4.670.gp.9.12.lane8.NoIndex.L008.sequences		EMP sample	Host-associated	Plant	Plant corpus	
+2382.SH004.C1.RH.4.616.bulk.9.12.lane7.NoIndex.L007.sequences	7.57	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+2382.SH004.C1.RH.1.605.gp.9.12.lane8.NoIndex.L008.sequences		EMP sample	Host-associated	Plant	Plant corpus	
+2382.RU006.C181.RH.3.151.root.6.11.lane1.NoIndex.L001.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.MU002.C3.HA.5.79.root.6.11.lane1.NoIndex.L001.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.MU002.C3.HA.2.685.gp.9.12.lane8.NoIndex.L008.sequences		EMP sample	Host-associated	Plant	Plant corpus	
+2382.MU002.C3.HA.2.684.leav.9.12.lane8.NoIndex.L008.sequences		EMP sample	Host-associated	Plant	Plant corpus	
+2382.MU002.C3.HA.2.682.rhizo.9.12.lane7.NoIndex.L007.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.HE003.C181.HA.5.139.root.6.11.lane1.NoIndex.L001.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.HE003.C181.HA.3.562.rhizo.4.12.lane7.NoIndex.L007.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.HE003.C181.HA.1.123.root.6.11.lane1.NoIndex.L001.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	
+2382.DPOO1.C1.HA.3.436.r1.bulk.4.12.lane7.NoIndex.L007.sequences	6.99	EMP sample	Free-living	Non-saline	Soil (non-saline)	
+2382.DPOO1.C1.HA.1.23.r1.root.6.11.lane7.NoIndex.L007.sequences		EMP sample	Host-associated	Plant	Plant rhizosphere	

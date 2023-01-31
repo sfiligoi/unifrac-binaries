@@ -27,9 +27,9 @@ jobs:
         df -h .
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          conda create -q --yes -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
+          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
         else
-          conda create -q --yes -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
+          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make curl
         fi 
         conda clean --yes -t
         df -h .
@@ -61,7 +61,7 @@ jobs:
         if [[ "$(uname -s)" == "Linux" ]]; 
         then
           rm -f ~/.R/Makevars
-          conda install -q --yes -c conda-forge r-base
+          conda install -q --yes  --strict-channel-priority -c conda-forge r-base
           unset CXXFLAGS
           unset CFLAGS
           unset DEBUG_CXXFLAGS
@@ -143,7 +143,20 @@ jobs:
         ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 3 0.1
         ls -l t1.h5
         rm -f t1.h5
+        # permanova
+        echo "permanova"
+        time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5 --permanova 999 -g test500.tsv -c empo_2 -o t1.h5
+        # compare to values given by skbio.stats.distance.permanova
+        python compare_unifrac_stats.py t1.h5 5 999 1.001112 0.456  0.001 0.1
+        ls -l t1.h5
+        rm -f t1.h5
+        time ssu -m weighted_unnormalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_nodist -g test500.tsv -c empo_3 -o t1.h5
+        # compare to values given by skbio.stats.distance.permanova
+        python compare_unifrac_stats.py t1.h5 17 999 0.890697 0.865 0.001 0.1
+        ls -l t1.h5
+        rm -f t1.h5
         # partials
+        echo "partials"
         ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode partial-report --n-partials 2
         time ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode partial --start 0 --stop 125 -o t1.partial.1
         time ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode partial --start 125 --stop 250 -o t1.partial.2

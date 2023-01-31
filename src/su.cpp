@@ -24,6 +24,8 @@ void usage() {
     std::cout << "                       unweighted_fp64 | weighted_normalized_fp64 | weighted_unnormalized_fp64 | generalized_fp64 |" << std::endl;
     std::cout << "                       unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 | generalized_fp32]." << std::endl;
     std::cout << "    -o\t\tThe output distance matrix." << std::endl;
+    std::cout << "    -g\t\t[OPTIONAL] The input grouping in TSV." << std::endl;
+    std::cout << "    -c\t\t[OPTIONAL] The columns(s) to use for grouping, multiple values comma separated." << std::endl;
     std::cout << "    -a\t\t[OPTIONAL] Generalized UniFrac alpha, default is 1." << std::endl;
     std::cout << "    -f\t\t[OPTIONAL] Bypass tips, reduces compute by about 50%." << std::endl;
     std::cout << "    --vaw\t[OPTIONAL] Variance adjusted, default is to not adjust for variance." << std::endl;
@@ -45,6 +47,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
+    std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --seed\t[OPTIONAL] Seed to use for initializing the random gnerator" << std::endl;
     std::cout << "    --diskbuf\t[OPTIONAL] Use a disk buffer to reduce memory footprint. Provide path to a fast partition (ideally NVMe)." << std::endl;
@@ -78,13 +81,15 @@ void usage() {
     std::cout << std::endl;
 }
 
-const char* compute_status_messages[7] = {"No error.",
+const char* compute_status_messages[9] = {"No error.",
                                           "The tree file cannot be found.", 
                                           "The table file cannot be found.",
                                           "The table file contains an empty table.",
                                           "An unknown method was requested.", 
                                           "Table observation IDs are not a subset of the tree tips. This error can also be triggered if a node name contains a single quote (this is unlikely).",
-                                          "Error creating the output."};
+                                          "Error creating the output.",
+                                          "The requested method is not supported.",
+                                          "The grouping file cannot be found or does not have the necessary data."};
 
 
 // https://stackoverflow.com/questions/8401777/simple-glob-in-c-on-unix-system
@@ -156,6 +161,7 @@ int mode_partial_report(const std::string table_filename, unsigned int npartials
 } 
 
 int mode_merge_partial_fp32(const char * output_filename, Format format_val, unsigned int pcoa_dims,
+                            unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                             size_t partials_size, partial_dyn_mat_t* * partial_mats,
                             const char * mmap_dir) {
     mat_full_fp32_t *result = NULL;
@@ -168,6 +174,8 @@ int mode_merge_partial_fp32(const char * output_filename, Format format_val, uns
         err(msg.str());
         return EXIT_FAILURE;
     }
+
+    // TODO: Add support for PERMANOVA
 
     IOStatus iostatus;
     iostatus = write_mat_from_matrix_hdf5_fp32(output_filename, result, pcoa_dims, format_val!=format_hdf5_nodist);
@@ -184,6 +192,7 @@ int mode_merge_partial_fp32(const char * output_filename, Format format_val, uns
 }
 
 int mode_merge_partial_fp64(const char * output_filename, Format format_val, unsigned int pcoa_dims,
+                            unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                             size_t partials_size, partial_dyn_mat_t* * partial_mats,
                             const char * mmap_dir) {
     mat_full_fp64_t *result = NULL;
@@ -196,6 +205,8 @@ int mode_merge_partial_fp64(const char * output_filename, Format format_val, uns
         err(msg.str());
         return EXIT_FAILURE;
     }
+
+    // TODO: Add support for PERMANOVA
 
     IOStatus iostatus;
     if (format_val!=format_ascii) {
@@ -217,6 +228,7 @@ int mode_merge_partial_fp64(const char * output_filename, Format format_val, uns
 
 
 int mode_merge_partial(const std::string &output_filename, Format format_val, unsigned int pcoa_dims,
+                       unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
                        const std::string &partial_pattern,
                        const std::string &mmap_dir) {
     if(output_filename.empty()) {
@@ -229,6 +241,16 @@ int mode_merge_partial(const std::string &output_filename, Format format_val, un
                         "are named 'ssu.unweighted.start0.partial', 'ssu.unweighted.start10.partial', \n" \
                         "etc, then a pattern of 'ssu.unweighted.start*.partial' would make sense");
         err(msg);
+        return EXIT_FAILURE;
+    }
+    
+    if((permanova_perms>0) && grouping_filename.empty()) {
+        err("grouping filename missing");
+        return EXIT_FAILURE;
+    }
+    
+    if((permanova_perms>0) && grouping_columns.empty()) {
+        err("grouping columns missing");
         return EXIT_FAILURE;
     }
     
@@ -245,14 +267,22 @@ int mode_merge_partial(const std::string &output_filename, Format format_val, un
     }
 
     const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
+    const char * grouping_c = (permanova_perms>0) ? grouping_filename.c_str() : NULL ;
+    const char * columns_c = (permanova_perms>0) ? grouping_columns.c_str() : NULL ;
 
     int status;
     if (format_val==format_hdf5_fp64) {
-     status = mode_merge_partial_fp64(output_filename.c_str(), format_val, pcoa_dims, partials.size(), partial_mats, mmap_dir_c);
+     status = mode_merge_partial_fp64(output_filename.c_str(), format_val,
+                                      pcoa_dims, permanova_perms, grouping_c, columns_c,
+                                      partials.size(), partial_mats, mmap_dir_c);
     } else if (format_val==format_hdf5_fp32) {
-     status = mode_merge_partial_fp32(output_filename.c_str(), format_val, pcoa_dims, partials.size(), partial_mats, mmap_dir_c);
+     status = mode_merge_partial_fp32(output_filename.c_str(), format_val,
+                                      pcoa_dims, permanova_perms, grouping_c, columns_c,
+                                      partials.size(), partial_mats, mmap_dir_c);
     } else {
-     status = mode_merge_partial_fp64(output_filename.c_str(), format_val, pcoa_dims, partials.size(), partial_mats, mmap_dir_c);
+     status = mode_merge_partial_fp64(output_filename.c_str(), format_val,
+                                      pcoa_dims, permanova_perms, grouping_c, columns_c,
+                                      partials.size(), partial_mats, mmap_dir_c);
     }
 
     for(size_t i = 0; i < partials.size(); i++) {
@@ -361,6 +391,7 @@ int mode_partial(std::string table_filename, std::string tree_filename,
 int mode_one_off(const std::string &table_filename, const std::string &tree_filename, 
                  const std::string &output_filename, const std::string &format_str, Format format_val, 
                  const std::string &method_string, unsigned int pcoa_dims,
+                 unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips,
                  unsigned int nsubsteps, const std::string &mmap_dir) {
     if(output_filename.empty()) {
@@ -375,6 +406,16 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
 
     if(tree_filename.empty()) {
         err("tree filename missing");
+        return EXIT_FAILURE;
+    }
+    
+    if((permanova_perms>0) && grouping_filename.empty()) {
+        err("grouping filename missing");
+        return EXIT_FAILURE;
+    }
+    
+    if((permanova_perms>0) && grouping_columns.empty()) {
+        err("grouping columns missing");
         return EXIT_FAILURE;
     }
     
@@ -404,10 +445,12 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
 
     } else {
       const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
+      const char * grouping_c = (permanova_perms>0) ? grouping_filename.c_str() : NULL ;
+      const char * columns_c = (permanova_perms>0) ? grouping_columns.c_str() : NULL ;
 
-      status = unifrac_to_file(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
-                               method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
-                               pcoa_dims, mmap_dir_c);
+      status = unifrac_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
+                                  method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
+                                  pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
       if (status != okay) {
         fprintf(stderr, "Compute failed in one_off: %s\n", compute_status_messages[status]);
@@ -460,6 +503,8 @@ int main(int argc, char **argv){
     std::string method_string = input.getCmdOption("-m");
     // deprecated, but we still want to support it, even as a no-op
     std::string nold_arg = input.getCmdOption("-n");
+    std::string grouping_filename = input.getCmdOption("-g");
+    std::string grouping_columns = input.getCmdOption("-c");
     std::string nsubsteps_arg = input.getCmdOption("--n-substeps");
     std::string gunifrac_arg = input.getCmdOption("-a");
     std::string mode_arg = input.getCmdOption("--mode");
@@ -471,6 +516,7 @@ int main(int argc, char **argv){
     std::string format_arg = input.getCmdOption("--format");
     std::string sformat_arg = input.getCmdOption("-r");
     std::string pcoa_arg = input.getCmdOption("--pcoa");
+    std::string permanova_arg = input.getCmdOption("--permanova");
     std::string seed_arg = input.getCmdOption("--seed");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
@@ -536,17 +582,33 @@ int main(int argc, char **argv){
     else
         pcoa_dims = atoi(pcoa_arg.c_str());
 
+    unsigned int permanova_perms;
+    if(permanova_arg.empty()) {
+        if (grouping_filename.empty() || grouping_columns.empty()) {
+            // cannot compute permanova without the grouping file and columns
+            permanova_perms = 0;
+        } else {
+            permanova_perms = 999;
+        }
+    } else {
+        permanova_perms = atoi(permanova_arg.c_str());
+    }
+
     if(!seed_arg.empty()) {
          ssu_set_random_seed(atoi(seed_arg.c_str()));
     }
 
 
     if(mode_arg.empty() || mode_arg == "one-off")
-        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string, pcoa_dims, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
+        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string,
+                            pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
+                            vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
     else if(mode_arg == "partial")
         return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe);
     else if(mode_arg == "merge-partial")
-        return mode_merge_partial(output_filename, format_val, pcoa_dims, partial_pattern, diskbuf_arg);
+        return mode_merge_partial(output_filename, format_val,
+                                  pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
+                                  partial_pattern, diskbuf_arg);
     else if(mode_arg == "check-partial")
         return mode_check_partial(partial_pattern);
     else if(mode_arg == "partial-report")
