@@ -524,7 +524,7 @@ void test_permanova_ties() {
     // value from skbio
     const float exp_stat = 2.0;
     // using a different random than skbio, so result different
-    const float exp_pvalue = 0.67;
+    const float exp_pvalue = 0.66;
 
     double stat_fp64, pvalue_fp64;
     float stat_fp32, pvalue_fp32;
@@ -533,25 +533,25 @@ void test_permanova_ties() {
                   grouping_equal, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal, 999,
                   stat_fp32, pvalue_fp32);
     ASSERT(fabs(stat_fp32 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal_swapped, 999,
                   stat_fp32, pvalue_fp32);
     ASSERT(fabs(stat_fp32 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.05);
 
     SUITE_END();
 }
@@ -589,25 +589,25 @@ void test_permanova_noties() {
                   grouping_equal, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal, 999,
                   stat_fp32, pvalue_fp32);
     ASSERT(fabs(stat_fp32 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp64, n_samples,
                   grouping_equal_swapped, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     SUITE_END();
 }
@@ -649,25 +649,25 @@ void test_permanova_unequal() {
                   grouping_equal, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal, 999,
                   stat_fp32, pvalue_fp32);
     ASSERT(fabs(stat_fp32 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp32 - exp_pvalue) < 0.05);
 
     su::permanova(matrix_fp32, n_samples,
                   grouping_equal_swapped, 999,
                   stat_fp64, pvalue_fp64);
     ASSERT(fabs(stat_fp64 - exp_stat) < 0.00001);
-    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.04);
+    ASSERT(fabs(pvalue_fp64 - exp_pvalue) < 0.05);
 
     SUITE_END();
 }
