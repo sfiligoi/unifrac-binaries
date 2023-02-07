@@ -45,6 +45,10 @@ namespace su {
                if (sample_counts!=NULL) free(sample_counts);
             }
 
+            /* prevent default copy contructors and operators from being generated */
+            biom_interface(const biom_interface& other) = delete;
+            biom_interface& operator= (const biom_interface&) = delete;
+
             /* get a dense vector of observation data
              *
              * @param id The observation ID to fetch

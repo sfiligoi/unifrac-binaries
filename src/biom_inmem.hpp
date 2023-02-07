@@ -109,6 +109,10 @@ namespace su {
             // for unit testing
             bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
             bool is_obs_indptr(const std::vector<uint32_t>& other) const { return obs_indptr==other; }
+
+            /* prevent default copy contructors and operators from being generated */
+            biom_inmem(const biom_inmem& other) = delete;
+            biom_inmem& operator= (const biom_inmem&) = delete;
     };
 }
 
