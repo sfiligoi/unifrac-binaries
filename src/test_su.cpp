@@ -460,8 +460,8 @@ void test_biom_constructor() {
     ASSERT(table.nnz == exp_nnz);
     ASSERT(table.sample_ids == exp_sids);
     ASSERT(table.obs_ids == exp_oids);
-    ASSERT(table.sample_indptr == exp_s_indptr);
-    ASSERT(table.obs_indptr == exp_o_indptr);
+    ASSERT(table.is_sample_indptr(exp_s_indptr));
+    ASSERT(table.is_obs_indptr(exp_o_indptr));
 
     SUITE_END();
 }

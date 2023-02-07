@@ -21,10 +21,6 @@ namespace su {
             std::vector<std::string> sample_ids;
             std::vector<std::string> obs_ids;
 
-            // cache both index pointers into both CSC and CSR representations
-            std::vector<uint32_t> sample_indptr;
-            std::vector<uint32_t> obs_indptr;
-
             uint32_t n_samples;  // the number of samples
             uint32_t n_obs;      // the number of observations
             uint32_t nnz;        // the total number of nonzero entries
@@ -37,7 +33,6 @@ namespace su {
              */
             biom_interface() 
              : sample_ids(), obs_ids()
-             , sample_indptr(), obs_indptr()
              , n_samples(0), n_obs(0), nnz(0)
              , sample_counts(NULL) {}
 

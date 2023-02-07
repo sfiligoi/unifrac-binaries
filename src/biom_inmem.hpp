@@ -80,6 +80,10 @@ namespace su {
             std::unordered_map<std::string, uint32_t> obs_id_index;
             std::unordered_map<std::string, uint32_t> sample_id_index;
  
+            // cache both index pointers into both CSC and CSR representations
+            std::vector<uint32_t> sample_indptr;
+            std::vector<uint32_t> obs_indptr;
+
         protected:            
             void malloc_resident(uint32_t n_obs);
 
@@ -101,6 +105,10 @@ namespace su {
             // templatized version
             template<class TFloat> void get_obs_data_TT(const std::string &id, TFloat* out) const;
             template<class TFloat> void get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
+        public:
+            // for unit testing
+            bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
+            bool is_obs_indptr(const std::vector<uint32_t>& other) const { return obs_indptr==other; }
     };
 }
 

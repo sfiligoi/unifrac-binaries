@@ -21,6 +21,8 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
   , obs_counts_resident(NULL)
   , obs_id_index()
   , sample_id_index()
+  , sample_indptr()
+  , obs_indptr()
 {}
 
 // not using const on indices/indptr/data as the pointers are being borrowed
@@ -37,7 +39,9 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
   , obs_data_resident(NULL)
   , obs_counts_resident(NULL)
   , obs_id_index()
-  , sample_id_index() {
+  , sample_id_index()
+  , sample_indptr()
+  , obs_indptr() {
 
     nnz = _nnz;
     n_samples = _n_samples;
