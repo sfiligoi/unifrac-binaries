@@ -42,6 +42,7 @@ template<class TFloat>
 inline void initialize_sample_counts(TFloat*& _counts, const su::task_parameters* task_p, const su::biom_interface &table) {
     const unsigned int n_samples = task_p->n_samples;
     const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
+    const double *sample_counts = table.get_sample_counts();
     TFloat * counts = NULL;
     int err = 0;
     err = posix_memalign((void **)&counts, 4096, sizeof(TFloat) * n_samples_r);
@@ -51,7 +52,7 @@ inline void initialize_sample_counts(TFloat*& _counts, const su::task_parameters
         exit(EXIT_FAILURE);
     }
     for(unsigned int i = 0; i < n_samples; i++) {
-        counts[i] = table.sample_counts[i];
+        counts[i] = sample_counts[i];
     }
    // avoid NaNs
    for(unsigned int i = n_samples; i < n_samples_r; i++) {

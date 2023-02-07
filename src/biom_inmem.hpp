@@ -67,12 +67,18 @@ namespace su {
              */
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const;
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const;
+
+            /* get the pre-comoputed counts */
+             virtual const double *get_sample_counts() const;
         protected:
             bool clean_on_destruction;
             
             uint32_t **obs_indices_resident;
             double **obs_data_resident;
             unsigned int *obs_counts_resident;
+
+            // distilled from the above resident values
+            double *sample_counts;
 
             /* At construction, lookups mapping IDs -> index position within an
              * axis are defined

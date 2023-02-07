@@ -24,7 +24,6 @@ namespace su {
             uint32_t n_samples;  // the number of samples
             uint32_t n_obs;      // the number of observations
             uint32_t nnz;        // the total number of nonzero entries
-            double *sample_counts;
 
             /* default constructor
              *
@@ -33,17 +32,13 @@ namespace su {
              */
             biom_interface() 
              : sample_ids(), obs_ids()
-             , n_samples(0), n_obs(0), nnz(0)
-             , sample_counts(NULL) {}
+             , n_samples(0), n_obs(0), nnz(0) {}
 
             /* default destructor
              *
-             * Automatically destroy the objects.
-             * All other cleanup must have been performed by the children constructors.
+             * Need a virtual one to allow for polymorphism
              */
-            virtual ~biom_interface() {
-               if (sample_counts!=NULL) free(sample_counts);
-            }
+            virtual ~biom_interface() {}
 
             /* prevent default copy contructors and operators from being generated */
             biom_interface(const biom_interface& other) = delete;
@@ -71,6 +66,9 @@ namespace su {
              */
             virtual void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const = 0;
             virtual void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const = 0;
+
+            /* get the pre-comoputed counts */
+             virtual const double *get_sample_counts() const =0;
     };
 }
 

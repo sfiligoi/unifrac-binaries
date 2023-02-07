@@ -1708,8 +1708,8 @@ void test_bptree_collapse_edge() {
 void test_unifrac_sample_counts() {
     SUITE_START("test unifrac sample counts");
     su::biom table("test.biom");
-    double* obs = table.sample_counts;
-    double exp[] = {7, 3, 4, 6, 3, 4};
+    const double* obs = table.get_sample_counts();
+    const double exp[] = {7, 3, 4, 6, 3, 4};
     for(unsigned int i = 0; i < 6; i++)
         ASSERT(obs[i] == exp[i]);
     SUITE_END();

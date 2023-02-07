@@ -179,12 +179,13 @@ void su::set_proportions(TFloat* __restrict__ props,
                          const biom_interface &table,
                          PropStack<TFloat> &ps,
                          bool normalize) {
+    const double *sample_counts = table.get_sample_counts();
     if(tree.isleaf(node)) {
        table.get_obs_data(tree.names[node], props);
        if (normalize) {
 #pragma omp parallel for schedule(static)
         for(unsigned int i = 0; i < table.n_samples; i++) {
-           props[i] /= table.sample_counts[i];
+           props[i] /= sample_counts[i];
         }
        }
 

@@ -19,6 +19,7 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
   , obs_indices_resident(NULL)
   , obs_data_resident(NULL)
   , obs_counts_resident(NULL)
+  , sample_counts(NULL)
   , obs_id_index()
   , sample_id_index()
   , sample_indptr()
@@ -38,6 +39,7 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
   , obs_indices_resident(NULL)
   , obs_data_resident(NULL)
   , obs_counts_resident(NULL)
+  , sample_counts(NULL)
   , obs_id_index()
   , sample_id_index()
   , sample_indptr()
@@ -111,6 +113,9 @@ biom_inmem::~biom_inmem() {
     } 
     // else, it is the responsibility of the entity constructing this object
     // to clean itself up
+
+    // but sample_counts is always owned
+    if (sample_counts!=NULL) free(sample_counts);
 }
 
 void biom_inmem::malloc_resident(uint32_t n_obs) { 
@@ -220,3 +225,8 @@ void biom_inmem::compute_sample_counts() {
         }
     }
 }
+
+const double *biom_inmem::get_sample_counts() const {
+  return sample_counts;
+}
+
