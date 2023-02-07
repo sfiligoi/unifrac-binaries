@@ -122,7 +122,7 @@ int mode_partial_report(const std::string table_filename, unsigned int npartials
         exit(EXIT_FAILURE);
     }
 
-    su::biom table = su::biom(table_filename.c_str());
+    su::biom table(table_filename.c_str());
     int total_stripes = (table.n_samples + 1) / 2;
 
     if(!bare) {

@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2016-2021, UniFrac development team.
+ * Copyright (c) 2016-2023, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
@@ -13,13 +13,11 @@
 
 #include <H5Cpp.h>
 #include <H5Dpublic.h>
-#include <vector>
-#include <unordered_map>
 
-#include "biom_interface.hpp"
+#include "biom_inmem.hpp"
 
 namespace su {
-    class biom : public biom_interface {
+    class biom : public biom_inmem {
         public:
             /* nullary constructor */
             biom();
@@ -31,6 +29,7 @@ namespace su {
             biom(std::string filename);
 
             /* constructor from compress sparse data
+             * Note: deprecated, use biom_inmem directly, instead 
              *
              * @param obs_ids vector of observation identifiers
              * @param samp_ids vector of sample identifiers
@@ -56,28 +55,10 @@ namespace su {
              */
             virtual ~biom();
 
-            /* get a dense vector of observation data
-             *
-             * @param id The observation ID to fetch
-             * @param out An allocated array of at least size n_samples. 
-             *      Values of an index position [0, n_samples) which do not
-             *      have data will be zero'd.
-             */
-            void get_obs_data(const std::string &id, double* out) const; 
-            void get_obs_data(const std::string &id, float* out) const;
+            /* prevent default copy contructors and operators from being generated */
+            biom(const biom& other) = delete;
+            biom& operator= (const biom&) = delete;
 
-            /* get a dense vector of a range of observation data
-             *
-             * @param id The observation ID to fetc
-             * @param start Initial index
-             * @param end   First index past the end
-             * @param normalize If set, divide by sample_counts
-             * @param out An allocated array of at least size (end-start). First element will corrrectpoint to index start. 
-             *      Values of an index position [0, (end-start)) which do not
-             *      have data will be zero'd.
-             */
-            void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const;
-            void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const;
         private:
             bool has_hdf5_backing = false;
             
@@ -87,23 +68,10 @@ namespace su {
             H5::DataSet obs_data;
             H5::DataSet sample_data;
             H5::H5File file;
-            uint32_t **obs_indices_resident;
-            double **obs_data_resident;
-            unsigned int *obs_counts_resident;
             
-            void malloc_resident(uint32_t n_obs);
-
             unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             unsigned int get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
-            double* get_sample_counts();
 
-
-            /* At construction, lookups mapping IDs -> index position within an
-             * axis are defined
-             */
-            std::unordered_map<std::string, uint32_t> obs_id_index;
-            std::unordered_map<std::string, uint32_t> sample_id_index;
- 
             /* load ids from an axis
              *
              * @param path The dataset path to the ID dataset to load
@@ -120,20 +88,6 @@ namespace su {
 
             /* count the number of nonzero values and set nnz */
             void set_nnz();
-
-            /* create an index mapping an ID to its corresponding index 
-             * position.
-             *
-             * @param ids A vector of IDs to index
-             * @param map A hash table to populate
-             */
-            void create_id_index(const std::vector<std::string> &ids, 
-                                 std::unordered_map<std::string, uint32_t> &map);
-
-
-            // templatized version
-            template<class TFloat> void get_obs_data_TT(const std::string &id, TFloat* out) const;
-            template<class TFloat> void get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
     };
 }
 

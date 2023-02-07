@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2021-2021, UniFrac development team.
+ * Copyright (c) 2021-2023, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
@@ -35,14 +35,20 @@ namespace su {
              * Automatically create the needed objects.
              * All other initialization happens in children constructors.
              */
-            biom_interface() {}
+            biom_interface() 
+             : sample_ids(), obs_ids()
+             , sample_indptr(), obs_indptr()
+             , n_samples(0), n_obs(0), nnz(0)
+             , sample_counts(NULL) {}
 
             /* default destructor
              *
              * Automatically destroy the objects.
              * All other cleanup must have been performed by the children constructors.
              */
-            virtual ~biom_interface() {}
+            virtual ~biom_interface() {
+               if (sample_counts!=NULL) free(sample_counts);
+            }
 
             /* get a dense vector of observation data
              *

@@ -85,7 +85,7 @@
                                                         std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
                                                                                           std::istreambuf_iterator<char>());     \
                                                         su::BPTree tree = su::BPTree(content);                                   \
-                                                        su::biom table = su::biom(biom_filename);                                \
+                                                        su::biom table(biom_filename);                                           \
                                                         if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
                                                             return table_empty;                                                  \
                                                         }                                                                        \

@@ -98,21 +98,21 @@ api: libssu.so
 
 test_binaries: test_su test_ska test_api
 
-test_su: test_su.cpp tree.o tsv.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
-test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o tsv.o $(UNIFRAC_FILES) unifrac.o api.o -llz4 $(BLASLIB) -lpthread
-test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+test_su: test_su.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o biom_inmem.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o biom_inmem.o tsv.o $(UNIFRAC_FILES) unifrac.o api.o -llz4 $(BLASLIB) -lpthread
+test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 
-ssu: su.cpp tree.o biom.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o ssu tree.o biom.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+ssu: su.cpp tree.o biom.o biom_inmem.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o ssu tree.o biom.o biom_inmem.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
-faithpd: faithpd.cpp tree.o biom.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o faithpd tree.o biom.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+faithpd: faithpd.cpp tree.o biom.o biom_inmem.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o faithpd tree.o biom.o biom_inmem.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
-libssu.so: tree.o biom.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
+libssu.so: tree.o biom.o biom_inmem.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o biom_inmem.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp tree.hpp tsv.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC

@@ -437,7 +437,7 @@ void test_bptree_parent() {
 void test_biom_constructor() {
     SUITE_START("biom constructor");
 
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
     uint32_t exp_n_samples = 6;
     uint32_t exp_n_obs = 5;
 
@@ -512,7 +512,7 @@ void test_biom_constructor_from_sparse() {
     const char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
 
-    su::biom table = su::biom(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
+    su::biom table(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
     _exercise_get_obs_data(table);
    
     SUITE_END();
@@ -520,7 +520,7 @@ void test_biom_constructor_from_sparse() {
 
 void test_biom_nullary() {
     SUITE_START("biom nullary");
-    su::biom table = su::biom();
+    su::biom table();
     SUITE_END();
 }
 
@@ -533,7 +533,7 @@ void test_bptree_nullary() {
 void test_biom_get_obs_data() {
     SUITE_START("biom get obs data");
 
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
     _exercise_get_obs_data(table);
     SUITE_END();
 }
@@ -639,7 +639,7 @@ void test_unifrac_set_proportions() {
     //                           0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
     //                           ( ( ) ( ( ) ( ) ) ( ( ) ( ) ) )
     su::BPTree tree = su::BPTree("(GG_OTU_1,(GG_OTU_2,GG_OTU_3),(GG_OTU_5,GG_OTU_4));");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
     su::PropStack<double> ps(table.n_samples);
 
     double *obs = ps.pop(4); // GG_OTU_2
@@ -667,7 +667,7 @@ void test_unifrac_set_proportions_range() {
     //                           0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
     //                           ( ( ) ( ( ) ( ) ) ( ( ) ( ) ) )
     su::BPTree tree = su::BPTree("(GG_OTU_1,(GG_OTU_2,GG_OTU_3),(GG_OTU_5,GG_OTU_4));");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     const double exp4[] = {0.714285714286, 0.333333333333, 0.0, 0.333333333333, 1.0, 0.25};
     const double exp6[] = {0.0, 0.0, 0.25, 0.666666666667, 0.0, 0.5};
@@ -766,7 +766,7 @@ void test_unifrac_set_proportions_range_float() {
     //                           0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
     //                           ( ( ) ( ( ) ( ) ) ( ( ) ( ) ) )
     su::BPTree tree = su::BPTree("(GG_OTU_1,(GG_OTU_2,GG_OTU_3),(GG_OTU_5,GG_OTU_4));");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     const float exp4[] = {0.714285714286, 0.333333333333, 0.0, 0.333333333333, 1.0, 0.25};
     const float exp6[] = {0.0, 0.0, 0.25, 0.666666666667, 0.0, 0.5};
@@ -1226,7 +1226,7 @@ void test_unnormalized_weighted_unifrac() {
 
     std::vector<std::thread> threads(1);
     su::BPTree tree = su::BPTree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     std::vector<double*> exp;
     double stride1[] = {1.52380952, 1.25, 2.75, 1.33333333, 2., 1.07142857};
@@ -1266,7 +1266,7 @@ void test_generalized_unifrac() {
 
     std::vector<std::thread> threads(1);
     su::BPTree tree = su::BPTree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     // weighted normalized unifrac as computed above
     std::vector<double*> w_exp;
@@ -1375,7 +1375,7 @@ void test_vaw_unifrac_weighted_normalized() {
 
     std::vector<std::thread> threads(1);
     su::BPTree tree = su::BPTree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     // as computed by GUniFrac, the original implementation of VAW-UniFrac
     // could not be found.
@@ -1444,7 +1444,7 @@ void test_faith_pd() {
 
     // Note this tree is binary (opposed to example below)
     su::BPTree tree = su::BPTree("((GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1):2,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
@@ -1465,7 +1465,7 @@ void test_faith_pd_shear(){
     SUITE_START("test faith PD extra OTUs in tree");
 
     su::BPTree tree = su::BPTree("((GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1,GG_OTU_ex:9):1):2,(GG_OTU_5:1,GG_OTU_4:1,GG_OTU_ex2:12):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
@@ -1489,7 +1489,7 @@ void test_unweighted_unifrac() {
     SUITE_START("test unweighted unifrac");
     std::vector<std::thread> threads(1);
     su::BPTree tree = su::BPTree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     std::vector<double*> exp;
     double stride1[] = {0.2, 0.42857143, 0.71428571, 0.33333333, 0.6, 0.2};
@@ -1528,7 +1528,7 @@ void test_unweighted_unifrac_fast() {
     SUITE_START("test unweighted unifrac no tips");
     std::vector<std::thread> threads(1);
     su::BPTree tree = su::BPTree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     std::vector<double*> exp;
     double stride1[] = {0., 0., 0.5, 0., 0.5, 0.};
@@ -1567,7 +1567,7 @@ void test_normalized_weighted_unifrac() {
     SUITE_START("test normalized weighted unifrac");
     std::vector<std::thread> threads(1);
     su::BPTree tree = su::BPTree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
 
     std::vector<double*> exp;
     double stride1[] = {0.38095238, 0.33333333, 0.73333333, 0.33333333, 0.5, 0.26785714};
@@ -1649,13 +1649,13 @@ void test_test_table_ids_are_subset_of_tree() {
     SUITE_START("test test_table_ids_are_subset_of_tree");
 
     su::BPTree tree = su::BPTree("(a:1,b:2)r;");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
     std::string expected = "GG_OTU_1";
     std::string observed = su::test_table_ids_are_subset_of_tree(table, tree);
     ASSERT(observed == expected);
 
     su::BPTree tree2 = su::BPTree("(GG_OTU_1,GG_OTU_5,GG_OTU_6,GG_OTU_2,GG_OTU_3,GG_OTU_4);");
-    su::biom table2 = su::biom("test.biom");
+    su::biom table2("test.biom");
     expected = "";
     observed = su::test_table_ids_are_subset_of_tree(table2, tree2);
     ASSERT(observed == expected);
@@ -1707,7 +1707,7 @@ void test_bptree_collapse_edge() {
 
 void test_unifrac_sample_counts() {
     SUITE_START("test unifrac sample counts");
-    su::biom table = su::biom("test.biom");
+    su::biom table("test.biom");
     double* obs = table.sample_counts;
     double exp[] = {7, 3, 4, 6, 3, 4};
     for(unsigned int i = 0; i < 6; i++)
