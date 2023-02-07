@@ -134,7 +134,7 @@ void destroy_stripes(vector<double*> &dm_stripes, vector<double*> &dm_stripes_to
 }
 
 
-void initialize_mat(mat_t* &result, biom &table, bool is_upper_triangle) {
+void initialize_mat(mat_t* &result, biom_interface &table, bool is_upper_triangle) {
     result = (mat_t*)malloc(sizeof(mat));
     result->n_samples = table.n_samples;
 
@@ -151,7 +151,7 @@ void initialize_mat(mat_t* &result, biom &table, bool is_upper_triangle) {
     }
 }
 
-void initialize_results_vec(r_vec* &result, biom &table){
+void initialize_results_vec(r_vec* &result, biom_interface &table){
     // Stores results for Faith PD
     result = (r_vec*)malloc(sizeof(results_vec));
     result->n_samples = table.n_samples;
@@ -264,7 +264,7 @@ void initialize_mat_full_no_biom_T(TMat* &result, const char* const * sample_ids
     }
 }
 
-void initialize_partial_mat(partial_mat_t* &result, biom &table, std::vector<double*> &dm_stripes,
+void initialize_partial_mat(partial_mat_t* &result, biom_interface &table, std::vector<double*> &dm_stripes,
                             unsigned int stripe_start, unsigned int stripe_stop, bool is_upper_triangle) {
     result = (partial_mat_t*)malloc(sizeof(partial_mat));
     result->n_samples = table.n_samples;
@@ -424,7 +424,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
     }
 }
 
-compute_status one_off_inmem_cpp(su::biom &table, su::BPTree &tree,
+compute_status one_off_inmem_cpp(su::biom_interface &table, su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SETUP_TDBG("one_off_inmem")
@@ -534,7 +534,7 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
 
 // TMat mat_full_fp32_t
 template<class TReal, class TMat>
-compute_status one_off_matrix_T(su::biom &table, su::BPTree &tree,
+compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
                                 const char* unifrac_method, bool variance_adjust, double alpha,
                                 bool bypass_tips, unsigned int nthreads,
                                 const char *mmap_dir,  
@@ -621,7 +621,7 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
     return one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
 }
 
-compute_status one_off_inmem_matrix(su::biom &table, su::BPTree &tree,
+compute_status one_off_inmem_matrix(su::biom_interface &table, su::BPTree &tree,
                                     const char* unifrac_method, bool variance_adjust, double alpha,
                                     bool bypass_tips, unsigned int nthreads,
                                     mat_full_fp64_t** result) {
@@ -629,7 +629,7 @@ compute_status one_off_inmem_matrix(su::biom &table, su::BPTree &tree,
     return one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,NULL,result);
 }
 
-compute_status one_off_inmem_matrix_fp32(su::biom &table, su::BPTree &tree,
+compute_status one_off_inmem_matrix_fp32(su::biom_interface &table, su::BPTree &tree,
                                          const char* unifrac_method, bool variance_adjust, double alpha,
                                          bool bypass_tips, unsigned int nthreads,
                                          mat_full_fp32_t** result) {
@@ -651,14 +651,14 @@ compute_status one_off_inmem(const support_biom_t *table_data, const support_bpt
         return rc;
     }
 
-    su::biom table(table_data->obs_ids, 
-                   table_data->sample_ids, 
-                   table_data->indices,
-                   table_data->indptr,
-                   table_data->data,
-                   table_data->n_obs,
-                   table_data->n_samples,
-                   table_data->nnz);
+    su::biom_inmem table(table_data->obs_ids, 
+                         table_data->sample_ids, 
+                         table_data->indices,
+                         table_data->indptr,
+                         table_data->data,
+                         table_data->n_obs,
+                         table_data->n_samples,
+                         table_data->nnz);
 
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,
@@ -682,14 +682,14 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
         return rc;
     }
 
-    su::biom table(table_data->obs_ids, 
-                   table_data->sample_ids, 
-                   table_data->indices,
-                   table_data->indptr,
-                   table_data->data,
-                   table_data->n_obs,
-                   table_data->n_samples,
-                   table_data->nnz);
+    su::biom_inmem table(table_data->obs_ids, 
+                         table_data->sample_ids, 
+                         table_data->indices,
+                         table_data->indptr,
+                         table_data->data,
+                         table_data->n_obs,
+                         table_data->n_samples,
+                         table_data->nnz);
 
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,
