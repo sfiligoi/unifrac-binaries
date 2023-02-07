@@ -89,7 +89,7 @@ namespace su {
 
             unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             unsigned int get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
-            double* get_sample_counts();
+            void compute_sample_counts();
 
 
             /* create an index mapping an ID to its corresponding index 

@@ -68,7 +68,7 @@ biom::biom(std::string filename)
         obs_indices_resident[i] = current_indices;
         obs_data_resident[i] = current_data;
     }
-    sample_counts = get_sample_counts();
+    compute_sample_counts();
 }
 
 biom::~biom() {}

@@ -88,7 +88,7 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
         obs_data_resident[i] = data_ptr;
         obs_counts_resident[i] = count;
     }
-    sample_counts = get_sample_counts();
+    compute_sample_counts();
 }
 
 biom_inmem::~biom_inmem() {
@@ -206,8 +206,8 @@ void biom_inmem::get_obs_data_range(const std::string &id, unsigned int start, u
   biom_inmem::get_obs_data_range_TT(id,start,end,normalize,out);
 }
 
-double* biom_inmem::get_sample_counts() {
-    double *sample_counts = (double*)calloc(sizeof(double), n_samples);
+void biom_inmem::compute_sample_counts() {
+    sample_counts = (double*)calloc(sizeof(double), n_samples);
 
     for(unsigned int i = 0; i < n_obs; i++) {
         unsigned int count = obs_counts_resident[i];
@@ -219,5 +219,4 @@ double* biom_inmem::get_sample_counts() {
             sample_counts[index] += datum;
         }
     }
-    return sample_counts;
 }
