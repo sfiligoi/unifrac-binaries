@@ -84,7 +84,7 @@
 #define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
                                                         std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
                                                                                           std::istreambuf_iterator<char>());     \
-                                                        su::BPTree tree = su::BPTree(content);                                   \
+                                                        su::BPTree tree(content);                                                \
                                                         su::biom table(biom_filename);                                           \
                                                         if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
                                                             return table_empty;                                                  \
