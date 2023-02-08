@@ -22,6 +22,8 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
   , sample_counts(NULL)
   , obs_id_index()
   , sample_id_index()
+  , sample_ids()
+  , obs_ids()
   , sample_indptr()
   , obs_indptr()
 {}
@@ -35,30 +37,28 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
                        const int _n_obs,
                        const int _n_samples,
                        const int _nnz) 
-  : clean_on_destruction(false)
+  : biom_interface(_n_samples, _n_obs, _nnz)
+  , clean_on_destruction(false)
   , obs_indices_resident(NULL)
   , obs_data_resident(NULL)
   , obs_counts_resident(NULL)
   , sample_counts(NULL)
   , obs_id_index()
   , sample_id_index()
+  , sample_ids()
+  , obs_ids()
   , sample_indptr()
   , obs_indptr() {
 
-    nnz = _nnz;
-    n_samples = _n_samples;
-    n_obs = _n_obs;
-
-    sample_ids.resize(n_samples);
-    obs_ids.resize(n_obs);
-   
     #pragma omp parallel for schedule(static)
     for(int x = 0; x < 2; x++) {
         if(x == 0) {
+            obs_ids.resize(n_obs);
             for(int i = 0; i < n_obs; i++) {
                 obs_ids[i] = std::string(obs_ids_in[i]);
             }
         } else {
+            sample_ids.resize(n_samples);
             for(int i = 0; i < n_samples; i++) {
                 sample_ids[i] = std::string(samp_ids_in[i]);
             }
@@ -228,5 +228,12 @@ void biom_inmem::compute_sample_counts() {
 
 const double *biom_inmem::get_sample_counts() const {
   return sample_counts;
+}
+const std::vector<std::string> &biom_inmem::get_sample_ids() const {
+  return sample_ids;
+}
+
+const std::vector<std::string> &biom_inmem::get_obs_ids() const {
+  return obs_ids;
 }
 

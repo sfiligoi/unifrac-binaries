@@ -68,8 +68,10 @@ namespace su {
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const;
             void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const;
 
-            /* get the pre-comoputed counts */
-             virtual const double *get_sample_counts() const;
+            /* getters to local variables */
+            virtual const std::vector<std::string> &get_sample_ids() const;
+            virtual const std::vector<std::string> &get_obs_ids() const;
+            virtual const double *get_sample_counts() const;
         protected:
             bool clean_on_destruction;
             
@@ -86,6 +88,10 @@ namespace su {
             std::unordered_map<std::string, uint32_t> obs_id_index;
             std::unordered_map<std::string, uint32_t> sample_id_index;
  
+            // cache the IDs contained within the table
+            std::vector<std::string> sample_ids;
+            std::vector<std::string> obs_ids;
+
             // cache both index pointers into both CSC and CSR representations
             std::vector<uint32_t> sample_indptr;
             std::vector<uint32_t> obs_indptr;

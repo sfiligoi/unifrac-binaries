@@ -17,22 +17,17 @@
 namespace su {
     class biom_interface {
         public:
-            // cache the IDs contained within the table
-            std::vector<std::string> sample_ids;
-            std::vector<std::string> obs_ids;
-
             uint32_t n_samples;  // the number of samples
             uint32_t n_obs;      // the number of observations
             uint32_t nnz;        // the total number of nonzero entries
 
-            /* default constructor
-             *
-             * Automatically create the needed objects.
-             * All other initialization happens in children constructors.
-             */
+            /* default constructor */
             biom_interface() 
-             : sample_ids(), obs_ids()
-             , n_samples(0), n_obs(0), nnz(0) {}
+             : n_samples(0), n_obs(0), nnz(0) {}
+
+            /* full constructor */
+            biom_interface(uint32_t _n_samples, uint32_t _n_obs, uint32_t _nnz) 
+             : n_samples(_n_samples), n_obs(_n_obs), nnz(_nnz) {}
 
             /* default destructor
              *
@@ -67,8 +62,12 @@ namespace su {
             virtual void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const = 0;
             virtual void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const = 0;
 
+            // cache the IDs contained within the table
+            virtual const std::vector<std::string> &get_sample_ids() const =0;
+            virtual const std::vector<std::string> &get_obs_ids() const = 0;
+
             /* get the pre-comoputed counts */
-             virtual const double *get_sample_counts() const =0;
+            virtual const double *get_sample_counts() const =0;
     };
 }
 

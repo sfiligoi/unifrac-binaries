@@ -458,8 +458,8 @@ void test_biom_constructor() {
     ASSERT(table.n_samples == exp_n_samples);
     ASSERT(table.n_obs == exp_n_obs);
     ASSERT(table.nnz == exp_nnz);
-    ASSERT(table.sample_ids == exp_sids);
-    ASSERT(table.obs_ids == exp_oids);
+    ASSERT(table.get_sample_ids() == exp_sids);
+    ASSERT(table.get_obs_ids() == exp_oids);
     ASSERT(table.is_sample_indptr(exp_s_indptr));
     ASSERT(table.is_obs_indptr(exp_o_indptr));
 
@@ -1473,8 +1473,8 @@ void test_faith_pd_shear(){
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
-    std::unordered_set<std::string> to_keep(table.obs_ids.begin(),           \
-                                            table.obs_ids.end());            \
+    std::unordered_set<std::string> to_keep(table.get_obs_ids().begin(),           \
+                                            table.get_obs_ids().end());            \
     su::BPTree tree_sheared = tree.shear(to_keep).collapse();
     su::faith_pd(table, tree_sheared, obs);
 

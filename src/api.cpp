@@ -77,8 +77,8 @@
                                               return err;                                                      \
                                           }
 
-#define SYNC_TREE_TABLE(tree, table) std::unordered_set<std::string> to_keep(table.obs_ids.begin(),           \
-                                                                             table.obs_ids.end());            \
+#define SYNC_TREE_TABLE(tree, table) std::unordered_set<std::string> to_keep(table.get_obs_ids().begin(),           \
+                                                                             table.get_obs_ids().end());            \
                                      su::BPTree tree_sheared = tree.shear(to_keep).collapse();
 
 #define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
@@ -143,10 +143,11 @@ void initialize_mat(mat_t* &result, biom_interface &table, bool is_upper_triangl
     result->sample_ids = (char**)malloc(sizeof(char*) * result->n_samples);
     result->condensed_form = (double*)malloc(sizeof(double) * su::comb_2(table.n_samples));
 
+    const std::vector<std::string> &table_sample_ids = table.get_sample_ids();
     for(unsigned int i = 0; i < result->n_samples; i++) {
-        size_t len = table.sample_ids[i].length();
+        size_t len = table_sample_ids[i].length();
         result->sample_ids[i] = (char*)malloc(sizeof(char) * len + 1);
-        table.sample_ids[i].copy(result->sample_ids[i], len);
+        table_sample_ids[i].copy(result->sample_ids[i], len);
         result->sample_ids[i][len] = '\0';
     }
 }
@@ -158,10 +159,11 @@ void initialize_results_vec(r_vec* &result, biom_interface &table){
     result->values = (double*)malloc(sizeof(double) * result->n_samples);
     result->sample_ids = (char**)malloc(sizeof(char*) * result->n_samples);
 
+    const std::vector<std::string> &table_sample_ids = table.get_sample_ids();
     for(unsigned int i = 0; i < result->n_samples; i++) {
-        size_t len = table.sample_ids[i].length();
+        size_t len = table_sample_ids[i].length();
         result->sample_ids[i] = (char*)malloc(sizeof(char) * len + 1);
-        table.sample_ids[i].copy(result->sample_ids[i], len);
+        table_sample_ids[i].copy(result->sample_ids[i], len);
         result->sample_ids[i][len] = '\0';
         result->values[i] = 0;
     }
@@ -270,10 +272,11 @@ void initialize_partial_mat(partial_mat_t* &result, biom_interface &table, std::
     result->n_samples = table.n_samples;
 
     result->sample_ids = (char**)malloc(sizeof(char*) * result->n_samples);
+    const std::vector<std::string> &table_sample_ids = table.get_sample_ids();
     for(unsigned int i = 0; i < result->n_samples; i++) {
-        size_t len = table.sample_ids[i].length();
+        size_t len = table_sample_ids[i].length();
         result->sample_ids[i] = (char*)malloc(sizeof(char) * len + 1);
-        table.sample_ids[i].copy(result->sample_ids[i], len);
+        table_sample_ids[i].copy(result->sample_ids[i], len);
         result->sample_ids[i][len] = '\0';
     }
 

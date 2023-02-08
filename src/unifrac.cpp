@@ -40,7 +40,7 @@ std::string su::test_table_ids_are_subset_of_tree(su::biom_interface &table, su:
     std::unordered_set<std::string>::const_iterator hit;
     std::string a_missing_name = "";
 
-    for(auto i : table.obs_ids) {
+    for(auto i : table.get_obs_ids()) {
         hit = tip_names.find(i);
         if(hit == tip_names.end()) {
             a_missing_name = i;
