@@ -96,8 +96,12 @@ namespace su {
             std::vector<uint32_t> sample_indptr;
             std::vector<uint32_t> obs_indptr;
 
-        protected:            
+        protected:
+            /* Only allow copy constructr by children classes */
+            biom_inmem(const biom_inmem& other, bool _clean_on_destruction);
+
             void malloc_resident(uint32_t n_obs);
+            template<class TData> TData *copy_resident_el(unsigned int cnt, const TData *other) const;
 
             unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             unsigned int get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
@@ -124,7 +128,7 @@ namespace su {
             bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
             bool is_obs_indptr(const std::vector<uint32_t>& other) const { return obs_indptr==other; }
 
-            /* prevent default copy contructors and operators from being generated */
+            /* prevent default copy constructor and operator from being generated */
             biom_inmem(const biom_inmem& other) = delete;
             biom_inmem& operator= (const biom_inmem&) = delete;
     };

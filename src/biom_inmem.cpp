@@ -8,6 +8,7 @@
  */
 
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <stdio.h>
 #include "biom_inmem.hpp"
@@ -15,7 +16,8 @@
 using namespace su;
 
 biom_inmem::biom_inmem(bool _clean_on_destruction) 
-  : clean_on_destruction(_clean_on_destruction)
+  : biom_interface()
+  , clean_on_destruction(_clean_on_destruction)
   , obs_indices_resident(NULL)
   , obs_data_resident(NULL)
   , obs_counts_resident(NULL)
@@ -27,6 +29,33 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
   , sample_indptr()
   , obs_indptr()
 {}
+
+biom_inmem::biom_inmem(const biom_inmem& other, bool _clean_on_destruction)
+  : biom_interface(other)
+  , clean_on_destruction(_clean_on_destruction)
+  , obs_indices_resident(_clean_on_destruction?NULL:other.obs_indices_resident)
+  , obs_data_resident(_clean_on_destruction?NULL:other.obs_data_resident)
+  , obs_counts_resident(_clean_on_destruction?NULL:other.obs_counts_resident)
+  , sample_counts(NULL)
+  , obs_id_index(other.obs_id_index)
+  , sample_id_index(other.sample_id_index)
+  , sample_ids(other.sample_ids)
+  , obs_ids(other.obs_ids)
+  , sample_indptr(other.sample_indptr)
+  , obs_indptr(other.obs_indptr)
+{
+    if (_clean_on_destruction && (n_obs>0)) { // must make a copy
+        malloc_resident(n_obs);
+        for(unsigned int i = 0; i < n_obs; i++) {
+            unsigned int cnt = other.obs_counts_resident[i];
+            obs_counts_resident[i] = cnt;
+            obs_data_resident[i] = copy_resident_el<double>(cnt, other.obs_data_resident[i]);
+            obs_indices_resident[i] = copy_resident_el<uint32_t>(cnt, other.obs_indices_resident[i]);
+        }
+    }
+    // we re-create this every time
+    compute_sample_counts();
+}
 
 // not using const on indices/indptr/data as the pointers are being borrowed
 biom_inmem::biom_inmem(const char* const * obs_ids_in,
@@ -120,13 +149,13 @@ biom_inmem::~biom_inmem() {
 
 void biom_inmem::malloc_resident(uint32_t n_obs) { 
     /* load obs sparse data */
-    obs_indices_resident = (uint32_t**)malloc(sizeof(uint32_t**) * n_obs);
+    obs_indices_resident = (uint32_t**)malloc(sizeof(uint32_t*) * n_obs);
     if(obs_indices_resident == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
                 sizeof(uint32_t**) * n_obs, __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
-    obs_data_resident = (double**)malloc(sizeof(double**) * n_obs);
+    obs_data_resident = (double**)malloc(sizeof(double*) * n_obs);
     if(obs_data_resident == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
                 sizeof(double**) * n_obs, __FILE__, __LINE__);
@@ -138,6 +167,19 @@ void biom_inmem::malloc_resident(uint32_t n_obs) {
                 sizeof(unsigned int) * n_obs, __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
+}
+
+template<class TData>
+TData *biom_inmem::copy_resident_el(unsigned int cnt, const TData *other) const { 
+    unsigned int bufsize = sizeof(TData) * cnt;
+    TData *my = (TData *)malloc(bufsize);
+    if(my == NULL) {
+        fprintf(stderr, "Failed to allocate %d bytes; [%s]:%d\n", 
+                bufsize, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+   std::memcpy(my, other, bufsize);
+   return my;
 }
 
 void biom_inmem::create_id_index(const std::vector<std::string> &ids, 

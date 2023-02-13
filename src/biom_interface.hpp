@@ -29,15 +29,15 @@ namespace su {
             biom_interface(uint32_t _n_samples, uint32_t _n_obs, uint32_t _nnz) 
              : n_samples(_n_samples), n_obs(_n_obs), nnz(_nnz) {}
 
+            /* copy constructor */
+            biom_interface(const biom_interface& other) 
+             : n_samples(other.n_samples), n_obs(other.n_obs), nnz(other.nnz) {}
+
             /* default destructor
              *
              * Need a virtual one to allow for polymorphism
              */
             virtual ~biom_interface() {}
-
-            /* prevent default copy contructors and operators from being generated */
-            biom_interface(const biom_interface& other) = delete;
-            biom_interface& operator= (const biom_interface&) = delete;
 
             /* get a dense vector of observation data
              *
