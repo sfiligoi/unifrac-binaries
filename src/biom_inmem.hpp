@@ -57,7 +57,7 @@ namespace su {
 
             /* get a dense vector of a range of observation data
              *
-             * @param id The observation ID to fetc
+             * @param id The observation ID to fetch
              * @param start Initial index
              * @param end   First index past the end
              * @param normalize If set, divide by sample_counts
@@ -115,7 +115,9 @@ namespace su {
 
 
             // templatized version
+            template<class TFloat> void get_obs_data_TT(const uint32_t idx, TFloat* out) const;
             template<class TFloat> void get_obs_data_TT(const std::string &id, TFloat* out) const;
+            template<class TFloat> void get_obs_data_range_TT(const uint32_t idx, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
             template<class TFloat> void get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
         public:
             // for unit testing

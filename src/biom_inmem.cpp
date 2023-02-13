@@ -150,8 +150,7 @@ void biom_inmem::create_id_index(const std::vector<std::string> &ids,
 }
 
 template<class TFloat>
-void biom_inmem::get_obs_data_TT(const std::string &id, TFloat* out) const {
-    uint32_t idx = obs_id_index.at(id);
+void biom_inmem::get_obs_data_TT(const uint32_t idx, TFloat* out) const {
     unsigned int count = obs_counts_resident[idx];
     const uint32_t * const indices = obs_indices_resident[idx];
     const double * const data = obs_data_resident[idx];
@@ -165,6 +164,12 @@ void biom_inmem::get_obs_data_TT(const std::string &id, TFloat* out) const {
     }
 }
 
+template<class TFloat>
+void biom_inmem::get_obs_data_TT(const std::string &id, TFloat* out) const {
+    uint32_t idx = obs_id_index.at(id);
+    get_obs_data_TT<TFloat>(idx,out);
+}
+
 void biom_inmem::get_obs_data(const std::string &id, double* out) const {
   biom_inmem::get_obs_data_TT(id,out);
 }
@@ -176,8 +181,7 @@ void biom_inmem::get_obs_data(const std::string &id, float* out) const {
 
 // note: out is supposed to be fully filled, i.e. out[start:end]
 template<class TFloat>
-void biom_inmem::get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const {
-    uint32_t idx = obs_id_index.at(id);
+void biom_inmem::get_obs_data_range_TT(const uint32_t idx, unsigned int start, unsigned int end, bool normalize, TFloat* out) const {
     unsigned int count = obs_counts_resident[idx];
     const uint32_t * const indices = obs_indices_resident[idx];
     const double * const data = obs_data_resident[idx];
@@ -201,6 +205,12 @@ void biom_inmem::get_obs_data_range_TT(const std::string &id, unsigned int start
         }
       }
     }
+}
+
+template<class TFloat>
+void biom_inmem::get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const {
+    uint32_t idx = obs_id_index.at(id);
+    get_obs_data_range_TT<TFloat>(idx,start,end,normalize,out);
 }
 
 void biom_inmem::get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const {
