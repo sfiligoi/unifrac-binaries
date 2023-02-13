@@ -103,8 +103,6 @@ namespace su {
             void malloc_resident(uint32_t n_obs);
             template<class TData> TData *copy_resident_el(unsigned int cnt, const TData *other) const;
 
-            unsigned int get_obs_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
-            unsigned int get_sample_data_direct(const std::string &id, uint32_t *& current_indices_out, double *& current_data_out);
             void compute_sample_counts();
 
 
