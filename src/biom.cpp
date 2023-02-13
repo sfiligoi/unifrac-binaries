@@ -55,8 +55,10 @@ biom::biom(std::string filename)
             create_id_index(obs_ids, obs_id_index);
         else if(i == 1)
             create_id_index(sample_ids, sample_id_index);
-        else if(i == 2)
-            malloc_resident(n_obs);
+        else if(i == 2) {
+            resident_obj.n_obs = n_obs;
+            resident_obj.malloc_resident();
+        }
     }
 
     uint32_t *current_indices = NULL;
@@ -64,9 +66,9 @@ biom::biom(std::string filename)
     for(unsigned int i = 0; i < obs_ids.size(); i++)  {
         std::string id_ = obs_ids[i];
         unsigned int n = get_obs_data_direct(id_, current_indices, current_data);
-        obs_counts_resident[i] = n;
-        obs_indices_resident[i] = current_indices;
-        obs_data_resident[i] = current_data;
+        resident_obj.obs_counts_resident[i] = n;
+        resident_obj.obs_indices_resident[i] = current_indices;
+        resident_obj.obs_data_resident[i] = current_data;
     }
     compute_sample_counts();
 }
@@ -76,7 +78,7 @@ biom::~biom() {}
 biom::biom() 
   : biom_inmem(false)
   , has_hdf5_backing(false) { 
-    malloc_resident(0);
+    resident_obj.malloc_resident();
 }
 
 // not using const on indices/indptr/data as the pointers are being borrowed

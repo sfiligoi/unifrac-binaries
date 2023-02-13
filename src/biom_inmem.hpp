@@ -17,6 +17,48 @@
 #include "biom_interface.hpp"
 
 namespace su {
+    class sparse_data {
+        public:
+            /* default constructor */
+            sparse_data(bool _clean_on_destruction);
+
+            /* constructor from compress sparse data
+             *
+             * @param n_obs number of observations
+             * @param index vector of index positions
+             * @param indptr vector of indptr positions
+             * @param data vector of observation counts
+             */
+            sparse_data(const uint32_t n_obs,
+                        uint32_t* index,
+                        uint32_t* indptr,
+                        double* data);
+
+            /* default destructor */
+            virtual ~sparse_data();
+
+            /* modified copy constructor */
+            sparse_data(const sparse_data& other, bool _clean_on_destruction);
+
+            /* prevent default copy constructor and operator from being generated */
+            sparse_data(const sparse_data& other) = delete;
+            sparse_data& operator= (const sparse_data&) = delete;
+
+            /* Helper functions */
+            void malloc_resident();
+            void free_resident();
+            template<class TData> TData *copy_resident_el(unsigned int cnt, const TData *other) const;
+
+        public:  // keep it open for ease of access
+            uint32_t n_obs;
+            bool clean_on_destruction;
+            
+            uint32_t **obs_indices_resident;
+            double **obs_data_resident;
+            unsigned int *obs_counts_resident;
+
+    };
+
     class biom_inmem : public biom_interface {
         public:
             /* default constructor */
@@ -73,11 +115,7 @@ namespace su {
             virtual const std::vector<std::string> &get_obs_ids() const;
             virtual const double *get_sample_counts() const;
         protected:
-            bool clean_on_destruction;
-            
-            uint32_t **obs_indices_resident;
-            double **obs_data_resident;
-            unsigned int *obs_counts_resident;
+            sparse_data resident_obj;
 
             // distilled from the above resident values
             double *sample_counts;
@@ -95,9 +133,6 @@ namespace su {
         protected:
             /* Only allow copy constructr by children classes */
             biom_inmem(const biom_inmem& other, bool _clean_on_destruction);
-
-            void malloc_resident(uint32_t n_obs);
-            template<class TData> TData *copy_resident_el(unsigned int cnt, const TData *other) const;
 
             void compute_sample_counts();
 
