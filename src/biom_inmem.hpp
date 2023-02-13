@@ -30,6 +30,7 @@ namespace su {
              * @param data vector of observation counts
              */
             sparse_data(const uint32_t n_obs,
+                        const uint32_t n_samples,
                         uint32_t* index,
                         uint32_t* indptr,
                         double* data);
@@ -50,7 +51,8 @@ namespace su {
             template<class TData> TData *copy_resident_el(unsigned int cnt, const TData *other) const;
 
         public:  // keep it open for ease of access
-            uint32_t n_obs;
+            uint32_t n_obs;     // row dimension
+            uint32_t n_samples; // column dimension
             bool clean_on_destruction;
             
             uint32_t **obs_indices_resident;

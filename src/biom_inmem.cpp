@@ -17,6 +17,7 @@ using namespace su;
 
 sparse_data::sparse_data(bool _clean_on_destruction) 
   : n_obs(0)
+  , n_samples(0)
   , clean_on_destruction(_clean_on_destruction)
   , obs_indices_resident(NULL)
   , obs_data_resident(NULL)
@@ -25,6 +26,7 @@ sparse_data::sparse_data(bool _clean_on_destruction)
 
 sparse_data::sparse_data(const sparse_data& other, bool _clean_on_destruction)
   : n_obs(other.n_obs)
+  , n_samples(other.n_samples)
   , clean_on_destruction(_clean_on_destruction)
   , obs_indices_resident(_clean_on_destruction?NULL:other.obs_indices_resident)
   , obs_data_resident(_clean_on_destruction?NULL:other.obs_data_resident)
@@ -43,10 +45,12 @@ sparse_data::sparse_data(const sparse_data& other, bool _clean_on_destruction)
 
 // not using const on indices/indptr/data as the pointers are being borrowed
 sparse_data::sparse_data(const uint32_t _n_obs,
-                       uint32_t* indices,
-                       uint32_t* indptr,
-                       double* data)
+                         const uint32_t _n_samples,
+                         uint32_t* indices,
+                         uint32_t* indptr,
+                         double* data)
   : n_obs(_n_obs)
+  , n_samples(_n_samples)
   , clean_on_destruction(false)
   , obs_indices_resident(NULL)
   , obs_data_resident(NULL)
@@ -169,7 +173,7 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
                        const int _n_samples,
                        const int _nnz) 
   : biom_interface(_n_samples, _n_obs, _nnz)
-  , resident_obj(_n_obs,indices,indptr,data)
+  , resident_obj(_n_obs,_n_samples,indices,indptr,data)
   , sample_counts(NULL)
   , obs_id_index()
   , sample_id_index()

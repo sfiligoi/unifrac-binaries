@@ -57,6 +57,7 @@ biom::biom(std::string filename)
             create_id_index(sample_ids, sample_id_index);
         else if(i == 2) {
             resident_obj.n_obs = n_obs;
+            resident_obj.n_samples = n_samples;
             resident_obj.malloc_resident();
         }
     }
