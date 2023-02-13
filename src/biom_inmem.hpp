@@ -92,10 +92,6 @@ namespace su {
             std::vector<std::string> sample_ids;
             std::vector<std::string> obs_ids;
 
-            // cache both index pointers into both CSC and CSR representations
-            std::vector<uint32_t> sample_indptr;
-            std::vector<uint32_t> obs_indptr;
-
         protected:
             /* Only allow copy constructr by children classes */
             biom_inmem(const biom_inmem& other, bool _clean_on_destruction);
@@ -122,10 +118,6 @@ namespace su {
             template<class TFloat> void get_obs_data_range_TT(const uint32_t idx, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
             template<class TFloat> void get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
         public:
-            // for unit testing
-            bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
-            bool is_obs_indptr(const std::vector<uint32_t>& other) const { return obs_indptr==other; }
-
             /* prevent default copy constructor and operator from being generated */
             biom_inmem(const biom_inmem& other) = delete;
             biom_inmem& operator= (const biom_inmem&) = delete;

@@ -62,6 +62,10 @@ namespace su {
         private:
             bool has_hdf5_backing = false;
             
+            // cache both index pointers into both CSC and CSR representations
+            std::vector<uint32_t> sample_indptr;
+            std::vector<uint32_t> obs_indptr;
+
             /* retain DataSet handles within the HDF5 file */
             H5::DataSet obs_indices;
             H5::DataSet sample_indices;
@@ -88,6 +92,11 @@ namespace su {
 
             /* count the number of nonzero values and set nnz */
             void set_nnz();
+        public:
+            // for unit testing
+            bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
+            bool is_obs_indptr(const std::vector<uint32_t>& other) const { return obs_indptr==other; }
+
     };
 }
 

@@ -26,8 +26,6 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
   , sample_id_index()
   , sample_ids()
   , obs_ids()
-  , sample_indptr()
-  , obs_indptr()
 {}
 
 biom_inmem::biom_inmem(const biom_inmem& other, bool _clean_on_destruction)
@@ -41,8 +39,6 @@ biom_inmem::biom_inmem(const biom_inmem& other, bool _clean_on_destruction)
   , sample_id_index(other.sample_id_index)
   , sample_ids(other.sample_ids)
   , obs_ids(other.obs_ids)
-  , sample_indptr(other.sample_indptr)
-  , obs_indptr(other.obs_indptr)
 {
     if (_clean_on_destruction && (n_obs>0)) { // must make a copy
         malloc_resident(n_obs);
@@ -75,9 +71,7 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
   , obs_id_index()
   , sample_id_index()
   , sample_ids()
-  , obs_ids()
-  , sample_indptr()
-  , obs_indptr() {
+  , obs_ids() {
 
     #pragma omp parallel for schedule(static)
     for(int x = 0; x < 2; x++) {
