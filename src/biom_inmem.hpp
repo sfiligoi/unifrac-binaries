@@ -41,6 +41,10 @@ namespace su {
             /* modified copy constructor */
             sparse_data(const sparse_data& other, bool _clean_on_destruction);
 
+            /* remove ownership of this obs_idx buffer */
+            uint32_t *steal_indeces(uint32_t obs_idx) {uint32_t *out=obs_indices_resident[obs_idx]; obs_indices_resident[obs_idx]=NULL; return out;}
+            double *steal_data(uint32_t obs_idx) {double *out=obs_data_resident[obs_idx]; obs_data_resident[obs_idx]=NULL; return out;}
+
             /* prevent default copy constructor and operator from being generated */
             sparse_data(const sparse_data& other) = delete;
             sparse_data& operator= (const sparse_data&) = delete;
@@ -155,6 +159,8 @@ namespace su {
             template<class TFloat> void get_obs_data_range_TT(const uint32_t idx, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
             template<class TFloat> void get_obs_data_range_TT(const std::string &id, unsigned int start, unsigned int end, bool normalize, TFloat* out) const;
         public:
+            const sparse_data& get_resident_obj() const {return resident_obj;}
+
             /* prevent default copy constructor and operator from being generated */
             biom_inmem(const biom_inmem& other) = delete;
             biom_inmem& operator= (const biom_inmem&) = delete;

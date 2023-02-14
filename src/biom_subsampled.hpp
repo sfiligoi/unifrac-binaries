@@ -37,6 +37,24 @@ namespace su {
 
     };
 
+    class sparse_data_subsampled: public sparse_data {
+        public:
+            /* default constructor */
+            sparse_data_subsampled(bool _clean_on_destruction)
+             :sparse_data(_clean_on_destruction) {}
+
+            /* modified copy constructor */
+            sparse_data_subsampled(const sparse_data& other, bool _clean_on_destruction)
+             : sparse_data(other,_clean_on_destruction) {}
+
+            /* prevent default copy constructor and operator from being generated */
+            sparse_data_subsampled(const sparse_data_subsampled& other) = delete;
+            sparse_data_subsampled& operator= (const sparse_data_subsampled&) = delete;
+
+            /* perform subsampling with replacement, no filtering */
+            void subsample_with_replacement(const uint32_t n);
+    };
+
     class biom_subsampled : public biom_inmem {
         public:
             /* default constructor
@@ -46,13 +64,9 @@ namespace su {
              */
             biom_subsampled(const biom_inmem &parent, const uint32_t n);
 
-            /* default destructor */
-            virtual ~biom_subsampled();
-
         protected:
+            void copy_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj);
 
-            /* perform subsampling with replacement, no filtering */
-            void init_with_replacement(const uint32_t n);
         public:
             /* prevent default copy contructor and operator from being generated */
             biom_subsampled(const biom_subsampled& other) = delete;

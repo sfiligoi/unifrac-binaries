@@ -82,17 +82,8 @@ linked_sparse_transposed::~linked_sparse_transposed() {
     }
 }
 
-biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n) 
-  : biom_inmem(parent, true)
-{
-   init_with_replacement(n);
-}
-
-biom_subsampled::~biom_subsampled()
-{}
-
-void biom_subsampled::init_with_replacement(const uint32_t n) {
-    linked_sparse_transposed transposed(this->resident_obj);
+void sparse_data_subsampled::subsample_with_replacement(const uint32_t n) {
+    linked_sparse_transposed transposed(*this);
 
     // TODO: This is just a temporary hack
     // construct a trivial random generator engine
@@ -117,4 +108,61 @@ void biom_subsampled::init_with_replacement(const uint32_t n) {
     delete[] data_out;
     delete[] data_in;
 }
+
+// =====================  biom_subsampled  ==========================
+
+biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n) 
+  : biom_inmem(true)
+{
+   sparse_data_subsampled tmp_obj(parent.get_resident_obj(), true);
+   tmp_obj.subsample_with_replacement(n);
+   copy_nonzero(parent,tmp_obj);
+
+    /* define a mapping between an ID and its corresponding offset */
+   #pragma omp parallel for schedule(static)
+   for(int i = 0; i < 2; i++) {
+      if(i == 0)
+         create_id_index(obs_ids, obs_id_index);
+      else if(i == 1)
+         create_id_index(sample_ids, sample_id_index);
+       else if(i == 2)
+         compute_sample_counts();
+   }
+}
+
+void biom_subsampled::copy_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj) {
+   // initialize data structures
+   resident_obj.n_obs = parent.n_obs;
+   resident_obj.n_samples = parent.n_samples;
+   resident_obj.malloc_resident();
+   obs_ids.reserve(parent.n_obs);
+
+   const std::vector<std::string> &parent_obs_ids = parent.get_obs_ids();
+
+   // now do the copy
+   n_obs = 0;
+   for (uint32_t i=0; i<parent.n_obs; i++) {
+     const uint32_t cnt = subsampled_obj.obs_counts_resident[i];
+     double *data = subsampled_obj.obs_data_resident[i];
+     uint32_t nz = 0; 
+     for (uint32_t j=0; j<cnt; j++) if (data[j]>0.0) nz++;
+
+     if (nz>0) {
+        // steal non-zero data
+        resident_obj.obs_indices_resident[n_obs] = subsampled_obj.steal_indeces(i);
+        resident_obj.obs_data_resident[n_obs] = subsampled_obj.steal_data(i); 
+        resident_obj.obs_counts_resident[n_obs] = cnt;
+        obs_ids.push_back(parent_obs_ids[i]);
+        n_obs++;
+     }
+     // else just ignore
+   }
+
+   sample_ids = parent.get_sample_ids();;
+   resident_obj.n_obs = n_obs;
+   n_samples = parent.n_samples;
+   // TODO: Do we need nnz?
+   nnz = 0; 
+}
+
 
