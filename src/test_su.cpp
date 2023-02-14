@@ -434,6 +434,13 @@ void test_bptree_parent() {
     SUITE_END();
 }
 
+// need a child class to test protected constructor
+class test_biom_inmem : public su::biom_inmem {
+        public:
+            test_biom_inmem(const su::biom_inmem& other, bool _clean_on_destruction)
+               : su::biom_inmem(other, _clean_on_destruction) {}
+};
+
 void test_biom_constructor() {
     SUITE_START("biom constructor");
 
@@ -462,6 +469,12 @@ void test_biom_constructor() {
     ASSERT(table.get_obs_ids() == exp_oids);
     ASSERT(table.is_sample_indptr(exp_s_indptr));
     ASSERT(table.is_obs_indptr(exp_o_indptr));
+
+    test_biom_inmem table_copy(table,true);
+    ASSERT(table_copy.n_samples == exp_n_samples);
+    ASSERT(table_copy.n_obs == exp_n_obs);
+    ASSERT(table_copy.get_sample_ids() == exp_sids);
+    ASSERT(table_copy.get_obs_ids() == exp_oids);
 
     SUITE_END();
 }
