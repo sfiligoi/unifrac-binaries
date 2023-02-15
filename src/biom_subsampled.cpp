@@ -40,8 +40,10 @@ linked_sparse_transposed::linked_sparse_transposed(sparse_data &other)
                 sizeof(double**) * n_obs, __FILE__, __LINE__);
         exit(EXIT_FAILURE);
    }
+   uint32_t _max_count = 0;
    for (uint32_t i=0; i<n_obs; i++) {
      const uint32_t cnt = obs_counts_resident[i];
+     _max_count = std::max(_max_count,cnt);
      obs_data_resident[i] = (double**)malloc(sizeof(double*) * cnt);
      if(obs_data_resident[i] == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
@@ -49,20 +51,18 @@ linked_sparse_transposed::linked_sparse_transposed(sparse_data &other)
         exit(EXIT_FAILURE);
      }
    }
+   max_count = _max_count;
 
-   uint32_t _max_count = 0;
    for (uint32_t i=0; i<other.n_obs; i++) {
      const uint32_t cnt = other.obs_counts_resident[i];
      const uint32_t *idxs = other.obs_indices_resident[i];
      double *data = other.obs_data_resident[i];
-     _max_count = std::max(_max_count,cnt);
      for (uint32_t j=0; j<cnt; j++) {
        uint32_t local_i = idxs[j];
        obs_data_resident[local_i][0] = &(data[j]);
        obs_data_resident[local_i]++;
      }
    }
-   max_count = _max_count;
 
    // we moved the pointers in place, rewind
    for (uint32_t i=0; i<n_obs; i++) {
@@ -82,20 +82,18 @@ linked_sparse_transposed::~linked_sparse_transposed() {
     }
 }
 
-void sparse_data_subsampled::subsample_with_replacement(const uint32_t n) {
-    linked_sparse_transposed transposed(*this);
-
+void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n) {
     // TODO: This is just a temporary hack
     // construct a trivial random generator engine
     std::default_random_engine generator(0);
 
     // use common buffer to minimize allocation costs
-    double *data_in = new double[transposed.max_count];  // original values
-    uint32_t *data_out = new uint32_t[transposed.max_count]; // computed values
+    double *data_in = new double[max_count];  // original values
+    uint32_t *data_out = new uint32_t[max_count]; // computed values
 
     for (uint32_t i=0; i<n_obs; i++) {
-        unsigned int length = transposed.obs_counts_resident[i];
-        double* *data_arr = transposed.obs_data_resident[i];
+        unsigned int length = obs_counts_resident[i];
+        double* *data_arr = obs_data_resident[i];
 
         for (unsigned int j=0; j<length; j++) data_in[j] = *(data_arr[j]);
         
@@ -107,6 +105,13 @@ void sparse_data_subsampled::subsample_with_replacement(const uint32_t n) {
     }
     delete[] data_out;
     delete[] data_in;
+}
+
+// =====================  sparse_data_subsampled  ==========================
+
+void sparse_data_subsampled::subsample_with_replacement(const uint32_t n) {
+    linked_sparse_transposed transposed(*this);
+    transposed.transposed_subsample_with_replacement(n);
 }
 
 // =====================  biom_subsampled  ==========================

@@ -27,6 +27,8 @@ namespace su {
             linked_sparse_transposed(const linked_sparse_transposed& other) = delete;
             linked_sparse_transposed& operator= (const linked_sparse_transposed&) = delete;
 
+            /* perform subsampling with replacement, no filtering */
+            void transposed_subsample_with_replacement(const uint32_t n);
         public:  // keep it open for ease of access
             uint32_t n_obs;     // row dimension
             uint32_t n_samples; // column dimension
