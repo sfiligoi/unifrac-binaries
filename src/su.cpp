@@ -47,6 +47,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
+    std::cout << "    --subsample-depth\t[OPTIONAL] Depth of subsampling of the input BIOM before computing unifrac" << std::endl;
     std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --seed\t[OPTIONAL] Seed to use for initializing the random gnerator" << std::endl;
@@ -390,7 +391,7 @@ int mode_partial(std::string table_filename, std::string tree_filename,
 
 int mode_one_off(const std::string &table_filename, const std::string &tree_filename, 
                  const std::string &output_filename, const std::string &format_str, Format format_val, 
-                 const std::string &method_string, unsigned int pcoa_dims,
+                 const std::string &method_string, unsigned int subsample_depth, unsigned int pcoa_dims,
                  unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips,
                  unsigned int nsubsteps, const std::string &mmap_dir) {
@@ -428,6 +429,10 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
     if (format_val==format_ascii) {
       mat_t *result = NULL;
 
+      if(subsample_depth>0) {
+        err("Subsampling not supported with ASCII output.");
+        return EXIT_FAILURE;
+      }
       status = one_off(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
                        vaw, g_unifrac_alpha, bypass_tips, nsubsteps, &result);
       if(status != okay || result == NULL) {
@@ -450,6 +455,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
 
       status = unifrac_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
                                   method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
+                                  subsample_depth,
                                   pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
       if (status != okay) {
@@ -518,6 +524,7 @@ int main(int argc, char **argv){
     std::string pcoa_arg = input.getCmdOption("--pcoa");
     std::string permanova_arg = input.getCmdOption("--permanova");
     std::string seed_arg = input.getCmdOption("--seed");
+    std::string subsample_depth_arg = input.getCmdOption("--subsample-depth");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
     if(nsubsteps_arg.empty()) {
@@ -598,14 +605,24 @@ int main(int argc, char **argv){
          ssu_set_random_seed(atoi(seed_arg.c_str()));
     }
 
+    unsigned int subsample_depth = 0;
+    if(subsample_depth_arg.empty())
+        subsample_depth = 0;
+    else
+        subsample_depth = atoi(subsample_depth_arg.c_str());
 
     if(mode_arg.empty() || mode_arg == "one-off")
         return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string,
+                            subsample_depth,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                             vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
-    else if(mode_arg == "partial")
+    else if(mode_arg == "partial") {
+        if (subsample_depth>0) {
+          err("Cannot subsample in partial mode.");
+          return EXIT_FAILURE;
+        }
         return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe);
-    else if(mode_arg == "merge-partial")
+    } else if(mode_arg == "merge-partial")
         return mode_merge_partial(output_filename, format_val,
                                   pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                                   partial_pattern, diskbuf_arg);
