@@ -125,7 +125,7 @@ biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n)
 
     /* define a mapping between an ID and its corresponding offset */
    #pragma omp parallel for schedule(static)
-   for(int i = 0; i < 2; i++) {
+   for(int i = 0; i < 3; i++) {
       if(i == 0)
          create_id_index(obs_ids, obs_id_index);
       else if(i == 1)
