@@ -479,7 +479,7 @@ void test_biom_constructor() {
     SUITE_END();
 }
 
-void _exercise_get_obs_data(su::biom &table) {
+void _exercise_get_obs_data(su::biom_interface &table) {
     double exp0[] = {0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
     std::vector<double> exp0_vec = _double_array_to_vector(exp0, 6);
     double exp1[] = {5.0, 1.0, 0.0, 2.0, 3.0, 1.0};
@@ -488,10 +488,15 @@ void _exercise_get_obs_data(su::biom &table) {
     std::vector<double> exp2_vec = _double_array_to_vector(exp2, 6);
     double exp3[] = {2.0, 1.0, 1.0, 0.0, 0.0, 1.0};
     std::vector<double> exp3_vec = _double_array_to_vector(exp3, 6);
+    double exp3a[] = {1.0, 1.0, 0.0};
+    std::vector<double> exp3a_vec = _double_array_to_vector(exp3a, 3);
+    double exp3b[] = {1.0/3, 1.0/4, 0.0};
+    std::vector<double> exp3b_vec = _double_array_to_vector(exp3b, 3);
     double exp4[] = {0.0, 1.0, 1.0, 0.0, 0.0, 0.0};
     std::vector<double> exp4_vec = _double_array_to_vector(exp4, 6);
 
     double *out = (double*)malloc(sizeof(double) * 6);
+    double *out2 = (double*)malloc(sizeof(double) * 3);
     std::vector<double> obs_vec;
 
     table.get_obs_data(std::string("GG_OTU_1").c_str(), out);
@@ -510,10 +515,19 @@ void _exercise_get_obs_data(su::biom &table) {
     obs_vec = _double_array_to_vector(out, 6);
     ASSERT(vec_almost_equal(obs_vec, exp3_vec));
 
+    table.get_obs_data_range(std::string("GG_OTU_4").c_str(), 1,3,false, out2);
+    obs_vec = _double_array_to_vector(out2, 3);
+    ASSERT(vec_almost_equal(obs_vec, exp3a_vec));
+
+    table.get_obs_data_range(std::string("GG_OTU_4").c_str(), 1,3,true, out2);
+    obs_vec = _double_array_to_vector(out2, 3);
+    ASSERT(vec_almost_equal(obs_vec, exp3b_vec));
+
     table.get_obs_data(std::string("GG_OTU_5").c_str(), out);
     obs_vec = _double_array_to_vector(out, 6);
     ASSERT(vec_almost_equal(obs_vec, exp4_vec));
 
+    free(out2);
     free(out);
 }
 
@@ -525,7 +539,7 @@ void test_biom_constructor_from_sparse() {
     const char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
 
-    su::biom table(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
+    su::biom_inmem table(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
     _exercise_get_obs_data(table);
    
     SUITE_END();
