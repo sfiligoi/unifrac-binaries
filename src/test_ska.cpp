@@ -665,6 +665,8 @@ void test_subsample_replacement() {
     ASSERT(table.n_samples == exp_n_samples);
     ASSERT(table.n_obs <= exp_n_obs);
     ASSERT(table.get_sample_ids() == exp_sids);
+    // when with replacement
+    // all columns should add to n==8
     {
       double exp_data[6] = {8.0, 8.0, 8.0, 8.0, 8.0, 8.0};
       std::vector<double> exp_vec = _double_array_to_vector(exp_data, 6);
@@ -677,6 +679,25 @@ void test_subsample_replacement() {
       }
       std::vector<double> sum_vec = _double_array_to_vector(data_sum, 6);
       ASSERT(sum_vec == exp_vec);
+    }
+
+    // when with replacement
+    // given any column, the number of permutations should be more than n
+    {
+      std::unordered_set<uint64_t> perm_set;
+      // will pick column 2
+      for (int i=0; i<1000; i++) {
+         su::skbio_biom_subsampled table2(org_table,8);
+
+         uint64_t val = 0;
+         for (auto obs_id : table2.get_obs_ids()) {
+            double line[6];
+            table2.get_obs_data(obs_id, line);
+            val = val*10 + uint64_t(line[2]);
+         }
+         perm_set.insert(val);
+      }
+      ASSERT(uint32_t(perm_set.size()) > uint32_t(8));
     }
 
     SUITE_END();
