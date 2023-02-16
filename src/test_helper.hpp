@@ -72,8 +72,9 @@ inline std::vector<std::string> _string_array_to_vector(std::string *arr, unsign
     return vec;
 }
 
-inline bool vec_almost_equal(std::vector<double> a, std::vector<double> b) {
+inline bool vec_almost_equal(const std::vector<double> &a, const std::vector<double> &b) {
     if(a.size() != b.size()) {
+        printf("vec_almost_equal size check failed, %i != %i\n",int(a.size()),int(b.size()));
         return false;
     }
     for(unsigned int i = 0; i < a.size(); i++) {
