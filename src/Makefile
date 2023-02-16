@@ -154,7 +154,7 @@ rapi_test: main
 	echo CXXFLAGS=  >> ~/.R/Makevars
 	echo LDFLAGS= -llz4 $(BLASLIB) >> ~/.R/Makevars
 	rm -f *.o
-	Rscript R_interface/rapi_test.R
+	Rscript --verbose R_interface/rapi_test.R
 	rm -f *.o
 
 clean:
