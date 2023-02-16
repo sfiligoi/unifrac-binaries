@@ -78,7 +78,8 @@ biom::~biom() {}
 
 biom::biom() 
   : biom_inmem(false)
-  , has_hdf5_backing(false) { 
+  , has_hdf5_backing(false)
+  , nnz(0) { 
     resident_obj.malloc_resident();
 }
 
@@ -91,9 +92,10 @@ biom::biom(const char* const * obs_ids_in,
            double* data,
            const int n_obs,
            const int n_samples,
-           const int nnz) 
-  : biom_inmem(obs_ids_in,samp_ids_in,indices,indptr,data,n_obs,n_samples,nnz)
+           const int _nnz) 
+  : biom_inmem(obs_ids_in,samp_ids_in,indices,indptr,data,n_obs,n_samples)
   , has_hdf5_backing(false)
+  , nnz(_nnz)
 {}
 
 void biom::set_nnz() {

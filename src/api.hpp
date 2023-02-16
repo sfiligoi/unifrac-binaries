@@ -132,7 +132,7 @@ typedef struct partial_dyn_mat {
  * data <double*> the actual matrix values
  * n_obs <int> the number of observations, corresponding to length of obs_ids
  * n_samples <int> the number of samples, corresponding to the length of sample_ids
- * nnz <int> the number of nonzero values, corresponding to the length of data and indices
+ * nnz <int> the number of nonzero values, corresponding to the length of data and indices (DEPRECATED)
  */
 typedef struct support_biom {
     char** obs_ids;

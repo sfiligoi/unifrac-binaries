@@ -79,7 +79,6 @@ namespace su {
              * @param data vector of observation counts
              * @param n_obs number of observations
              * @param n_samples number of samples
-             * @param nnz number of data points
              */
             biom_inmem(const char* const * obs_ids,
                        const char* const * samp_ids,
@@ -87,8 +86,7 @@ namespace su {
                        uint32_t* indptr,
                        double* data,
                        const int n_obs,
-                       const int n_samples,
-                       const int nnz);
+                       const int n_samples);
 
             /* default destructor */
             virtual ~biom_inmem();

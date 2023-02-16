@@ -19,19 +19,18 @@ namespace su {
         public:
             uint32_t n_samples;  // the number of samples
             uint32_t n_obs;      // the number of observations
-            uint32_t nnz;        // the total number of nonzero entries
 
             /* default constructor */
             biom_interface() 
-             : n_samples(0), n_obs(0), nnz(0) {}
+             : n_samples(0), n_obs(0) {}
 
             /* full constructor */
-            biom_interface(uint32_t _n_samples, uint32_t _n_obs, uint32_t _nnz) 
-             : n_samples(_n_samples), n_obs(_n_obs), nnz(_nnz) {}
+            biom_interface(uint32_t _n_samples, uint32_t _n_obs) 
+             : n_samples(_n_samples), n_obs(_n_obs) {}
 
             /* copy constructor */
             biom_interface(const biom_interface& other) 
-             : n_samples(other.n_samples), n_obs(other.n_obs), nnz(other.nnz) {}
+             : n_samples(other.n_samples), n_obs(other.n_obs) {}
 
             /* default destructor
              *

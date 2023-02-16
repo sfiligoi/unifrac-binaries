@@ -93,6 +93,8 @@ namespace su {
             /* count the number of nonzero values and set nnz */
             void set_nnz();
         public:
+            uint32_t nnz;        // the total number of nonzero entries
+
             // for unit testing
             bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
             bool is_obs_indptr(const std::vector<uint32_t>& other) const { return obs_indptr==other; }

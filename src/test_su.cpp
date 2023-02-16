@@ -539,7 +539,7 @@ void test_biom_constructor_from_sparse() {
     const char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
 
-    su::biom_inmem table(obs_ids, samp_ids, index, indptr, data, 5, 6, 15);
+    su::biom_inmem table(obs_ids, samp_ids, index, indptr, data, 5, 6);
     _exercise_get_obs_data(table);
    
     SUITE_END();

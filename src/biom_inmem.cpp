@@ -170,9 +170,8 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
                        uint32_t* indptr,
                        double* data,
                        const int _n_obs,
-                       const int _n_samples,
-                       const int _nnz) 
-  : biom_interface(_n_samples, _n_obs, _nnz)
+                       const int _n_samples)
+  : biom_interface(_n_samples, _n_obs)
   , resident_obj(_n_obs,_n_samples,indices,indptr,data)
   , sample_counts(NULL)
   , obs_id_index()

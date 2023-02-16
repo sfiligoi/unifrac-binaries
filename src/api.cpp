@@ -688,8 +688,7 @@ compute_status one_off_inmem(const support_biom_t *table_data, const support_bpt
                          table_data->indptr,
                          table_data->data,
                          table_data->n_obs,
-                         table_data->n_samples,
-                         table_data->nnz);
+                         table_data->n_samples);
 
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,
@@ -719,8 +718,7 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
                          table_data->indptr,
                          table_data->data,
                          table_data->n_obs,
-                         table_data->n_samples,
-                         table_data->nnz);
+                         table_data->n_samples);
 
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,

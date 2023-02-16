@@ -164,8 +164,6 @@ void biom_subsampled::copy_nonzero(const biom_inmem &parent, sparse_data& subsam
    sample_ids = parent.get_sample_ids();;
    resident_obj.n_obs = n_obs;
    n_samples = parent.n_samples;
-   // TODO: Do we need nnz?
-   nnz = 0; 
 }
 
 
