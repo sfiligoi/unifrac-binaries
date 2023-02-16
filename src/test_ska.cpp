@@ -1,44 +1,8 @@
-#include <iostream>
+#include "biom.hpp"
 #include "skbio_alt.hpp"
-#include <cmath>
-#include <string.h>
-#include <unistd.h>
-
 #include "api.hpp"
-
-/*
- * test harness adapted from 
- * https://github.com/noporpoise/BitArray/blob/master/dev/bit_array_test.c
- */
-const char *suite_name;
-char suite_pass;
-int suites_run = 0, suites_failed = 0, suites_empty = 0;
-int tests_in_suite = 0, tests_run = 0, tests_failed = 0;
-
-#define QUOTE(str) #str
-#define ASSERT(x) {tests_run++; tests_in_suite++; if(!(x)) \
-    { fprintf(stderr, "failed assert [%s:%i] %s\n", __FILE__, __LINE__, QUOTE(x)); \
-      suite_pass = 0; tests_failed++; }}
-
-void SUITE_START(const char *name) {
-  suite_pass = 1;
-  suite_name = name;
-  suites_run++;
-  tests_in_suite = 0;
-}
-
-void SUITE_END() {
-  printf("Testing %s ", suite_name);
-  size_t suite_i;
-  for(suite_i = strlen(suite_name); suite_i < 80-8-5; suite_i++) printf(".");
-  printf("%s\n", suite_pass ? " pass" : " fail");
-  if(!suite_pass) suites_failed++;
-  if(!tests_in_suite) suites_empty++;
-}
-/*
- *  End adapted code
- */
-
+#include <unistd.h>
+#include "test_helper.hpp"
 
 void test_center_mat() {
     SUITE_START("test center mat");
@@ -672,6 +636,52 @@ void test_permanova_unequal() {
     SUITE_END();
 }
 
+void test_subsample_replacement() {
+    SUITE_START("test subsample with replacement");
+
+    su::biom org_table("test.biom");
+    uint32_t exp_n_samples = 6;
+    uint32_t exp_n_obs = 5;
+
+    std::string sids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
+    std::vector<std::string> exp_sids = _string_array_to_vector(sids, exp_n_samples);
+
+    std::string oids[] = {"GG_OTU_1", "GG_OTU_2","GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
+    std::vector<std::string> exp_oids = _string_array_to_vector(oids, exp_n_obs);
+
+    uint32_t o_indptr[] = {0, 1, 6, 9, 13, 15};
+    std::vector<uint32_t> exp_o_indptr = _uint32_array_to_vector(o_indptr, exp_n_obs + 1);
+
+    su::skbio_biom_subsampled table(org_table,8);
+
+    // verify it did not destroy the original table
+    ASSERT(org_table.n_samples == exp_n_samples);
+    ASSERT(org_table.n_obs == exp_n_obs);
+    ASSERT(org_table.get_sample_ids() == exp_sids);
+    ASSERT(org_table.get_obs_ids() == exp_oids);
+    ASSERT(org_table.is_obs_indptr(exp_o_indptr));
+
+    // now check basic rarefaction properties
+    ASSERT(table.n_samples == exp_n_samples);
+    ASSERT(table.n_obs <= exp_n_obs);
+    ASSERT(table.get_sample_ids() == exp_sids);
+    {
+      double exp_data[6] = {8.0, 8.0, 8.0, 8.0, 8.0, 8.0};
+      std::vector<double> exp_vec = _double_array_to_vector(exp_data, 6);
+
+      double data_sum[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      for (auto obs_id : table.get_obs_ids()) {
+         double line[6];
+         table.get_obs_data(obs_id, line);
+         for (int j=0; j<6; j++) data_sum[j] += line[j];
+      }
+      std::vector<double> sum_vec = _double_array_to_vector(data_sum, 6);
+      ASSERT(sum_vec == exp_vec);
+    }
+
+    SUITE_END();
+}
+
 int main(int argc, char** argv) {
     test_center_mat();
     test_pcoa();
@@ -680,6 +690,7 @@ int main(int argc, char** argv) {
     test_permanova_ties();
     test_permanova_noties();
     test_permanova_unequal();
+    test_subsample_replacement();
 
     printf("\n");
     printf(" %i / %i suites failed\n", suites_failed, suites_run);
