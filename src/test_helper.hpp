@@ -78,6 +78,7 @@ inline bool vec_almost_equal(std::vector<double> a, std::vector<double> b) {
     }
     for(unsigned int i = 0; i < a.size(); i++) {
         if(!(fabs(a[i] - b[i]) < 0.000001)) {  // sufficient given the tests
+            printf("vec_almost_equal[%i] failed, %f - %f = %f\n",i,a[i],b[i], fabs(a[i] - b[i]));
             return false;
         }
     }
