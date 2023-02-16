@@ -430,11 +430,11 @@ void _exercise_get_obs_data(su::biom_interface &table) {
     obs_vec = _double_array_to_vector(out, 6);
     ASSERT(vec_almost_equal(obs_vec, exp3_vec));
 
-    table.get_obs_data_range(std::string("GG_OTU_4").c_str(), 1,3,false, out2);
+    table.get_obs_data_range(std::string("GG_OTU_4").c_str(), 1,1+3,false, out2);
     obs_vec = _double_array_to_vector(out2, 3);
     ASSERT(vec_almost_equal(obs_vec, exp3a_vec));
 
-    table.get_obs_data_range(std::string("GG_OTU_4").c_str(), 1,3,true, out2);
+    table.get_obs_data_range(std::string("GG_OTU_4").c_str(), 1,1+3,true, out2);
     obs_vec = _double_array_to_vector(out2, 3);
     ASSERT(vec_almost_equal(obs_vec, exp3b_vec));
 
