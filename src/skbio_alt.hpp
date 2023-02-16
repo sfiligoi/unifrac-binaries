@@ -6,7 +6,7 @@
 #define UNIFRAC_SKBIO_ALT_H
 
 #include <stdint.h>
-#include <biom_subsampled.hpp>
+#include "biom_subsampled.hpp"
 
 namespace su {
 
