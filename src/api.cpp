@@ -1,6 +1,5 @@
 #include "api.hpp"
 #include "biom.hpp"
-#include "biom_subsampled.hpp"
 #include "tree.hpp"
 #include "tsv.hpp"
 #include "unifrac.hpp"
@@ -610,7 +609,7 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
-        su::biom_subsampled table_subsampled(table, subsample_depth);
+        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
         TDBG_STEP("subsample")
         return one_off_matrix_T<double,mat_full_fp64_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
     } else {
@@ -629,7 +628,7 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
-        su::biom_subsampled table_subsampled(table, subsample_depth);
+        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
         TDBG_STEP("subsample")
        return one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
     } else {

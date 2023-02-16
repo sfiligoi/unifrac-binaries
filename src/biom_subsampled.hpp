@@ -28,7 +28,7 @@ namespace su {
             linked_sparse_transposed& operator= (const linked_sparse_transposed&) = delete;
 
             /* perform subsampling with replacement, no filtering */
-            void transposed_subsample_with_replacement(const uint32_t n);
+            void transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed);
         public:  // keep it open for ease of access
             uint32_t n_obs;     // row dimension
             uint32_t n_samples; // column dimension
@@ -54,7 +54,7 @@ namespace su {
             sparse_data_subsampled& operator= (const sparse_data_subsampled&) = delete;
 
             /* perform subsampling with replacement, no filtering */
-            void subsample_with_replacement(const uint32_t n);
+            void subsample_with_replacement(const uint32_t n, const uint32_t random_seed);
     };
 
     class biom_subsampled : public biom_inmem {
@@ -64,7 +64,7 @@ namespace su {
              * @param parent biom object to subsample
              * @param n Number of items to subsample
              */
-            biom_subsampled(const biom_inmem &parent, const uint32_t n);
+            biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed);
 
         protected:
             void copy_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj);

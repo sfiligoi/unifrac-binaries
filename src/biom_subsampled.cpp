@@ -82,10 +82,8 @@ linked_sparse_transposed::~linked_sparse_transposed() {
     }
 }
 
-void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n) {
-    // TODO: This is just a temporary hack
-    // construct a trivial random generator engine
-    std::default_random_engine generator(0);
+void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
+    std::default_random_engine generator(random_seed);
 
     // use common buffer to minimize allocation costs
     double *data_in = new double[max_count];  // original values
@@ -109,18 +107,18 @@ void linked_sparse_transposed::transposed_subsample_with_replacement(const uint3
 
 // =====================  sparse_data_subsampled  ==========================
 
-void sparse_data_subsampled::subsample_with_replacement(const uint32_t n) {
+void sparse_data_subsampled::subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
     linked_sparse_transposed transposed(*this);
-    transposed.transposed_subsample_with_replacement(n);
+    transposed.transposed_subsample_with_replacement(n,random_seed);
 }
 
 // =====================  biom_subsampled  ==========================
 
-biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n) 
+biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed) 
   : biom_inmem(true)
 {
    sparse_data_subsampled tmp_obj(parent.get_resident_obj(), true);
-   tmp_obj.subsample_with_replacement(n);
+   tmp_obj.subsample_with_replacement(n,random_seed);
    copy_nonzero(parent,tmp_obj);
 
     /* define a mapping between an ID and its corresponding offset */
