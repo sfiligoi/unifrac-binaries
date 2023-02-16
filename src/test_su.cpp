@@ -462,13 +462,13 @@ void test_biom_constructor_from_sparse() {
 
 void test_biom_nullary() {
     SUITE_START("biom nullary");
-    su::biom table();
+    su::biom table;
     SUITE_END();
 }
 
 void test_bptree_nullary() {
     SUITE_START("bptree nullary");
-    su::BPTree tree();
+    su::BPTree tree;
     SUITE_END();
 }
 
