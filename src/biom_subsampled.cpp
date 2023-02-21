@@ -83,7 +83,7 @@ linked_sparse_transposed::~linked_sparse_transposed() {
 }
 
 void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
-    std::default_random_engine generator(random_seed);
+    std::mt19937 generator(random_seed);
 
     // use common buffer to minimize allocation costs
     double *data_in = new double[max_count];  // original values
