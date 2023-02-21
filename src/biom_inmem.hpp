@@ -42,7 +42,7 @@ namespace su {
             sparse_data(const sparse_data& other, bool _clean_on_destruction);
 
             /* remove ownership of this obs_idx buffer */
-            uint32_t *steal_indeces(uint32_t obs_idx) {uint32_t *out=obs_indices_resident[obs_idx]; obs_indices_resident[obs_idx]=NULL; return out;}
+            uint32_t *steal_indices(uint32_t obs_idx) {uint32_t *out=obs_indices_resident[obs_idx]; obs_indices_resident[obs_idx]=NULL; return out;}
             double *steal_data(uint32_t obs_idx) {double *out=obs_data_resident[obs_idx]; obs_data_resident[obs_idx]=NULL; return out;}
 
             /* prevent default copy constructor and operator from being generated */

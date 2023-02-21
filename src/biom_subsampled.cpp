@@ -152,7 +152,7 @@ void biom_subsampled::copy_nonzero(const biom_inmem &parent, sparse_data& subsam
 
      if (nz>0) {
         // steal non-zero data
-        resident_obj.obs_indices_resident[n_obs] = subsampled_obj.steal_indeces(i);
+        resident_obj.obs_indices_resident[n_obs] = subsampled_obj.steal_indices(i);
         resident_obj.obs_data_resident[n_obs] = subsampled_obj.steal_data(i); 
         resident_obj.obs_counts_resident[n_obs] = cnt;
         obs_ids.push_back(parent_obs_ids[i]);
