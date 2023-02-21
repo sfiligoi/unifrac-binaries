@@ -67,7 +67,7 @@ namespace su {
             biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed);
 
         protected:
-            void copy_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj);
+            void steal_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj);
 
         public:
             /* prevent default copy contructor and operator from being generated */

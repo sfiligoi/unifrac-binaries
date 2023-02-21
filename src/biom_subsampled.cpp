@@ -119,7 +119,7 @@ biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n, con
 {
    sparse_data_subsampled tmp_obj(parent.get_resident_obj(), true);
    tmp_obj.subsample_with_replacement(n,random_seed);
-   copy_nonzero(parent,tmp_obj);
+   steal_nonzero(parent,tmp_obj);
 
     /* define a mapping between an ID and its corresponding offset */
    #pragma omp parallel for schedule(static)
@@ -133,7 +133,7 @@ biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n, con
    }
 }
 
-void biom_subsampled::copy_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj) {
+void biom_subsampled::steal_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj) {
    // initialize data structures
    resident_obj.n_obs = parent.n_obs;
    resident_obj.n_samples = parent.n_samples;
