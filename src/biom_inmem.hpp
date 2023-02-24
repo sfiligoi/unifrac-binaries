@@ -41,6 +41,14 @@ namespace su {
             /* modified copy constructor */
             sparse_data(const sparse_data& other, bool _clean_on_destruction);
 
+            /* modified copy constructor
+             *
+             * @param other             Object to copy
+             * @param sample_counts     Counts associarted with the object
+             * @param min_sample_counts Minimum number of counts needed to keep a sample
+             */
+            sparse_data(const sparse_data& other, const double sample_counts[], const double min_sample_counts);
+
             /* remove ownership of this obs_idx buffer */
             uint32_t *steal_indices(uint32_t obs_idx) {uint32_t *out=obs_indices_resident[obs_idx]; obs_indices_resident[obs_idx]=NULL; return out;}
             double *steal_data(uint32_t obs_idx) {double *out=obs_data_resident[obs_idx]; obs_data_resident[obs_idx]=NULL; return out;}
@@ -52,7 +60,7 @@ namespace su {
             /* Helper functions */
             void malloc_resident();
             void free_resident();
-            template<class TData> TData *copy_resident_el(unsigned int cnt, const TData *other) const;
+            uint32_t count_filtered_els(uint32_t idx, const double sample_counts[], const double min_sample_counts) const;
 
         public:  // keep it open for ease of access
             uint32_t n_obs;     // row dimension
@@ -63,6 +71,8 @@ namespace su {
             double **obs_data_resident;
             unsigned int *obs_counts_resident;
 
+            // debug helper functions
+            void describe_internals();
     };
 
     class biom_inmem : public biom_interface {
@@ -87,6 +97,16 @@ namespace su {
                        double* data,
                        const int n_obs,
                        const int n_samples);
+
+            /* filtering constructor
+             *
+             * @param other biom object to filter
+             * @param min_sample_counts Minimum number of counts needed to keep a sample
+             */
+            biom_inmem(const biom_inmem &other, const double min_sample_counts);
+
+            /* Modified copy constructor */
+            biom_inmem(const biom_inmem& other, bool _clean_on_destruction);
 
             /* default destructor */
             virtual ~biom_inmem();
@@ -135,8 +155,6 @@ namespace su {
             std::vector<std::string> obs_ids;
 
         protected:
-            /* Only allow copy constructr by children classes */
-            biom_inmem(const biom_inmem& other, bool _clean_on_destruction);
 
             void compute_sample_counts();
 
@@ -162,7 +180,11 @@ namespace su {
             /* prevent default copy constructor and operator from being generated */
             biom_inmem(const biom_inmem& other) = delete;
             biom_inmem& operator= (const biom_inmem&) = delete;
+
+            // debug helper functions
+            void describe_internals();
     };
+
 }
 
 #endif /* _UNIFRAC_BIOM_H */

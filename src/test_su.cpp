@@ -446,6 +446,54 @@ void _exercise_get_obs_data(su::biom_interface &table) {
     free(out);
 }
 
+void test_biom_filter() {
+    SUITE_START("biom filter");
+
+    su::biom table_full("test.biom");
+    su::biom_inmem table(table_full,5.0);
+
+    uint32_t exp_n_samples = 2;
+    uint32_t exp_n_obs = 3;
+
+    std::string sids[] = {"Sample1", "Sample4"};
+    std::vector<std::string> exp_sids = _string_array_to_vector(sids, exp_n_samples);
+
+    std::string oids[] = {"GG_OTU_2", "GG_OTU_3", "GG_OTU_4"};
+    std::vector<std::string> exp_oids = _string_array_to_vector(oids, exp_n_obs);
+
+    ASSERT(table.n_samples == exp_n_samples);
+    ASSERT(table.n_obs == exp_n_obs);
+    ASSERT(table.get_sample_ids() == exp_sids);
+    ASSERT(table.get_obs_ids() == exp_oids);
+
+    const double *counts = table.get_sample_counts();
+    for (uint32_t i=0; i<table.n_samples; i++) ASSERT(counts[i]>=5.0);
+
+    double exp1[] = {5.0, 2.0};
+    std::vector<double> exp1_vec = _double_array_to_vector(exp1, 2);
+    double exp2[] = {0.0, 4.0};
+    std::vector<double> exp2_vec = _double_array_to_vector(exp2, 2);
+    double exp3[] = {2.0, 0.0};
+    std::vector<double> exp3_vec = _double_array_to_vector(exp3, 2);
+
+    double *out = (double*)malloc(sizeof(double) * 2);
+    std::vector<double> obs_vec;
+
+    table.get_obs_data(std::string("GG_OTU_2").c_str(), out);
+    obs_vec = _double_array_to_vector(out, 2);
+    ASSERT(vec_almost_equal(obs_vec, exp1_vec));
+
+    table.get_obs_data(std::string("GG_OTU_3").c_str(), out);
+    obs_vec = _double_array_to_vector(out, 2);
+    ASSERT(vec_almost_equal(obs_vec, exp2_vec));
+
+    table.get_obs_data(std::string("GG_OTU_4").c_str(), out);
+    obs_vec = _double_array_to_vector(out, 2);
+    ASSERT(vec_almost_equal(obs_vec, exp3_vec));
+
+    SUITE_END();
+}
+
 void test_biom_constructor_from_sparse() {
     SUITE_START("biom from sparse constructor");
     uint32_t index[] = {2, 0, 1, 3, 4, 5, 2, 3, 5, 0, 1, 2, 5, 1, 2};
@@ -1869,6 +1917,7 @@ int main(int argc, char** argv) {
     test_biom_constructor_from_sparse();
     test_biom_nullary();
     test_biom_get_obs_data();
+    test_biom_filter();
 
     test_propstack_constructor();
     test_propstack_push_and_pop();

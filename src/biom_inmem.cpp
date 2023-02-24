@@ -15,6 +15,34 @@
 
 using namespace su;
 
+template<class TData>
+inline static TData *malloc_wcheck(unsigned int cnt) { 
+    size_t bufsize = sizeof(TData) * cnt;
+    TData *my = (TData *)malloc(bufsize);
+    if(my == NULL) {
+        fprintf(stderr, "Failed to allocate %ld bytes; [%s]:%d\n", 
+                bufsize, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+   return my;
+}
+
+template<class TData>
+inline static TData *malloc_and_copy(unsigned int cnt, const TData *other) { 
+    TData *my = malloc_wcheck<TData>(cnt);
+    size_t bufsize = sizeof(TData) * cnt;
+    std::memcpy(my, other, bufsize);
+    return my;
+}
+
+static inline uint32_t count_filtered_samples(uint32_t n_samples, const double sample_counts[], const double min_sample_counts) {
+   uint32_t cnt = 0;
+   for (uint32_t i=0; i<n_samples; i++) {
+      if (sample_counts[i]>=min_sample_counts) cnt++;
+   }
+   return cnt;
+}
+
 sparse_data::sparse_data(bool _clean_on_destruction) 
   : n_obs(0)
   , n_samples(0)
@@ -34,14 +62,69 @@ sparse_data::sparse_data(const sparse_data& other, bool _clean_on_destruction)
 {
     if (_clean_on_destruction && (n_obs>0)) { // must make a copy
         malloc_resident();
-        for(unsigned int i = 0; i < n_obs; i++) {
-            unsigned int cnt = other.obs_counts_resident[i];
-            obs_counts_resident[i] = cnt;
-            obs_data_resident[i] = copy_resident_el<double>(cnt, other.obs_data_resident[i]);
-            obs_indices_resident[i] = copy_resident_el<uint32_t>(cnt, other.obs_indices_resident[i]);
+        for (uint32_t i = 0; i < n_obs; i++) {
+            const unsigned int cnt = other.obs_counts_resident[i];
+            obs_counts_resident[i]  = cnt;
+            obs_data_resident[i]    = malloc_and_copy<double>(cnt, other.obs_data_resident[i]);
+            obs_indices_resident[i] = malloc_and_copy<uint32_t>(cnt, other.obs_indices_resident[i]);
         }
     }
 }
+
+sparse_data::sparse_data(const sparse_data& other, const double sample_counts[], const double min_sample_counts)
+  : n_obs(other.n_obs)
+  , n_samples(count_filtered_samples(other.n_samples,sample_counts,min_sample_counts))
+  , clean_on_destruction(true)
+  , obs_indices_resident(NULL)
+  , obs_data_resident(NULL)
+  , obs_counts_resident(NULL)
+{
+    if ((n_obs>0) && (n_samples>0)) {
+        // since we are not copying all element, we will need to scale the indeces
+        // compute once for all of them
+        uint32_t * __restrict__ count_diffs = new uint32_t[other.n_samples];
+        {
+           uint32_t curr_diff = 0;
+           for (uint32_t i = 0; i < other.n_samples; i++) {
+              if (sample_counts[i]<min_sample_counts) curr_diff++;
+              count_diffs[i] = curr_diff;
+           }
+        }
+
+        malloc_resident();
+        for(unsigned int i = 0; i < other.n_obs; i++) {
+          const unsigned int cnt = other.count_filtered_els(i, sample_counts,min_sample_counts);
+          obs_counts_resident[i]  = cnt;
+          if (cnt>0) {
+            obs_data_resident[i]    = malloc_wcheck<double>(cnt);
+            obs_indices_resident[i] = malloc_wcheck<uint32_t>(cnt);
+            {
+               // explicitly mark restrict to allow for compiler optimization
+               double   * __restrict__ my_data    = obs_data_resident[i];
+               uint32_t * __restrict__ my_indices = obs_indices_resident[i];
+               const double   * __restrict__ other_data    = other.obs_data_resident[i];
+               const uint32_t * __restrict__ other_indices = other.obs_indices_resident[i];
+               const unsigned int other_cnt = other.obs_counts_resident[i];
+               uint32_t j_cnt = 0;
+               for (unsigned int j = 0; j < other_cnt; j++) {
+                  const uint32_t el_idx = other_indices[j];
+                  if (sample_counts[el_idx]>=min_sample_counts) {
+                     my_data[j_cnt] = other_data[j];
+                     // we did not copy all elements, so we need to scale the indices
+                     my_indices[j_cnt] = other_indices[j]-count_diffs[el_idx];
+                     j_cnt++;
+                  }
+               }
+            }
+          } else {
+            obs_data_resident[i]    = NULL;
+            obs_indices_resident[i] = NULL;
+          }
+        }
+        delete[] count_diffs;
+    }
+}
+
 
 // not using const on indices/indptr/data as the pointers are being borrowed
 sparse_data::sparse_data(const uint32_t _n_obs,
@@ -91,24 +174,9 @@ sparse_data::~sparse_data() {
 
 void sparse_data::malloc_resident() { 
     /* load obs sparse data */
-    obs_indices_resident = (uint32_t**)malloc(sizeof(uint32_t*) * n_obs);
-    if(obs_indices_resident == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(uint32_t**) * n_obs, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
-    obs_data_resident = (double**)malloc(sizeof(double*) * n_obs);
-    if(obs_data_resident == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(double**) * n_obs, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
-    obs_counts_resident = (unsigned int*)malloc(sizeof(unsigned int) * n_obs);
-    if(obs_counts_resident == NULL) {
-        fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(unsigned int) * n_obs, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
+    obs_indices_resident = malloc_wcheck<uint32_t*   >(n_obs);
+    obs_data_resident    = malloc_wcheck<double*     >(n_obs);
+    obs_counts_resident  = malloc_wcheck<unsigned int>(n_obs);
 }
 
 void sparse_data::free_resident() { 
@@ -125,17 +193,37 @@ void sparse_data::free_resident() {
         obs_counts_resident = NULL;
     }
 }
-template<class TData>
-TData *sparse_data::copy_resident_el(unsigned int cnt, const TData *other) const { 
-    unsigned int bufsize = sizeof(TData) * cnt;
-    TData *my = (TData *)malloc(bufsize);
-    if(my == NULL) {
-        fprintf(stderr, "Failed to allocate %d bytes; [%s]:%d\n", 
-                bufsize, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
+
+uint32_t sparse_data::count_filtered_els(uint32_t idx, const double sample_counts[], const double min_sample_counts) const {
+   const uint32_t  cnt_els = obs_counts_resident[idx];
+   const uint32_t *indices = obs_indices_resident[idx];
+   uint32_t cnt = 0;
+   for (uint32_t i=0; i<cnt_els; i++) {
+      const uint32_t el_idx = indices[i];
+      if (sample_counts[el_idx]>=min_sample_counts) cnt++;
+   }
+   return cnt;
+}
+
+void sparse_data::describe_internals() {
+  printf("==== start sparse_data ====\n");
+  printf("n_obs= %3d\tn_samples=%3d\n",n_obs,n_samples);
+  if (obs_counts_resident!=NULL) {
+    printf("obs_counts_resident\n");
+    for (uint32_t i=0; i<n_obs; i++) {
+      printf("\t%3d %3d\n",i,obs_counts_resident[i]);
     }
-   std::memcpy(my, other, bufsize);
-   return my;
+  }
+  if (obs_data_resident!=NULL) {
+    printf("obs_indices_resident & obs_data_resident\n");
+    for (uint32_t i=0; i<n_obs; i++) {
+       uint32_t cnt = obs_counts_resident[i];
+       for (uint32_t j=0; j<cnt; j++) {
+         printf("\t%3d %3d %3d %7.1f\n",i,j,obs_indices_resident[i][j],obs_data_resident[i][j]);
+       }
+    }
+  }
+  printf("====  end sparse_data  ====\n");
 }
 
 // ========================== biom_inmem  ===============================
@@ -153,15 +241,61 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
 biom_inmem::biom_inmem(const biom_inmem& other, bool _clean_on_destruction)
   : biom_interface(other)
   , resident_obj(other.resident_obj,_clean_on_destruction)
-  , sample_counts(NULL)
+  , sample_counts(malloc_and_copy<double>(other.n_samples, other.sample_counts))
   , obs_id_index(other.obs_id_index)
   , sample_id_index(other.sample_id_index)
   , sample_ids(other.sample_ids)
   , obs_ids(other.obs_ids)
+{}
+
+biom_inmem::biom_inmem(const biom_inmem &other, const double min_sample_counts)
+  : biom_interface(other)
+  , resident_obj(other.resident_obj,other.sample_counts, min_sample_counts)
+  , sample_counts(malloc_wcheck<double>(resident_obj.n_samples))
+  , obs_id_index()
+  , sample_id_index()
+  , sample_ids()
+  , obs_ids()
 {
-    // we re-create this every time
-    compute_sample_counts();
+    #pragma omp parallel for schedule(static)
+    for(int i = 0; i < 2; i++) {
+        if (i==0) {
+          // filter out zero obs
+          uint32_t obs_cnt = 0;
+          for (uint32_t i=0; i<other.n_obs; i++) {
+            if (resident_obj.obs_counts_resident[i]>0) { 
+              obs_ids.push_back(other.obs_ids[i]); //keep
+              if (i!=obs_cnt) {
+                 // since we are increasing, this is safe
+                 resident_obj.obs_counts_resident[obs_cnt]  = resident_obj.obs_counts_resident[i];
+                 resident_obj.obs_data_resident[obs_cnt]    = resident_obj.obs_data_resident[i];
+                 resident_obj.obs_indices_resident[obs_cnt] = resident_obj.obs_indices_resident[i];
+              }
+              obs_cnt++;
+            }
+          }
+          n_obs = obs_cnt;
+          resident_obj.n_obs = obs_cnt;
+          // I could resize the buffers, but they are small enough to not be worth it
+          create_id_index(obs_ids, obs_id_index);
+        } else if(i == 1) {
+          // resident_obj computed the proper n_samples during initialization
+          n_samples = resident_obj.n_samples;
+          sample_ids.reserve(n_samples);
+
+          uint32_t i_my = 0;
+          for (uint32_t i=0; i<other.n_samples; i++) {
+             if (other.sample_counts[i]>=min_sample_counts) {
+                sample_counts[i_my] = other.sample_counts[i];
+                i_my++;
+                sample_ids.push_back(other.sample_ids[i]);
+             }
+           }
+           create_id_index(sample_ids, sample_id_index);
+        }
+    }
 }
+
 
 // not using const on indices/indptr/data as the pointers are being borrowed
 biom_inmem::biom_inmem(const char* const * obs_ids_in,
@@ -319,3 +453,24 @@ const std::vector<std::string> &biom_inmem::get_obs_ids() const {
   return obs_ids;
 }
 
+void biom_inmem::describe_internals() {
+  resident_obj.describe_internals();
+  printf("==== start biom_inmem ====\n");
+  printf("n_obs= %3d\tn_samples=%3d\n",n_obs,n_samples);
+  if (sample_counts!=NULL) {
+    printf("sample_counts\n");
+    for (uint32_t i=0; i<n_samples; i++) {
+      printf("\t%3d %7.1f\n",i,sample_counts[i]);
+    }
+  }
+  printf("sample_ids\n");
+  for (uint32_t i=0; i<n_samples; i++) {
+    printf("\t%3d %s\n",i,sample_ids.at(i).c_str());
+  }
+  printf("obs_ids\n");
+  for (uint32_t i=0; i<n_obs; i++) {
+    printf("\t%3d %s\n",i,obs_ids.at(i).c_str());
+  }
+  
+  printf("====   nd biom_inmem  ====\n");
+}
