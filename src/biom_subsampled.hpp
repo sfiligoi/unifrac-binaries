@@ -49,6 +49,15 @@ namespace su {
             sparse_data_subsampled(const sparse_data& other, bool _clean_on_destruction)
              : sparse_data(other,_clean_on_destruction) {}
 
+            /* modified copy constructor
+             *
+             * @param other             Object to copy
+             * @param sample_counts     Counts associarted with the object
+             * @param min_sample_counts Minimum number of counts needed to keep a sample
+             */
+            sparse_data_subsampled(const sparse_data& other, const double sample_counts[], const uint32_t min_sample_counts)
+              : sparse_data(other,sample_counts,double(min_sample_counts)) {}
+
             /* prevent default copy constructor and operator from being generated */
             sparse_data_subsampled(const sparse_data_subsampled& other) = delete;
             sparse_data_subsampled& operator= (const sparse_data_subsampled&) = delete;

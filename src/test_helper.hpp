@@ -16,6 +16,9 @@ int tests_in_suite = 0, tests_run = 0, tests_failed = 0;
 #define ASSERT(x) {tests_run++; tests_in_suite++; if(!(x)) \
     { fprintf(stderr, "failed assert [%s:%i] %s\n", __FILE__, __LINE__, QUOTE(x)); \
       suite_pass = 0; tests_failed++; }}
+#define ASSERTINTEQ(x,y) {tests_run++; tests_in_suite++; if(!((x)==(y))) \
+    { fprintf(stderr, "failed assert [%s:%i] %i==%i (%s==%s)\n", __FILE__, __LINE__, x,y, QUOTE(x), QUOTE(y)); \
+      suite_pass = 0; tests_failed++; }}
 
 inline void SUITE_START(const char *name) {
   suite_pass = 1;

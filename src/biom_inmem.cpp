@@ -205,7 +205,7 @@ uint32_t sparse_data::count_filtered_els(uint32_t idx, const double sample_count
    return cnt;
 }
 
-void sparse_data::describe_internals() {
+void sparse_data::describe_internals() const {
   printf("==== start sparse_data ====\n");
   printf("n_obs= %3d\tn_samples=%3d\n",n_obs,n_samples);
   if (obs_counts_resident!=NULL) {
@@ -453,7 +453,7 @@ const std::vector<std::string> &biom_inmem::get_obs_ids() const {
   return obs_ids;
 }
 
-void biom_inmem::describe_internals() {
+void biom_inmem::describe_internals() const {
   resident_obj.describe_internals();
   printf("==== start biom_inmem ====\n");
   printf("n_obs= %3d\tn_samples=%3d\n",n_obs,n_samples);

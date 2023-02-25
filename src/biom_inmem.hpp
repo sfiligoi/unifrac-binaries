@@ -72,7 +72,7 @@ namespace su {
             unsigned int *obs_counts_resident;
 
             // debug helper functions
-            void describe_internals();
+            void describe_internals() const;
     };
 
     class biom_inmem : public biom_interface {
@@ -182,7 +182,7 @@ namespace su {
             biom_inmem& operator= (const biom_inmem&) = delete;
 
             // debug helper functions
-            void describe_internals();
+            void describe_internals() const;
     };
 
 }

@@ -19,7 +19,7 @@ using namespace su;
 linked_sparse_transposed::linked_sparse_transposed(sparse_data &other) 
   : n_obs(other.n_samples)
   , n_samples(other.n_obs) {
-    obs_counts_resident = (unsigned int*)calloc(sizeof(unsigned int), n_obs);
+   obs_counts_resident = (unsigned int*)calloc(sizeof(unsigned int), n_obs);
    if(obs_counts_resident == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
                 sizeof(unsigned int) * n_obs, __FILE__, __LINE__);
@@ -117,26 +117,40 @@ void sparse_data_subsampled::subsample_with_replacement(const uint32_t n, const 
 biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed) 
   : biom_inmem(true)
 {
-   sparse_data_subsampled tmp_obj(parent.get_resident_obj(), true);
+   sparse_data_subsampled tmp_obj(parent.get_resident_obj(), parent.get_sample_counts(), n);
+   if ((tmp_obj.n_obs==0) || (tmp_obj.n_samples==0)) return; //already everything filtered out
+
    tmp_obj.subsample_with_replacement(n,random_seed);
+   // Note: We could filter out the zero rows
+   // But that's just an optimization and will not be worth it most of the time
    steal_nonzero(parent,tmp_obj);
 
-    /* define a mapping between an ID and its corresponding offset */
+   /* define a mapping between an ID and its corresponding offset */
    #pragma omp parallel for schedule(static)
    for(int i = 0; i < 3; i++) {
       if(i == 0)
          create_id_index(obs_ids, obs_id_index);
-      else if(i == 1)
+      else if(i == 1) {
+         sample_ids.reserve(n_samples);
+         const double *parent_sample_counts = parent.get_sample_counts();
+         const std::vector<std::string> &parent_sample_ids = parent.get_sample_ids();
+
+         for (uint32_t i=0; i<parent.n_samples; i++) {
+            if (parent_sample_counts[i]>=n) {
+               sample_ids.push_back(parent_sample_ids[i]);
+            }
+         }
          create_id_index(sample_ids, sample_id_index);
-       else if(i == 2)
+      } else if(i == 2)
          compute_sample_counts();
    }
 }
 
 void biom_subsampled::steal_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj) {
    // initialize data structures
-   resident_obj.n_obs = parent.n_obs;
-   resident_obj.n_samples = parent.n_samples;
+   n_samples = subsampled_obj.n_samples;
+   resident_obj.n_samples = subsampled_obj.n_samples;
+   resident_obj.n_obs = subsampled_obj.n_obs;
    resident_obj.malloc_resident();
    obs_ids.reserve(parent.n_obs);
 
@@ -160,10 +174,8 @@ void biom_subsampled::steal_nonzero(const biom_inmem &parent, sparse_data& subsa
      }
      // else just ignore
    }
-
-   sample_ids = parent.get_sample_ids();;
    resident_obj.n_obs = n_obs;
-   n_samples = parent.n_samples;
+   // Note: We could resize the buffersm but it is not worth it
 }
 
 

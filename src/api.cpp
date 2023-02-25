@@ -610,6 +610,9 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
         su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
+           return table_empty;
+        }
         TDBG_STEP("subsample")
         return one_off_matrix_T<double,mat_full_fp64_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
     } else {
