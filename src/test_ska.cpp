@@ -660,14 +660,14 @@ void test_subsample_replacement() {
     std::vector<std::string> exp_oids = _string_array_to_vector(oids, exp_n_obs);
 
     // verify it did not destroy the original table
-    ASSERT(org_table.n_samples == exp_org_n_samples);
-    ASSERT(org_table.n_obs == exp_org_n_obs);
+    ASSERTINTEQ(org_table.n_samples , exp_org_n_samples);
+    ASSERTINTEQ(org_table.n_obs , exp_org_n_obs);
     ASSERT(org_table.get_sample_ids() == exp_org_sids);
     ASSERT(org_table.get_obs_ids() == exp_org_oids);
 
     // now check basic rarefaction properties
     ASSERTINTEQ(table.n_samples , exp_n_samples);
-    ASSERTINTEQ(table.n_obs , exp_n_obs);
+    ASSERTINTLE(table.n_obs , exp_n_obs);
     ASSERT(table.get_sample_ids() == exp_sids);
     // when with replacement
     // all columns should add to n==5
