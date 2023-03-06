@@ -132,7 +132,7 @@ typedef struct partial_dyn_mat {
  * data <double*> the actual matrix values
  * n_obs <int> the number of observations, corresponding to length of obs_ids
  * n_samples <int> the number of samples, corresponding to the length of sample_ids
- * nnz <int> the number of nonzero values, corresponding to the length of data and indices
+ * nnz <int> the number of nonzero values, corresponding to the length of data and indices (DEPRECATED)
  */
 typedef struct support_biom {
     char** obs_ids;
@@ -259,6 +259,12 @@ EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_
                                     const char *mmap_dir,
                                     mat_full_fp64_t** result);
 
+EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, unsigned int n_substeps,
+                                       unsigned int subsample_depth, const char *mmap_dir,
+                                       mat_full_fp64_t** result);
+
 /* Compute UniFrac - matrix form, fp32 variant
  *
  * biom_filename <const char*> the filename to the biom table.
@@ -284,6 +290,12 @@ EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* 
                                          bool bypass_tips, unsigned int n_substeps,
                                          const char *mmap_dir,
                                          mat_full_fp32_t** result);
+
+EXTERN ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int n_substeps,
+                                            unsigned int subsample_depth, const char *mmap_dir,
+                                            mat_full_fp32_t** result);
 
 
 /* compute Faith PD
@@ -330,6 +342,7 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
 EXTERN ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
                                         bool bypass_tips, unsigned int threads, const char* format,
+                                        unsigned int subsample_depth,
                                         unsigned int pcoa_dims,
                                         unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                                         const char *mmap_dir);

@@ -13,7 +13,7 @@
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
 
-static std::default_random_engine myRandomGenerator;
+static std::mt19937 myRandomGenerator;
 
 
 void su::set_random_seed(uint32_t new_seed) {
@@ -717,7 +717,7 @@ inline void permanova_perm_fp_sW_T(const TRealIn * mat, const uint32_t n_dims,
   }
 
   // will also use dedicated generators for deterministic behavior in threaded environment
-  std::default_random_engine *randomGenerators = new std::default_random_engine[step_perms];
+  std::mt19937 *randomGenerators = new std::mt19937[step_perms];
 
   for (uint32_t grouping_el=0; grouping_el < step_perms; grouping_el++) {
     auto new_seed = myRandomGenerator();
@@ -891,4 +891,11 @@ void su::permanova(const float * mat, unsigned int n_dims,
                            1024, max_threads,  // 1k grouping els fit nicely in L1 cache
                            fstat_out, pvalue_out);
 }
+
+// ======================= skbio_biom_subsampled  ================================
+
+
+su::skbio_biom_subsampled::skbio_biom_subsampled(const biom_inmem &parent, const uint32_t n)
+ : su::biom_subsampled(parent, n, uint32_t(myRandomGenerator()))
+{}
 

@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2021-2021, UniFrac development team.
+ * Copyright (c) 2021-2023, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
@@ -17,30 +17,24 @@
 namespace su {
     class biom_interface {
         public:
-            // cache the IDs contained within the table
-            std::vector<std::string> sample_ids;
-            std::vector<std::string> obs_ids;
-
-            // cache both index pointers into both CSC and CSR representations
-            std::vector<uint32_t> sample_indptr;
-            std::vector<uint32_t> obs_indptr;
-
             uint32_t n_samples;  // the number of samples
             uint32_t n_obs;      // the number of observations
-            uint32_t nnz;        // the total number of nonzero entries
-            double *sample_counts;
 
-            /* default constructor
-             *
-             * Automatically create the needed objects.
-             * All other initialization happens in children constructors.
-             */
-            biom_interface() {}
+            /* default constructor */
+            biom_interface() 
+             : n_samples(0), n_obs(0) {}
+
+            /* full constructor */
+            biom_interface(uint32_t _n_samples, uint32_t _n_obs) 
+             : n_samples(_n_samples), n_obs(_n_obs) {}
+
+            /* copy constructor */
+            biom_interface(const biom_interface& other) 
+             : n_samples(other.n_samples), n_obs(other.n_obs) {}
 
             /* default destructor
              *
-             * Automatically destroy the objects.
-             * All other cleanup must have been performed by the children constructors.
+             * Need a virtual one to allow for polymorphism
              */
             virtual ~biom_interface() {}
 
@@ -66,6 +60,13 @@ namespace su {
              */
             virtual void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, double* out) const = 0;
             virtual void get_obs_data_range(const std::string &id, unsigned int start, unsigned int end, bool normalize, float* out) const = 0;
+
+            // cache the IDs contained within the table
+            virtual const std::vector<std::string> &get_sample_ids() const =0;
+            virtual const std::vector<std::string> &get_obs_ids() const = 0;
+
+            /* get the pre-comoputed counts */
+            virtual const double *get_sample_counts() const =0;
     };
 }
 

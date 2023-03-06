@@ -6,6 +6,7 @@
 #define UNIFRAC_SKBIO_ALT_H
 
 #include <stdint.h>
+#include "biom_subsampled.hpp"
 
 namespace su {
 
@@ -47,6 +48,19 @@ void pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_dims,
 void permanova(const double * mat, unsigned int n_dims, const uint32_t *grouping, unsigned int n_perm, double &fstat_out, double &pvalue_out);
 void permanova(const float  * mat, unsigned int n_dims, const uint32_t *grouping, unsigned int n_perm, double &fstat_out, double &pvalue_out);
 void permanova(const float  * mat, unsigned int n_dims, const uint32_t *grouping, unsigned int n_perm, float  &fstat_out, float  &pvalue_out);
+
+// biom_subsampled using the internal random generator
+class skbio_biom_subsampled : public biom_subsampled {
+public:
+  /* default constructor
+   *
+   * @param parent biom object to subsample
+   * @param n Number of items to subsample
+   */
+   skbio_biom_subsampled(const biom_inmem &parent, const uint32_t n);
+};
+
+
 }
 
 #endif

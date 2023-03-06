@@ -1,47 +1,10 @@
-#include <iostream>
 #include "api.hpp"
-#include <cmath>
-#include <unordered_set>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <H5Cpp.h>
 #include <H5Dpublic.h>
-
-/*
- * test harness adapted from 
- * https://github.com/noporpoise/BitArray/blob/master/dev/bit_array_test.c
- */
-const char *suite_name;
-char suite_pass;
-int suites_run = 0, suites_failed = 0, suites_empty = 0;
-int tests_in_suite = 0, tests_run = 0, tests_failed = 0;
-
-#define QUOTE(str) #str
-#define ASSERT(x) {tests_run++; tests_in_suite++; if(!(x)) \
-    { fprintf(stderr, "failed assert [%s:%i] %s\n", __FILE__, __LINE__, QUOTE(x)); \
-      suite_pass = 0; tests_failed++; }}
-
-void SUITE_START(const char *name) {
-  suite_pass = 1;
-  suite_name = name;
-  suites_run++;
-  tests_in_suite = 0;
-}
-
-void SUITE_END() {
-  printf("Testing %s ", suite_name);
-  size_t suite_i;
-  for(suite_i = strlen(suite_name); suite_i < 80-8-5; suite_i++) printf(".");
-  printf("%s\n", suite_pass ? " pass" : " fail");
-  if(!suite_pass) suites_failed++;
-  if(!tests_in_suite) suites_empty++;
-}
-/*
- *  End adapted code
- */
-
+#include "test_helper.hpp"
 
 //void test_write_mat() {
 //    SUITE_START("test write mat_t");
