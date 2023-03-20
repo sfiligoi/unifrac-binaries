@@ -242,6 +242,8 @@ EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const 
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
  * n_substeps <uint> the number of substeps/blocks to use.
+ * subsample_depth <uint> Depth of subsampling, if >0
+ * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
  * mmap_dir <const char*> If not NULL, area to use for temp memory storage
  * result <mat_full_fp64_t**> the resulting distance matrix in matrix form, this is initialized within the method so using **
  *
@@ -253,17 +255,18 @@ EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const 
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, unsigned int n_substeps,
+                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                       mat_full_fp64_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
                                     const char* unifrac_method, bool variance_adjust, double alpha,
                                     bool bypass_tips, unsigned int n_substeps,
                                     const char *mmap_dir,
                                     mat_full_fp64_t** result);
-
-EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
-                                       const char* unifrac_method, bool variance_adjust, double alpha,
-                                       bool bypass_tips, unsigned int n_substeps,
-                                       unsigned int subsample_depth, const char *mmap_dir,
-                                       mat_full_fp64_t** result);
 
 /* Compute UniFrac - matrix form, fp32 variant
  *
@@ -274,6 +277,8 @@ EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tr
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
  * n_substeps <uint> the number of substeps/blocks to use.
+ * subsample_depth <uint> Depth of subsampling, if >0
+ * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
  * mmap_dir <const char*> If not NULL, area to use for temp memory storage
  * result <mat_full_fp32_t**> the resulting distance matrix in matrix form, this is initialized within the method so using **
  *
@@ -285,18 +290,18 @@ EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tr
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int n_substeps,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            mat_full_fp32_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
                                          const char* unifrac_method, bool variance_adjust, double alpha,
                                          bool bypass_tips, unsigned int n_substeps,
                                          const char *mmap_dir,
                                          mat_full_fp32_t** result);
-
-EXTERN ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
-                                            const char* unifrac_method, bool variance_adjust, double alpha,
-                                            bool bypass_tips, unsigned int n_substeps,
-                                            unsigned int subsample_depth, const char *mmap_dir,
-                                            mat_full_fp32_t** result);
-
 
 /* compute Faith PD
  * biom_filename <const char*> the filename to the biom table.
@@ -324,6 +329,8 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
  * n_substeps <uint> the number of substeps to use.
  * format <const char*> output format to use.
+ * subsample_depth <uint> Depth of subsampling, if >0
+ * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
  * pcoa_dims <uint> if not 0, number of dimensions to use or PCoA
  * permanova_perms <uint> If not 0, compute PERMANOVA using that many permutations
  * grouping_filename <const char*> the TSV filename containing grouping information
@@ -341,8 +348,8 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  */
 EXTERN ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
-                                        bool bypass_tips, unsigned int threads, const char* format,
-                                        unsigned int subsample_depth,
+                                        bool bypass_tips, unsigned int n_substeps, const char* format,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, 
                                         unsigned int pcoa_dims,
                                         unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                                         const char *mmap_dir);
