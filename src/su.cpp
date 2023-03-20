@@ -455,7 +455,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
 
       status = unifrac_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
                                   method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
-                                  subsample_depth,
+                                  subsample_depth, true,
                                   pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
       if (status != okay) {

@@ -601,7 +601,7 @@ compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
 compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
                                  bool bypass_tips, unsigned int nthreads,
-                                 unsigned int subsample_depth, const char *mmap_dir,
+                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                  mat_full_fp64_t** result) {
     SETUP_TDBG("one_off_matrix")
     CHECK_FILE(biom_filename, table_missing)
@@ -609,6 +609,11 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
+        // We do not implement subsampling without replacement yet
+        if (!subsample_with_replacement) {
+          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
+          return table_empty;
+        }
         su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
         if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
            return table_empty;
@@ -623,7 +628,7 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
 compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
                                       const char* unifrac_method, bool variance_adjust, double alpha,
                                       bool bypass_tips, unsigned int nthreads,
-                                      unsigned int subsample_depth, const char *mmap_dir,
+                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                       mat_full_fp32_t** result) {
     SETUP_TDBG("one_off_matrix_fp32")
     CHECK_FILE(biom_filename, table_missing)
@@ -631,6 +636,11 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
+        // We do not implement subsampling without replacement yet
+        if (!subsample_with_replacement) {
+          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
+          return table_empty;
+        }
         su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
         TDBG_STEP("subsample")
        return one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
@@ -644,7 +654,7 @@ compute_status one_off_matrix(const char* biom_filename, const char* tree_filena
                               bool bypass_tips, unsigned int nthreads,
                               const char *mmap_dir,
                               mat_full_fp64_t** result) {
-    return one_off_matrix_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,mmap_dir,result);
+    return one_off_matrix_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
 }
 
 compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
@@ -652,7 +662,7 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
                                    bool bypass_tips, unsigned int nthreads,
                                    const char *mmap_dir,
                                    mat_full_fp32_t** result) {
-    return one_off_matrix_fp32_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,mmap_dir,result);
+    return one_off_matrix_fp32_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
 }
 
 compute_status one_off_inmem_matrix(su::biom_interface &table, su::BPTree &tree,
@@ -805,7 +815,7 @@ compute_status compute_permanova_fp32(const char *grouping_filename, unsigned in
 compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
                                   bool bypass_tips, unsigned int threads, const char* format,
-                                  unsigned int subsample_depth,
+                                  unsigned int subsample_depth, bool subsample_with_replacement,
                                   unsigned int pcoa_dims,
                                   unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                                   const char *mmap_dir)
@@ -821,7 +831,7 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
         mat_full_fp64_t* result = NULL;
         rc = one_off_matrix_v2(biom_filename, tree_filename,
                                unifrac_method, variance_adjust, alpha,
-                               bypass_tips, threads, subsample_depth, mmap_dir,
+                               bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
                                &result);
         TDBG_STEP("matrix_fp64 computed")
 
@@ -875,7 +885,7 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
         mat_full_fp32_t* result = NULL;
         rc = one_off_matrix_fp32_v2(biom_filename, tree_filename,
                                     unifrac_method, variance_adjust, alpha,
-                                    bypass_tips, threads, subsample_depth, mmap_dir,
+                                    bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
                                     &result);
         TDBG_STEP("matrix_fp32 computed")
      
@@ -938,7 +948,7 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
                                bool bypass_tips, unsigned int threads, const char* format,
                                unsigned int pcoa_dims, const char *mmap_dir) {
   return unifrac_to_file_v2(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,bypass_tips,
-                            threads,format,0,pcoa_dims,0,NULL,NULL,mmap_dir);
+                            threads,format,0,true,pcoa_dims,0,NULL,NULL,mmap_dir);
 }
 
 
