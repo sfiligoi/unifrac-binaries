@@ -951,6 +951,138 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
                             threads,format,0,true,pcoa_dims,0,NULL,NULL,mmap_dir);
 }
 
+compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int threads, const char* format,
+                                        unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir)
+{
+    SETUP_TDBG("unifrac_multi_to_file")
+
+    bool fp64;
+    bool save_dist;
+    compute_status rc = is_fp64(unifrac_method, format, fp64, save_dist);
+
+    // TODO: Use n_subsamples and use rigth file format
+
+    if (rc==okay) {
+      if (fp64) {
+        mat_full_fp64_t* result = NULL;
+        rc = one_off_matrix_v2(biom_filename, tree_filename,
+                               unifrac_method, variance_adjust, alpha,
+                               bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
+                               &result);
+        TDBG_STEP("matrix_fp64 computed")
+
+        if (rc==okay) {
+          if (permanova_perms>0) {
+            typedef const char* Tcstring;
+
+            const auto columns = stringlist_to_vector(grouping_columns);
+            const unsigned int n_columns = columns.size();
+            Tcstring *columns_c = new Tcstring[n_columns];
+            for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
+            double *fstats = new double[n_columns];
+            double *pvalues = new double[n_columns];
+            uint32_t *n_groups = new uint32_t[n_columns];
+
+            rc = compute_permanova_fp64(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues,n_groups);
+            TDBG_STEP("permanova_fp64 computed")
+
+            if (rc==okay) {
+              std::string stat_method("PERMANOVA");
+              Tcstring *stat_methods = new Tcstring[n_columns];
+              for (unsigned int i=0; i<n_columns; i++)  stat_methods[i] = stat_method.c_str();
+              std::string stat_name("pseudo-F");
+              Tcstring *stat_names = new Tcstring[n_columns];
+              for (unsigned int i=0; i<n_columns; i++)  stat_names[i] = stat_name.c_str();
+              uint32_t *nperm_arr = new uint32_t[n_columns];
+              for (unsigned int i=0; i<n_columns; i++)  nperm_arr[i] = permanova_perms;
+
+              IOStatus iostatus = write_mat_from_matrix_hdf5_fp64_v2(out_filename, result, pcoa_dims, save_dist,
+                                                                     n_columns, stat_methods, stat_names,
+                                                                     fstats, pvalues, nperm_arr,
+                                                                     columns_c, n_groups);
+              TDBG_STEP("file saved")
+              if (iostatus!=write_okay) rc=output_error;
+              delete[] nperm_arr;
+              delete[] stat_methods;
+              delete[] stat_names;
+            }
+            delete[] n_groups;
+            delete[] pvalues;
+            delete[] fstats;
+            delete[] columns_c;
+          } else {
+            IOStatus iostatus = write_mat_from_matrix_hdf5_fp64(out_filename, result, pcoa_dims, save_dist);
+            TDBG_STEP("file saved")
+            if (iostatus!=write_okay) rc=output_error;
+          }
+          destroy_mat_full_fp64(&result);
+        }
+      } else {
+        mat_full_fp32_t* result = NULL;
+        rc = one_off_matrix_fp32_v2(biom_filename, tree_filename,
+                                    unifrac_method, variance_adjust, alpha,
+                                    bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                    &result);
+        TDBG_STEP("matrix_fp32 computed")
+     
+        if (rc==okay) {
+          if (permanova_perms>0) {
+            typedef const char* Tcstring;
+
+            const auto columns = stringlist_to_vector(grouping_columns);
+            const unsigned int n_columns = columns.size();
+            Tcstring *columns_c = new Tcstring[n_columns];
+            for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
+            float *fstats = new float[n_columns];
+            float *pvalues = new float[n_columns];
+            uint32_t *n_groups = new uint32_t[n_columns];
+
+            rc = compute_permanova_fp32(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues,n_groups);
+            TDBG_STEP("permanova_fp32 computed")
+
+            if (rc==okay) {
+              std::string stat_method("PERMANOVA");
+              Tcstring *stat_methods = new Tcstring[n_columns];
+              for (unsigned int i=0; i<n_columns; i++)  stat_methods[i] = stat_method.c_str();
+              std::string stat_name("pseudo-F");
+              Tcstring *stat_names = new Tcstring[n_columns];
+              for (unsigned int i=0; i<n_columns; i++)  stat_names[i] = stat_name.c_str();
+              uint32_t *nperm_arr = new uint32_t[n_columns];
+              for (unsigned int i=0; i<n_columns; i++)  nperm_arr[i] = permanova_perms;
+
+              IOStatus iostatus = write_mat_from_matrix_hdf5_fp32_v2(out_filename, result, pcoa_dims, save_dist,
+                                                                     n_columns, stat_methods, stat_names,
+                                                                     fstats, pvalues, nperm_arr,
+                                                                     columns_c, n_groups);
+              TDBG_STEP("file saved")
+              if (iostatus!=write_okay) rc=output_error;
+
+              delete[] nperm_arr;
+              delete[] stat_methods;
+              delete[] stat_names;
+            }
+            delete[] n_groups;
+            delete[] pvalues;
+            delete[] fstats;
+            delete[] columns_c;
+          } else {
+            IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims, save_dist);
+            TDBG_STEP("file saved")
+            if (iostatus!=write_okay) rc=output_error;
+          }
+          destroy_mat_full_fp32(&result);
+        }
+      }
+    }
+
+    return rc;
+}
+
 
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
