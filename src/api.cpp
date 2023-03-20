@@ -953,13 +953,28 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
 
 compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
-                                        bool bypass_tips, unsigned int threads, const char* format,
+                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
                                         unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
                                         unsigned int pcoa_dims,
                                         unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                                         const char *mmap_dir)
 {
     SETUP_TDBG("unifrac_multi_to_file")
+
+    if (!subsample_with_replacement) {
+      fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
+      return table_empty;
+    }
+
+    if (subsample_depth<1) {
+      fprintf(stderr, "ERROR: subsampling depth cannot be 0.\n");
+      return table_empty;
+    }
+
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, biom_filename)
+    TDBG_STEP("load_files")
 
     bool fp64;
     bool save_dist;
@@ -968,12 +983,14 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
     // TODO: Use n_subsamples and use rigth file format
 
     if (rc==okay) {
+      su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+      if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
+         return table_empty;
+      }
+      TDBG_STEP("subsample")
       if (fp64) {
         mat_full_fp64_t* result = NULL;
-        rc = one_off_matrix_v2(biom_filename, tree_filename,
-                               unifrac_method, variance_adjust, alpha,
-                               bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
-                               &result);
+        rc = one_off_matrix_T<double,mat_full_fp64_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nsubsteps,mmap_dir,&result);
         TDBG_STEP("matrix_fp64 computed")
 
         if (rc==okay) {
@@ -1024,10 +1041,7 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
         }
       } else {
         mat_full_fp32_t* result = NULL;
-        rc = one_off_matrix_fp32_v2(biom_filename, tree_filename,
-                                    unifrac_method, variance_adjust, alpha,
-                                    bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                    &result);
+        rc = one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nsubsteps,mmap_dir,&result);
         TDBG_STEP("matrix_fp32 computed")
      
         if (rc==okay) {
@@ -1077,7 +1091,7 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
           }
           destroy_mat_full_fp32(&result);
         }
-      }
+      } // end if fp64
     }
 
     return rc;
