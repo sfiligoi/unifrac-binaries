@@ -980,9 +980,23 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
     bool save_dist;
     compute_status rc = is_fp64(unifrac_method, format, fp64, save_dist);
 
-    // TODO: Use n_subsamples and use rigth file format
+    if (rc!=okay) {
+      return rc;
+    }
 
-    if (rc==okay) {
+    typedef const char* Tcstring;
+    std::vector<std::string> columns;
+    Tcstring *columns_c = NULL;
+
+    if (permanova_perms>0) {
+         columns = stringlist_to_vector(grouping_columns);
+         const unsigned int n_columns = columns.size();
+         columns_c = new Tcstring[n_columns];
+         for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
+    }
+
+    // TODO: Use n_subsamples and use rigth file format
+    //
       su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
       if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
          return table_empty;
@@ -995,12 +1009,7 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
 
         if (rc==okay) {
           if (permanova_perms>0) {
-            typedef const char* Tcstring;
-
-            const auto columns = stringlist_to_vector(grouping_columns);
             const unsigned int n_columns = columns.size();
-            Tcstring *columns_c = new Tcstring[n_columns];
-            for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
             double *fstats = new double[n_columns];
             double *pvalues = new double[n_columns];
             uint32_t *n_groups = new uint32_t[n_columns];
@@ -1031,7 +1040,6 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
             delete[] n_groups;
             delete[] pvalues;
             delete[] fstats;
-            delete[] columns_c;
           } else {
             IOStatus iostatus = write_mat_from_matrix_hdf5_fp64(out_filename, result, pcoa_dims, save_dist);
             TDBG_STEP("file saved")
@@ -1046,12 +1054,7 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
      
         if (rc==okay) {
           if (permanova_perms>0) {
-            typedef const char* Tcstring;
-
-            const auto columns = stringlist_to_vector(grouping_columns);
             const unsigned int n_columns = columns.size();
-            Tcstring *columns_c = new Tcstring[n_columns];
-            for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
             float *fstats = new float[n_columns];
             float *pvalues = new float[n_columns];
             uint32_t *n_groups = new uint32_t[n_columns];
@@ -1083,7 +1086,6 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
             delete[] n_groups;
             delete[] pvalues;
             delete[] fstats;
-            delete[] columns_c;
           } else {
             IOStatus iostatus = write_mat_from_matrix_hdf5_fp32(out_filename, result, pcoa_dims, save_dist);
             TDBG_STEP("file saved")
@@ -1092,8 +1094,8 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
           destroy_mat_full_fp32(&result);
         }
       } // end if fp64
-    }
 
+    if (columns_c!=NULL) delete[] columns_c;
     return rc;
 }
 
