@@ -572,6 +572,19 @@ Format get_format(const std::string &format_string, const std::string &method_st
     return format_val;
 }
 
+std::string format2str(Format format_val) {
+  if (format_val==format_hdf5_nodist) {
+    return "hdf5_nodist";
+  } else if (format_val==format_hdf5_fp32) {
+    return "hdf5_fp32";
+  } else if (format_val==format_hdf5_fp64) {
+    return "hdf5_fp64";
+  } else if (format_val==format_ascii) {
+    return "ascii";
+  } 
+  return "invalid";
+}
+
 int main(int argc, char **argv){
     signal(SIGUSR1, ssu_sig_handler);
     InputParser input(argc, argv);
@@ -709,7 +722,7 @@ int main(int argc, char **argv){
     }
 
     if(mode_arg.empty() || mode_arg == "one-off")
-        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string,
+        return mode_one_off(table_filename, tree_filename, output_filename,  format2str(format_val), format_val, method_string,
                             subsample_depth,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                             vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
@@ -728,7 +741,7 @@ int main(int argc, char **argv){
     else if(mode_arg == "partial-report")
         return mode_partial_report(table_filename, uint32_t(n_partials), bare);
     else if(mode_arg == "multi" || mode_arg == "multiple")
-        return mode_multi(table_filename, tree_filename, output_filename, format_arg, format_val, method_string,
+        return mode_multi(table_filename, tree_filename, output_filename, format2str(format_val), format_val, method_string,
                             n_subsamples,subsample_depth,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                             vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);

@@ -181,6 +181,9 @@ jobs:
         ls -l t1.h5
         rm -f t1.h5
         rm -f t1.partial.*
+        # multi
+        echo "multi"
+        time ssu -f -m unweighted_fp32 -i test500.biom  -t test500.tre --mode multi --subsample-depth 10 --n-subsamples 10 --pcoa 4 -o t1.h5
         popd
     - name: Sanity checks
       shell: bash -l {0}
