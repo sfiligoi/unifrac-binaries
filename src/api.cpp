@@ -1126,12 +1126,11 @@ public:
       char fmtstr[64];
       const auto n_samples = result->n_samples;
 
-      if (save_dist || (pcoa_dims>0)) {
-         // save the ids
+      if (n_results==0) {
+         // save the ids once, they do not change
          {
-           sprintf(fmtstr,"order:%d",n_results);
            herr_t status = write_hdf5_stringarray(output_file_id,
-                               fmtstr, n_samples, result->sample_ids);
+                               "order", n_samples, result->sample_ids);
            if (status<0) throw "Order write failed";
          }
       }
