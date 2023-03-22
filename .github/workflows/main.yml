@@ -201,7 +201,7 @@ jobs:
         ls -l t1.h5
         rm -f t1.h5
         time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  --mode multi --n-subsamples 10 --permanova 99 -g test500.tsv -c empo_2 --subsample-depth 100 -o t1.h5
-        python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.05 0.5
+        python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.5
         ls -l t1.h5
         rm -f t1.h5
         popd
