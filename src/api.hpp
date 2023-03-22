@@ -363,7 +363,7 @@ EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree
 /* Compute UniFrac with subsampling several times and save to file
  *
  * biom_filename <const char*> the filename to the biom table.
- * tree_filename <const char*> the filename to the correspodning tree.
+ * tree_filename <const char*> the filename to the corresponding tree.
  * out_filename <const char*> the filename of the output file.
  * unifrac_method <const char*> the requested unifrac method.
  * variance_adjust <bool> whether to apply variance adjustment.
