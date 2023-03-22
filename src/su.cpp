@@ -549,7 +549,7 @@ void ssu_sig_handler(int signo) {
 Format get_format(const std::string &format_string, const std::string &method_string, const std::string &mode_string) {
     Format format_val = format_invalid;
     if (format_string.empty()) {
-        if (mode_string=="one-off") {
+        if (mode_string!="multi") {
           format_val = format_ascii;
         } else {
           format_val = format_hdf5_nodist;
