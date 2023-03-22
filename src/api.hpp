@@ -337,7 +337,7 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * grouping_columns <const char *> the columns to use for grouping
  * mmap_dir <const char*> if not empty, temp dir to use for disk-based memory 
  *
- * unifrac_to_file returns the following error codes:
+ * unifrac_to_file_v2 returns the following error codes:
  *
  * okay           : no problems encountered
  * table_missing  : the filename for the table does not exist
@@ -359,6 +359,43 @@ EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree
                                      const char* unifrac_method, bool variance_adjust, double alpha,
                                      bool bypass_tips, unsigned int n_substeps, const char* format,
                                      unsigned int pcoa_dims, const char *mmap_dir);
+
+/* Compute UniFrac with subsampling several times and save to file
+ *
+ * biom_filename <const char*> the filename to the biom table.
+ * tree_filename <const char*> the filename to the corresponding tree.
+ * out_filename <const char*> the filename of the output file.
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * n_substeps <uint> the number of substeps to use.
+ * format <const char*> output format to use.
+ * n_subsamples <uint> Number of subsamples to compute.
+ * subsample_depth <uint> Depth of subsampling.
+ * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
+ * pcoa_dims <uint> if not 0, number of dimensions to use or PCoA
+ * permanova_perms <uint> If not 0, compute PERMANOVA using that many permutations
+ * grouping_filename <const char*> the TSV filename containing grouping information
+ * grouping_columns <const char *> the columns to use for grouping
+ * mmap_dir <const char*> if not empty, temp dir to use for disk-based memory 
+ *
+ * unifrac_multi_to_file_v2 returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * table_missing  : the filename for the table does not exist
+ * tree_missing   : the filename for the tree does not exist
+ * unknown_method : the requested method is unknown.
+ * table_empty    : the table does not have any entries
+ * output_error   : failed to properly write the output file
+ */
+EXTERN ComputeStatus unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                              const char* unifrac_method, bool variance_adjust, double alpha,
+                                              bool bypass_tips, unsigned int n_substeps, const char* format,
+                                              unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement, 
+                                              unsigned int pcoa_dims,
+                                              unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                              const char *mmap_dir);
 
 /* Compute PERMANOVA - fp64 variant
  *

@@ -951,66 +951,6 @@ compute_status unifrac_to_file(const char* biom_filename, const char* tree_filen
                             threads,format,0,true,pcoa_dims,0,NULL,NULL,mmap_dir);
 }
 
-
-IOStatus write_mat(const char* output_filename, mat_t* result) {
-    std::ofstream output;
-    output.open(output_filename);
-
-    uint64_t comb_N = su::comb_2(result->n_samples);
-    uint64_t comb_N_minus = 0;
-    double v;
-
-    for(unsigned int i = 0; i < result->n_samples; i++)
-        output << "\t" << result->sample_ids[i];
-    output << std::endl;
-
-    for(unsigned int i = 0; i < result->n_samples; i++) {
-        output << result->sample_ids[i];
-        for(unsigned int j = 0; j < result->n_samples; j++) {
-            if(i < j) { // upper triangle
-                comb_N_minus = su::comb_2(result->n_samples - i);
-                v = result->condensed_form[comb_N - comb_N_minus + (j - i - 1)];
-            } else if (i > j) { // lower triangle
-                comb_N_minus = su::comb_2(result->n_samples - j);
-                v = result->condensed_form[comb_N - comb_N_minus + (i - j - 1)];
-            } else {
-                v = 0.0;
-            }
-            output << std::setprecision(16) << "\t" << v;
-        }
-        output << std::endl;
-    }
-    output.close();
-
-    return write_okay;
-}
-
-IOStatus write_mat_from_matrix(const char* output_filename, mat_full_fp64_t* result) {
-    const double *buf2d  = result->matrix;
-
-    std::ofstream output;
-    output.open(output_filename);
-
-    double v;
-    const uint64_t n_samples_64 = result->n_samples; // 64-bit to avoid overflow
-
-    for(unsigned int i = 0; i < result->n_samples; i++)
-        output << "\t" << result->sample_ids[i];
-    output << std::endl;
-
-    for(unsigned int i = 0; i < result->n_samples; i++) {
-        output << result->sample_ids[i];
-        for(unsigned int j = 0; j < result->n_samples; j++) {
-            v = buf2d[i*n_samples_64+j];
-            output << std::setprecision(16) << "\t" << v;
-        }
-        output << std::endl;
-    }
-    output.close();
-
-    return write_okay;
-}
-
 herr_t write_hdf5_string(hid_t output_file_id,const char *dname, const char *str)
 {
   // this is the convoluted way to store a string
@@ -1109,6 +1049,408 @@ inline herr_t write_hdf5_array2D(hid_t output_file_id, hid_t real_id,
   return status;
 }
 
+template<class TReal>
+inline IOStatus append_hdf5_pcoa(hid_t output_file_id, hid_t real_id, unsigned int pcoa_dims, unsigned int n_samples,
+                                 const char *eigenvalues_key, const char * samples_key, const char * proportion_explained_key,
+                                 const TReal * eigenvalues, const TReal * samples,  const TReal * proportion_explained) {
+     // save the eigenvalues
+     {
+       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
+                                               eigenvalues_key, pcoa_dims, eigenvalues);
+       if (status<0)  return write_error;
+     }
+
+     // save the proportion_explained
+     {
+       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
+                                               proportion_explained_key, pcoa_dims, proportion_explained);
+       if (status<0)  return write_error;
+     }
+
+     // save the samples
+     {
+       herr_t status = write_hdf5_array2D<TReal>(output_file_id,real_id,
+                                                 samples_key, n_samples, pcoa_dims, samples);
+       if (status<0)  return write_error;
+     }
+
+  return write_okay;
+}
+
+namespace su {
+
+template<class TReal, class TMat>
+class WriteHDF5Multi {
+protected:
+   hid_t real_id;
+   std::string fname;
+   unsigned int pcoa_dims;
+   hid_t output_file_id;
+   unsigned int n_results;
+public:
+   WriteHDF5Multi(hid_t _real_id, const char* output_filename, unsigned int _pcoa_dims) 
+   : real_id(_real_id)
+   , fname(output_filename)
+   , pcoa_dims(_pcoa_dims)
+   , output_file_id(H5Fcreate(output_filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT))
+   , n_results(0)
+   {
+      if (output_file_id<0) throw "File open failed";
+
+      // simple header
+      if (write_hdf5_string(output_file_id,"format","SUJK")<0) {
+         H5Fclose (output_file_id);
+         throw "Header write failed";
+      }
+      if (write_hdf5_string(output_file_id,"version","2023.03")<0) {
+         H5Fclose (output_file_id);
+         throw "Header write failed";
+      }
+      if (pcoa_dims>0) {
+        if (write_hdf5_string(output_file_id,"pcoa_method","FSVD")<0) {
+           H5Fclose (output_file_id);
+           throw "Header write failed";
+        }
+      }
+   }
+
+   virtual ~WriteHDF5Multi()
+   {
+      H5Fclose (output_file_id);
+   }
+
+   // Note: May destroy the content of result->matrix
+   void add_result(TMat * result, bool save_dist) {
+      SETUP_TDBG("WriteHDF5Multi_add_result")
+
+      char fmtstr[64];
+      const auto n_samples = result->n_samples;
+
+      if (n_results==0) {
+         // save the ids once, they do not change
+         {
+           herr_t status = write_hdf5_stringarray(output_file_id,
+                               "order", n_samples, result->sample_ids);
+           if (status<0) throw "Order write failed";
+         }
+      }
+
+      if (save_dist) {
+         // save the matrix
+         {
+           sprintf(fmtstr,"matrix:%d",n_results);
+           herr_t status = write_hdf5_array2D<TReal>(output_file_id,real_id,
+                            fmtstr, n_samples, n_samples, result->matrix);
+           if (status<0) throw "Matrix write failed";
+         }
+         TDBG_STEP("matrix saved")
+      }
+
+      if (pcoa_dims>0) {
+         // compute pcoa and save it in the file
+         // use inplace variant to keep memory use in check; we don't need matrix anymore
+         TReal * eigenvalues;
+         TReal * samples;
+         TReal * proportion_explained;
+
+         su::pcoa_inplace(result->matrix, n_samples, pcoa_dims, eigenvalues, samples, proportion_explained);
+         TDBG_STEP("pcoa computed")
+
+         char fmtstr2[64];
+         char fmtstr3[64];
+         sprintf(fmtstr,"pcoa_eigvals:%d",n_results);
+         sprintf(fmtstr2,"pcoa_samples:%d",n_results);
+         sprintf(fmtstr3,"pcoa_proportion_explained:%d",n_results);
+         IOStatus rc = append_hdf5_pcoa(output_file_id, real_id, pcoa_dims, n_samples,
+                             fmtstr, fmtstr2, fmtstr3,
+                             eigenvalues, samples,  proportion_explained);
+         free(eigenvalues);
+         free(proportion_explained);
+         free(samples);
+         if (rc!=write_okay) throw "PCOA write failed";
+         TDBG_STEP("pcoa saved")
+      } // if pcoa
+
+      n_results++;
+   }
+
+   void write_stats(unsigned int           stat_n_vals,
+                    const char* const    * stat_method_arr, const char* const  * stat_name_arr,
+                    const TReal          * stat_val_arr,    const TReal        * stat_pval_arr, const uint32_t  * stat_perm_count_arr,
+                    const char* const    * stat_group_name_arr, const uint32_t * stat_group_count_arr) {
+     SETUP_TDBG("WriteHDF5Multi_write_stats")
+     herr_t status = write_hdf5_stringarray(output_file_id,
+                         "stat_methods", stat_n_vals, stat_method_arr);
+     if (status>=0) {
+       status = write_hdf5_stringarray(output_file_id,
+                         "stat_test_names", stat_n_vals, stat_name_arr);
+     }
+     if (status>=0) {
+       status = write_hdf5_stringarray(output_file_id,
+                         "stat_grouping_names", stat_n_vals, stat_group_name_arr);
+     }
+     if (status>=0) {
+       status = write_hdf5_array<uint32_t>(output_file_id, H5T_STD_U32LE,
+                         "stat_n_groups", stat_n_vals, stat_group_count_arr);
+     }
+     if (status>=0) {
+       status = write_hdf5_array<TReal>(output_file_id,real_id,
+                         "stat_values", stat_n_vals, stat_val_arr);
+     }
+     if (status>=0) {
+       status = write_hdf5_array<TReal>(output_file_id,real_id,
+                         "stat_pvalues", stat_n_vals, stat_pval_arr);
+     }
+     if (status>=0) {
+       status = write_hdf5_array<uint32_t>(output_file_id, H5T_STD_U32LE,
+                         "stat_n_permutations", stat_n_vals, stat_perm_count_arr);
+     }
+     
+     // check status after cleanup, for simplicity
+     if (status<0) throw "Stats write failed";
+     TDBG_STEP("stats saved")
+   }
+
+};
+
+class WriteHDF5MultiFP64 : public WriteHDF5Multi<double,mat_full_fp64_t> {
+public:
+   WriteHDF5MultiFP64(const char* output_filename, unsigned int _pcoa_dims)
+   : WriteHDF5Multi(H5T_IEEE_F64LE, output_filename, _pcoa_dims) {}
+};
+
+class WriteHDF5MultiFP32 : public WriteHDF5Multi<float,mat_full_fp32_t> {
+public:
+   WriteHDF5MultiFP32(const char* output_filename, unsigned int _pcoa_dims)
+   : WriteHDF5Multi(H5T_IEEE_F32LE, output_filename, _pcoa_dims) {}
+};
+
+} // end namespace
+
+template<class TReal, class TMat>
+compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
+                                        const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
+                                        unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir)
+{
+    compute_status rc = okay;
+    SETUP_TDBG("unifrac_multi_to_file")
+
+    if (!subsample_with_replacement) {
+      fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
+      return table_empty;
+    }
+
+    if (subsample_depth<1) {
+      fprintf(stderr, "ERROR: subsampling depth cannot be 0.\n");
+      return table_empty;
+    }
+
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, biom_filename)
+    TDBG_STEP("load_files")
+
+    typedef const char* Tcstring;
+    std::vector<std::string> columns;
+    Tcstring *columns_c = NULL;
+
+    // permanova values
+    TReal *pm_fstats = NULL;
+    TReal *pm_pvalues = NULL;
+    uint32_t *pm_n_groups = NULL;
+    std::vector<std::string> pm_columns;
+    Tcstring *pm_columns_c = NULL;
+
+    if (permanova_perms>0) {
+         columns = stringlist_to_vector(grouping_columns);
+         const unsigned int n_columns = columns.size();
+         const unsigned int n_els = n_columns*n_subsamples;
+
+         columns_c = new Tcstring[n_columns];
+         for (unsigned int i=0; i<n_columns; i++)  columns_c[i] = columns[i].c_str();
+
+         pm_fstats = new TReal[n_els];
+         pm_pvalues = new TReal[n_els];
+         pm_n_groups = new uint32_t[n_els];
+         pm_columns.resize(n_els);
+         pm_columns_c = new Tcstring[n_els];
+    }
+
+    try {
+      su::WriteHDF5Multi<TReal,TMat> h5obj(real_id, out_filename,pcoa_dims);
+
+      for (unsigned int i=0; i<n_subsamples; i++) {
+        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
+           rc = table_empty;
+           break;
+        }
+        TDBG_STEP("subsampled")
+
+        TMat* result = NULL;
+        rc = one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nsubsteps,mmap_dir,&result);
+        if (rc!=okay) break;
+        TDBG_STEP("matrix computed")
+
+        if (permanova_perms>0) {
+            const unsigned int n_columns = columns.size();
+            TReal *fstats = pm_fstats+(i*n_columns);
+            TReal *pvalues = pm_pvalues+(i*n_columns);
+            uint32_t *n_groups = pm_n_groups+(i*n_columns);
+
+            rc = compute_permanova_T<TReal,TMat>(grouping_filename,n_columns,columns_c,result,permanova_perms,fstats,pvalues,n_groups);
+            if (rc!=okay) break;
+            TDBG_STEP("permanova computed")
+
+            char fmtstr[32];
+            sprintf(fmtstr,":%d",i);
+            for (unsigned int j=0; j<n_columns;j ++) {
+              const unsigned int idx = i*n_columns + j;
+
+              pm_columns[idx] = columns[j] + fmtstr;
+              pm_columns_c[idx] = pm_columns[idx].c_str();
+            }
+        }
+        h5obj.add_result(result, save_dist);
+        destroy_mat_full_T<TMat,TReal>(&result);
+      } // for i
+      if ((rc==okay)&&(permanova_perms>0)) {
+              const unsigned int n_columns = columns.size();
+              const unsigned int n_els = n_columns*n_subsamples;
+              std::string stat_method("PERMANOVA");
+              Tcstring *stat_methods = new Tcstring[n_els];
+              for (unsigned int i=0; i<n_els; i++)  stat_methods[i] = stat_method.c_str();
+              std::string stat_name("pseudo-F");
+              Tcstring *stat_names = new Tcstring[n_els];
+              for (unsigned int i=0; i<n_els; i++)  stat_names[i] = stat_name.c_str();
+              uint32_t *nperm_arr = new uint32_t[n_els];
+              for (unsigned int i=0; i<n_els; i++)  nperm_arr[i] = permanova_perms;
+
+              h5obj.write_stats(n_els, stat_methods, stat_names,
+                                pm_fstats, pm_pvalues, nperm_arr,
+                                pm_columns_c, pm_n_groups);
+
+              delete[] nperm_arr;
+              delete[] stat_names;
+              delete[] stat_methods;
+      }
+    } catch (...) {
+       // the only one throwing should be h5obj
+       rc = output_error;
+    }
+
+    TDBG_STEP("finished")
+
+    if (pm_columns_c!=NULL) delete[] pm_columns_c;
+    if (pm_n_groups!=NULL)  delete[] pm_n_groups;
+    if (pm_pvalues!=NULL)   delete[] pm_pvalues;
+    if (pm_fstats!=NULL)    delete[] pm_fstats;
+    if (columns_c!=NULL)    delete[] columns_c;
+    return rc;
+}
+
+compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
+                                        unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir)
+{
+    bool fp64;
+    bool save_dist;
+    compute_status rc = is_fp64(unifrac_method, format, fp64, save_dist);
+
+    if (rc!=okay) {
+      return rc;
+    }
+
+    if (fp64) {
+      rc = unifrac_multi_to_file_T<double,mat_full_fp64_t>(H5T_IEEE_F64LE, save_dist,
+                                     biom_filename, tree_filename, out_filename,
+                                     unifrac_method, variance_adjust, alpha,
+                                     bypass_tips, nsubsteps, format,
+                                     n_subsamples, subsample_depth, subsample_with_replacement,
+                                     pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
+                                     mmap_dir);
+   } else {
+      rc = unifrac_multi_to_file_T<float,mat_full_fp32_t>(H5T_IEEE_F32LE, save_dist,
+                                     biom_filename, tree_filename, out_filename,
+                                     unifrac_method, variance_adjust, alpha,
+                                     bypass_tips, nsubsteps, format,
+                                     n_subsamples, subsample_depth, subsample_with_replacement,
+                                     pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
+                                     mmap_dir);
+   }
+
+   return rc;
+}
+
+
+IOStatus write_mat(const char* output_filename, mat_t* result) {
+    std::ofstream output;
+    output.open(output_filename);
+
+    uint64_t comb_N = su::comb_2(result->n_samples);
+    uint64_t comb_N_minus = 0;
+    double v;
+
+    for(unsigned int i = 0; i < result->n_samples; i++)
+        output << "\t" << result->sample_ids[i];
+    output << std::endl;
+
+    for(unsigned int i = 0; i < result->n_samples; i++) {
+        output << result->sample_ids[i];
+        for(unsigned int j = 0; j < result->n_samples; j++) {
+            if(i < j) { // upper triangle
+                comb_N_minus = su::comb_2(result->n_samples - i);
+                v = result->condensed_form[comb_N - comb_N_minus + (j - i - 1)];
+            } else if (i > j) { // lower triangle
+                comb_N_minus = su::comb_2(result->n_samples - j);
+                v = result->condensed_form[comb_N - comb_N_minus + (i - j - 1)];
+            } else {
+                v = 0.0;
+            }
+            output << std::setprecision(16) << "\t" << v;
+        }
+        output << std::endl;
+    }
+    output.close();
+
+    return write_okay;
+}
+
+IOStatus write_mat_from_matrix(const char* output_filename, mat_full_fp64_t* result) {
+    const double *buf2d  = result->matrix;
+
+    std::ofstream output;
+    output.open(output_filename);
+
+    double v;
+    const uint64_t n_samples_64 = result->n_samples; // 64-bit to avoid overflow
+
+    for(unsigned int i = 0; i < result->n_samples; i++)
+        output << "\t" << result->sample_ids[i];
+    output << std::endl;
+
+    for(unsigned int i = 0; i < result->n_samples; i++) {
+        output << result->sample_ids[i];
+        for(unsigned int j = 0; j < result->n_samples; j++) {
+            v = buf2d[i*n_samples_64+j];
+            output << std::setprecision(16) << "\t" << v;
+        }
+        output << std::endl;
+    }
+    output.close();
+
+    return write_okay;
+}
+
 // Internal: Make sure TReal and real_id match
 template<class TReal, class TMat>
 inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat * result, hid_t real_id,
@@ -1166,48 +1508,21 @@ inline IOStatus write_mat_from_matrix_hdf5_T(const char* output_filename, TMat *
      su::pcoa_inplace(result->matrix, n_samples, pcoa_dims, eigenvalues, samples, proportion_explained);
      TDBG_STEP("pcoa computed")
 
+
+     IOStatus rc = write_okay;
      if (write_hdf5_string(output_file_id,"pcoa_method","FSVD")<0) {
-       free(eigenvalues);
-       free(proportion_explained);
-       free(samples);
+       rc = write_error;
+     } else {
+       rc = append_hdf5_pcoa(output_file_id, real_id, pcoa_dims, n_samples,
+                             "pcoa_eigvals", "pcoa_samples", "pcoa_proportion_explained",
+                             eigenvalues, samples,  proportion_explained);
+     }
+     free(eigenvalues);
+     free(proportion_explained);
+     free(samples);
+     if (rc!=write_okay) {
        H5Fclose (output_file_id);
-       return write_error;
-     }
-
-     // save the eigenvalues
-     {
-       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
-                         "pcoa_eigvals", pcoa_dims, eigenvalues);
-       free(eigenvalues);
-       if (status<0) {
-         H5Fclose (output_file_id);
-         free(proportion_explained);
-         free(samples);
-         return write_error;
-       }
-     }
-
-     // save the proportion_explained
-     {
-       herr_t status = write_hdf5_array<TReal>(output_file_id,real_id,
-                         "pcoa_proportion_explained", pcoa_dims, proportion_explained);
-       free(proportion_explained);
-       if (status<0) {
-         H5Fclose (output_file_id);
-         free(samples);
-         return write_error;
-       }
-     }
-
-     // save the samples
-     {
-       herr_t status = write_hdf5_array2D<TReal>(output_file_id,real_id,
-                         "pcoa_samples", n_samples, pcoa_dims, samples);
-       free(samples);
-       if (status<0) {
-         H5Fclose (output_file_id);
-         return write_error;
-       }
+       return rc;
      }
      TDBG_STEP("pcoa saved")
    } // if pcoa

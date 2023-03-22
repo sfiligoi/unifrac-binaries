@@ -5,7 +5,7 @@
 #  compare_unifrac_stats.py fname n_groups n_perms value pvalue prec_value prec_pvalue
 #
 # Example:
-#  compare_unifrac_stats.py a.h5 PERMANOVA 
+#  compare_unifrac_stats.py a.h5 5 999 1.001112 0.456  0.001 0.1
 #
 import h5py
 import sys

@@ -148,6 +148,7 @@ The methods can be used directly through the command line after install:
                                 partial : Compute UniFrac over a subset of stripes.
                                 partial-report : Start and stop suggestions for partial compute.
                                 merge-partial : Merge partial UniFrac results.
+                                multi : compute UniFrac multiple times.
         --start	[OPTIONAL] If mode==partial, the starting stripe.
         --stop	[OPTIONAL] If mode==partial, the stopping stripe.
         --partial-pattern	[OPTIONAL] If mode==merge-partial, a glob pattern for partial outputs to merge.
@@ -155,12 +156,13 @@ The methods can be used directly through the command line after install:
         --report-bare	[OPTIONAL] If mode==partial-report, produce barebones output.
         --n-substeps 	[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1.
         --format|-r	[OPTIONAL]  Output format:
-                                 ascii : [DEFAULT] Original ASCII format.
+                                 ascii : Original ASCII format. (default if mode==one-off)
+                                 hdf5_nodist : HFD5 format, no distance matrix. (default if mode==multi)
                                  hdf5 : HFD5 format.  May be fp32 or fp64, depending on method.
                                  hdf5_fp32 : HFD5 format, using fp32 precision.
                                  hdf5_fp64 : HFD5 format, using fp64 precision.
-                                 hdf5_nodist : HFD5 format, no distance matrix, just PCoA.
-        --subsample-depth [OPTIONAL] Depth of subsampling of the input BIOM before computing unifrac
+        --subsample-depth   Depth of subsampling of the input BIOM before computing unifrac (required for mode==multi, optional for one-off)
+        --n-subsamples	[OPTIONAL] if mode==multi, number of subsampled UniFracs to compute (default: 100)
         --permanova	[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)
         --pcoa	[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)
         --seed	[OPTIONAL] Seed to use for initializing the random gnerator

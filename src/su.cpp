@@ -35,6 +35,7 @@ void usage() {
     std::cout << "    \t\t    partial-report : Start and stop suggestions for partial compute." << std::endl;
     std::cout << "    \t\t    merge-partial : Merge partial UniFrac results." << std::endl;
     std::cout << "    \t\t    check-partial : Check partial UniFrac results." << std::endl;
+    std::cout << "    \t\t    multi : compute UniFrac multiple times." << std::endl;
     std::cout << "    --start\t[OPTIONAL] If mode==partial, the starting stripe." << std::endl;
     std::cout << "    --stop\t[OPTIONAL] If mode==partial, the stopping stripe." << std::endl;
     std::cout << "    --partial-pattern\t[OPTIONAL] If mode==merge-partial or check-partial, a glob pattern for partial outputs to merge." << std::endl;
@@ -42,12 +43,13 @@ void usage() {
     std::cout << "    --report-bare\t[OPTIONAL] If mode==partial-report, produce barebones output." << std::endl;
     std::cout << "    --n-substeps\t[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1." << std::endl;
     std::cout << "    --format|-r\t[OPTIONAL]  Output format:" << std::endl;
-    std::cout << "    \t\t    ascii : [DEFAULT] Original ASCII format." << std::endl;
+    std::cout << "    \t\t    ascii : Original ASCII format. (default if mode==one-off)" << std::endl;
     std::cout << "    \t\t    hdf5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
     std::cout << "    \t\t    hdf5_fp32 : HFD5 format, using fp32 precision." << std::endl;
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
-    std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix, just PCoA." << std::endl;
-    std::cout << "    --subsample-depth\t[OPTIONAL] Depth of subsampling of the input BIOM before computing unifrac" << std::endl;
+    std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix. (default if mode==multi)" << std::endl;
+    std::cout << "    --subsample-depth\tDepth of subsampling of the input BIOM before computing unifrac (required for mode==multi, optional for one-off)" << std::endl;
+    std::cout << "    --n-subsamples\t[OPTIONAL] if mode==multi, number of subsampled UniFracs to compute (default: 100)" << std::endl;
     std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
     std::cout << "    --seed\t[OPTIONAL] Seed to use for initializing the random gnerator" << std::endl;
@@ -466,16 +468,92 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
     return (status==okay) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+int mode_multi(const std::string &table_filename, const std::string &tree_filename, 
+               const std::string &output_filename, const std::string &format_str, Format format_val, 
+               const std::string &method_string,
+               unsigned int n_subsamples, unsigned int subsample_depth,
+               unsigned int pcoa_dims,
+               unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
+               bool vaw, double g_unifrac_alpha, bool bypass_tips,
+               unsigned int nsubsteps, const std::string &mmap_dir) {
+    if(output_filename.empty()) {
+        err("output filename missing");
+        return EXIT_FAILURE;
+    }
+
+    if(table_filename.empty()) {
+        err("table filename missing");
+        return EXIT_FAILURE;
+    }
+
+    if(tree_filename.empty()) {
+        err("tree filename missing");
+        return EXIT_FAILURE;
+    }
+    
+    if((permanova_perms>0) && grouping_filename.empty()) {
+        err("grouping filename missing");
+        return EXIT_FAILURE;
+    }
+    
+    if((permanova_perms>0) && grouping_columns.empty()) {
+        err("grouping columns missing");
+        return EXIT_FAILURE;
+    }
+    
+    if(method_string.empty()) {
+        err("method missing");
+        return EXIT_FAILURE;
+    }
+
+    if(subsample_depth<1) {
+      err("subsample_depth cannot be 0.");
+      return EXIT_FAILURE;
+    }
+
+    if(n_subsamples<1) {
+      err("n_subsamples cannot be 0.");
+      return EXIT_FAILURE;
+    }
+
+    if (format_val==format_ascii) {
+      err("ASCII format not supported in multi mode");
+      return EXIT_FAILURE;
+    }
+
+    compute_status status = okay;
+    {
+      const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
+      const char * grouping_c = (permanova_perms>0) ? grouping_filename.c_str() : NULL ;
+      const char * columns_c = (permanova_perms>0) ? grouping_columns.c_str() : NULL ;
+
+      status = unifrac_multi_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
+                                        method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
+                                        n_subsamples, subsample_depth, true,
+                                        pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
+
+      if (status != okay) {
+        fprintf(stderr, "Compute failed in multi: %s\n", compute_status_messages[status]);
+      }
+    }
+
+    return (status==okay) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 void ssu_sig_handler(int signo) {
     if (signo == SIGUSR1) {
         printf("Status cannot be reported.\n");
     }
 }
 
-Format get_format(const std::string &format_string, const std::string &method_string) {
+Format get_format(const std::string &format_string, const std::string &method_string, const std::string &mode_string) {
     Format format_val = format_invalid;
     if (format_string.empty()) {
-        format_val = format_ascii;
+        if (mode_string!="multi") {
+          format_val = format_ascii;
+        } else {
+          format_val = format_hdf5_nodist;
+        }
     } else if (format_string == "ascii") {
         format_val = format_ascii;
     } else if (format_string == "hdf5_fp32") {
@@ -492,6 +570,19 @@ Format get_format(const std::string &format_string, const std::string &method_st
     }
 
     return format_val;
+}
+
+std::string format2str(Format format_val) {
+  if (format_val==format_hdf5_nodist) {
+    return "hdf5_nodist";
+  } else if (format_val==format_hdf5_fp32) {
+    return "hdf5_fp32";
+  } else if (format_val==format_hdf5_fp64) {
+    return "hdf5_fp64";
+  } else if (format_val==format_ascii) {
+    return "ascii";
+  } 
+  return "invalid";
 }
 
 int main(int argc, char **argv){
@@ -525,6 +616,7 @@ int main(int argc, char **argv){
     std::string permanova_arg = input.getCmdOption("--permanova");
     std::string seed_arg = input.getCmdOption("--seed");
     std::string subsample_depth_arg = input.getCmdOption("--subsample-depth");
+    std::string n_subsamples_arg = input.getCmdOption("--n-subsamples");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
     if(nsubsteps_arg.empty()) {
@@ -573,9 +665,9 @@ int main(int argc, char **argv){
 
     Format format_val = format_invalid;
     if(!format_arg.empty()) {
-      format_val = get_format(format_arg,method_string);
+      format_val = get_format(format_arg,method_string,mode_arg);
     } else {
-      format_val = get_format(sformat_arg,method_string);
+      format_val = get_format(sformat_arg,method_string,mode_arg);
       format_arg=sformat_arg; // easier to use a single variable
     }
     if(format_val==format_invalid) {
@@ -606,13 +698,31 @@ int main(int argc, char **argv){
     }
 
     unsigned int subsample_depth = 0;
-    if(subsample_depth_arg.empty())
-        subsample_depth = 0;
-    else
+    if(subsample_depth_arg.empty()) {
+        if(mode_arg == "multi" || mode_arg == "multiple") {
+           err("--subsample-depth required in multi mode.");
+           return EXIT_FAILURE;
+        } else {
+           subsample_depth = 0;
+        }
+    } else {
         subsample_depth = atoi(subsample_depth_arg.c_str());
+    }
+
+    unsigned int n_subsamples = 0;
+    if(n_subsamples_arg.empty()) {
+        n_subsamples = 100;
+    } else {
+        if(mode_arg == "multi" || mode_arg == "multiple") {
+           n_subsamples = atoi(n_subsamples_arg.c_str());
+        } else {
+           err("--n-subsamples only allowed in multi mode.");
+           return EXIT_FAILURE;
+        }
+    }
 
     if(mode_arg.empty() || mode_arg == "one-off")
-        return mode_one_off(table_filename, tree_filename, output_filename, format_arg, format_val, method_string,
+        return mode_one_off(table_filename, tree_filename, output_filename,  format2str(format_val), format_val, method_string,
                             subsample_depth,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                             vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
@@ -630,8 +740,13 @@ int main(int argc, char **argv){
         return mode_check_partial(partial_pattern);
     else if(mode_arg == "partial-report")
         return mode_partial_report(table_filename, uint32_t(n_partials), bare);
+    else if(mode_arg == "multi" || mode_arg == "multiple")
+        return mode_multi(table_filename, tree_filename, output_filename, format2str(format_val), format_val, method_string,
+                            n_subsamples,subsample_depth,
+                            pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
+                            vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
     else 
-        err("Unknown mode. Valid options are: one-off, partial, merge-partial, check-partial, partial-report");
+        err("Unknown mode. Valid options are: one-off, partial, merge-partial, check-partial, partial-report, multi");
 
     return EXIT_SUCCESS;
 }
