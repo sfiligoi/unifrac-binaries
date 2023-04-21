@@ -14,9 +14,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, linux-gpu-cuda]
+        fullopt: [True, False]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: conda-incubator/setup-miniconda@v2
       with:
         miniconda-version: "latest"
@@ -45,13 +46,19 @@ jobs:
           clang -v
         fi
         which h5c++
-        if [[ "$(uname -s)" == "Linux" ]];
+        if [[ "$(uname -s)" == "Linux" && "${{ matrix.fullopt }}" != "False" ]];
         then
+          # always use PGI when fully optimizing
+          # but never when in compatible/low-optimization mode
           ./scripts/install_hpc_sdk.sh </dev/null
           source setup_nv_h5.sh
         fi
         df -h .
         export PERFORMING_CONDA_BUILD=True
+        export BUILD_FULL_OPTIMIZATION=${{ matrix.fullopt }}
+        echo "======= begin env ====="
+        env
+        echo "=======  end env  ====="
         make api && \
         make main && \
         make install && \

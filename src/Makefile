@@ -66,16 +66,30 @@ ifndef NOGPU
 	endif
 endif
 
-ifneq (,$(findstring pgi,$(COMPILER)))
+ifneq ($(BUILD_FULL_OPTIMIZATION),False)
+    ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
 		CPPFLAGS += -tp=sandybridge -Mvect=simd:256
 	endif
-else
+    else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
 		CPPFLAGS += -mtune=generic -mavx
 	else
 		CPPFLAGS += -mavx -mfma -march=native
 	endif
+    endif
+else
+    ifneq (,$(findstring pgi,$(COMPILER)))
+	ifeq ($(PERFORMING_CONDA_BUILD),True)
+		CPPFLAGS += -tp=px
+	endif
+    else
+	ifeq ($(PERFORMING_CONDA_BUILD),True)
+		CPPFLAGS += -mtune=generic
+	else
+		CPPFLAGS += -march=native
+	endif
+    endif
 endif
 
 ifeq (,$(findstring pgi,$(COMPILER)))
