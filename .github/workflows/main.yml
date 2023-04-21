@@ -15,6 +15,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, linux-gpu-cuda]
         fullopt: [True, False]
+        exclude:
+        - os: linux-gpu-cuda
+          fullopt: False
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
