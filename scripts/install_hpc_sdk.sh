@@ -36,9 +36,9 @@ export PATH=$PWD/conda_nv_bins:$PATH
 # Install the NVIDIA HPC SDK
 
 # This link may need to be updated, as new compiler versions are released
-# Note: Verified that it works with v21.7
+# Note: Verified that it works with v22.9
 if [ "x${NV_URL}" == "x" ]; then
-  NV_URL=https://developer.download.nvidia.com/hpc-sdk/21.7/nvhpc_2021_217_Linux_x86_64_cuda_multi.tar.gz
+  NV_URL=https://developer.download.nvidia.com/hpc-sdk/22.9/nvhpc_2022_229_Linux_x86_64_cuda_multi.tar.gz
 fi
 
 echo "Downloading the NVIDIA HPC SDK"
