@@ -377,71 +377,17 @@ void su::faith_pd(biom_interface &table,
     }
 }
 
-
-#ifdef UNIFRAC_ENABLE_ACC
-
-// test only once, then use persistent value
-static int proc_use_acc = -1;
-
-inline bool use_acc() {
- if (proc_use_acc!=-1) return (proc_use_acc!=0);
- int has_nvidia_gpu_rc = access("/proc/driver/nvidia/gpus", F_OK);
-
- bool print_info = false;
-
- if (const char* env_p = std::getenv("UNIFRAC_GPU_INFO")) {
-   print_info = true;
-   std::string env_s(env_p);
-   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
-       (env_s=="NEVER") || (env_s=="never")) {
-     print_info = false;
-   }
- }
-
- if (has_nvidia_gpu_rc == 0) {
-    if (!su_acc::found_gpu()) {
-       has_nvidia_gpu_rc  = 1;
-       if (print_info) printf("INFO (unifrac): NVIDIA GPU listed but OpenACC cannot use it.\n");
-    }
- } 
-
- if (has_nvidia_gpu_rc != 0) {
-   if (print_info) printf("INFO (unifrac): GPU not found, using CPU\n");
-   proc_use_acc=0;
-   return false;
- }
-
- if (const char* env_p = std::getenv("UNIFRAC_USE_GPU")) {
-   std::string env_s(env_p);
-   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
-       (env_s=="NEVER") || (env_s=="never")) {
-     if (print_info) printf("INFO (unifrac): Use of GPU explicitly disabled, using CPU\n");
-     proc_use_acc=0;
-     return false;
-   }
- }
-
- if (print_info) printf("INFO (unifrac): Using GPU\n");
- proc_use_acc=1;
- return true;
-}
-#endif
-
 void su::unifrac(biom_interface &table,
                  BPTree &tree,
                  Method unifrac_method,
                  std::vector<double*> &dm_stripes,
                  std::vector<double*> &dm_stripes_total,
                  const su::task_parameters* task_p) {
-#ifdef UNIFRAC_ENABLE_ACC
-  if (use_acc()) {
-    su_acc::unifrac(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
-  } else {
+#ifdef UNIFRAC_NVIDIA
+  su_acc::unifrac(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
 #else
-  if (true) {
+  su_cpu::unifrac(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
 #endif
-    su_cpu::unifrac(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
-  }
 }
 
 
@@ -451,15 +397,11 @@ void su::unifrac_vaw(biom_interface &table,
                      std::vector<double*> &dm_stripes,
                      std::vector<double*> &dm_stripes_total,
                      const su::task_parameters* task_p) {
-#ifdef UNIFRAC_ENABLE_ACC
-  if (use_acc()) {
-   su_acc::unifrac_vaw(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
-  } else {
+#ifdef UNIFRAC_NVIDIA
+  su_acc::unifrac_vaw(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
 #else
-  if (true) {
+  su_cpu::unifrac_vaw(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
 #endif
-   su_cpu::unifrac_vaw(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
-  }
 }
 
 

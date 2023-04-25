@@ -1,4 +1,22 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2019-2023, UniFrac development team.
+ * All rights reserved.
+ *
+ * See LICENSE file for more details
+ */
+
+#ifdef UNIFRAC_NVIDIA
+#include "api_nvidia.hpp"
+#else
 #include "api.hpp"
+// NVIDIA header must be after for proper exports to be in place
+# ifdef USE_UNFRAC_NVIDIA
+# include "api_nvidia.hpp"
+# endif
+#endif
+
 #include "biom.hpp"
 #include "tree.hpp"
 #include "tsv.hpp"
@@ -19,10 +37,6 @@
 #include <sys/mman.h>
 #include <lz4.h>
 #include <time.h>
-
-#ifdef UNIFRAC_NVIDIA || USE_UNFRAC_NVIDIA
-#include "api_nvidia.hpp"
-#endif
 
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
@@ -526,10 +540,81 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
+#ifdef UNIFRAC_NVIDIA
+
+#define SUCMP_NM  su_acc
+#include "unifrac_cmp.hpp"
+#undef SUCMP_NM
+
+// test only once, then use persistent value
+static int proc_use_acc = -1;
+
+inline bool use_acc() {
+ if (proc_use_acc!=-1) return (proc_use_acc!=0);
+ int has_nvidia_gpu_rc = access("/proc/driver/nvidia/gpus", F_OK);
+
+ bool print_info = false;
+
+ if (const char* env_p = std::getenv("UNIFRAC_GPU_INFO")) {
+   print_info = true;
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     print_info = false;
+   }
+ }
+
+ if (has_nvidia_gpu_rc == 0) {
+    if (!su_acc::found_gpu()) {
+       has_nvidia_gpu_rc  = 1;
+       if (print_info) printf("INFO (unifrac): NVIDIA GPU listed but OpenACC cannot use it.\n");
+    }
+ } 
+
+ if (has_nvidia_gpu_rc != 0) {
+   if (print_info) printf("INFO (unifrac): GPU not found, using CPU\n");
+   proc_use_acc=0;
+   return false;
+ }
+
+ if (const char* env_p = std::getenv("UNIFRAC_USE_GPU")) {
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     if (print_info) printf("INFO (unifrac): Use of GPU explicitly disabled, using CPU\n");
+     proc_use_acc=0;
+     return false;
+   }
+ }
+
+ if (print_info) printf("INFO (unifrac): Using GPU\n");
+ proc_use_acc=1;
+ return true;
+}
+
+bool ssu_should_use_nv() {
+  return use_acc();
+}
+
+#endif // UNIFRAC_NVIDIA
+
+#ifdef UNIFRAC_NVIDIA
+compute_status one_off_nv(const char* biom_filename, const char* tree_filename,
+                          const char* unifrac_method, bool variance_adjust, double alpha,
+                          bool bypass_tips, unsigned int nthreads, mat_t** result) {
+    SETUP_TDBG("one_off_nv")
+#else
 compute_status one_off(const char* biom_filename, const char* tree_filename,
                        const char* unifrac_method, bool variance_adjust, double alpha,
                        bool bypass_tips, unsigned int nthreads, mat_t** result) {
+# ifdef USE_UNFRAC_NVIDIA
+   if (ssu_should_use_nv()) return one_off_nv(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                              bypass_tips, nthreads,
+                                              result);
+# endif
+
     SETUP_TDBG("one_off")
+#endif
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, table_filename)
@@ -617,8 +702,8 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
                                  mat_full_fp64_t** result) {
 # ifdef USE_UNFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_matrix_nv_fp64_v2(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
-                                                         bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                                         result);
+                                                             bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                                             result);
 # endif
 
     SETUP_TDBG("one_off_matrix")
@@ -659,8 +744,8 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
                                       mat_full_fp32_t** result) {
 # ifdef USE_UNFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_matrix_nv_fp32_v2(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
-                                                         bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                                         result);
+                                                             bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                                             result);
 # endif
 
     SETUP_TDBG("one_off_matrix_fp32")
@@ -683,6 +768,9 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     }
 }
 
+#ifdef UNIFRAC_NVIDIA
+// Don't define these functions to avoid unresolved references
+#else
 // Old interface
 compute_status one_off_matrix(const char* biom_filename, const char* tree_filename,
                               const char* unifrac_method, bool variance_adjust, double alpha,
@@ -692,7 +780,6 @@ compute_status one_off_matrix(const char* biom_filename, const char* tree_filena
     return one_off_matrix_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
 }
 
-// Old interface
 compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
                                    bool bypass_tips, unsigned int nthreads,
@@ -700,13 +787,30 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
                                    mat_full_fp32_t** result) {
     return one_off_matrix_fp32_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
 }
+#endif
 
+#ifdef UNIFRAC_NVIDIA
+compute_status one_off_matrix_inmem_nv_fp64_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                               const char* unifrac_method, bool variance_adjust, double alpha,
+                                               bool bypass_tips, unsigned int nthreads,
+                                               unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                               mat_full_fp64_t** result) {
+    SETUP_TDBG("one_off_matrix_inmem_nv")
+#else
 compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                        const char* unifrac_method, bool variance_adjust, double alpha,
                                        bool bypass_tips, unsigned int nthreads,
                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                        mat_full_fp64_t** result) {
+# ifdef USE_UNFRAC_NVIDIA
+   if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp64_v2(table_data, tree_data,
+                                              unifrac_method, variance_adjust, alpha,
+                                              bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                              result);
+# endif
+
     SETUP_TDBG("one_off_matrix_inmem")
+#endif
     bool fp64;
     compute_status rc = is_fp64_method(unifrac_method, fp64);
 
@@ -745,21 +849,28 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
     }
 }
 
-// Old interface
-compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int nthreads, mat_full_fp64_t** result) {
-    return one_off_matrix_inmem_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
-                                   0, true,  NULL,
-                                   result);
-}
-
+#ifdef UNIFRAC_NVIDIA
+compute_status one_off_matrix_inmem_nv_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                               const char* unifrac_method, bool variance_adjust, double alpha,
+                                               bool bypass_tips, unsigned int nthreads,
+                                               unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                               mat_full_fp32_t** result) {
+    SETUP_TDBG("one_off_matrix_inmem_nv_fp32")
+#else
 compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                             const char* unifrac_method, bool variance_adjust, double alpha,
                                             bool bypass_tips, unsigned int nthreads,
                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                             mat_full_fp32_t** result) {
+# ifdef USE_UNFRAC_NVIDIA
+   if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp32_v2(table_data, tree_data,
+                                              unifrac_method, variance_adjust, alpha,
+                                              bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                              result);
+# endif
+
     SETUP_TDBG("one_off_matrix_inmem_fp32")
+#endif
     bool fp64;
     compute_status rc = is_fp64_method(unifrac_method, fp64);
 
@@ -798,7 +909,18 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
     }
 }
 
+#ifdef UNIFRAC_NVIDIA
+// Don't define these functions to avoid unresolved references
+#else
 // Old interface
+compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int nthreads, mat_full_fp64_t** result) {
+    return one_off_matrix_inmem_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
+                                   0, true,  NULL,
+                                   result);
+}
+
 compute_status one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
                                   bool bypass_tips, unsigned int nthreads, mat_full_fp32_t** result) {
@@ -806,7 +928,11 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
                                         0, true,  NULL,
                                         result);
 }
+#endif
 
+#ifdef UNIFRAC_NVIDIA
+// We should not need anything below for the NVIDAI build
+#else
 // Internal 
 inline std::vector<std::string> stringlist_to_vector(const char *stringlist) {
   char *str = strdup(stringlist);
@@ -2317,4 +2443,6 @@ void pcoa_fp32(const float * mat, const uint32_t n_samples, const uint32_t n_dim
 void pcoa_mixed(const double * mat, const uint32_t n_samples, const uint32_t n_dims, float * *eigenvalues, float * *samples, float * *proportion_explained) {
   su::pcoa(mat, n_samples, n_dims, *eigenvalues, *samples, *proportion_explained);
 }
+
+#endif  // ifndef UNIFRAC_NVIDIA
 

@@ -3,8 +3,14 @@
 
 #ifdef __cplusplus
 #include <vector>
-#define EXTERN extern "C"
 
+#ifdef __UNIFRAC_API_NV
+// do not export anything from this header
+// will only export what is in the api_nvidia header
+#define EXTERN
+#else
+#define EXTERN extern "C"
+#endif
 
 #else
 #include <stdbool.h>
