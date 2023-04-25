@@ -20,6 +20,10 @@
 #include <lz4.h>
 #include <time.h>
 
+#ifdef UNIFRAC_NVIDIA || USE_UNFRAC_NVIDIA
+#include "api_nvidia.hpp"
+#endif
+
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
 
@@ -598,12 +602,27 @@ compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
 }
 
 
+#ifdef UNIFRAC_NVIDIA
+compute_status one_off_matrix_nv_fp64_v2(const char* biom_filename, const char* tree_filename,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, unsigned int nthreads,
+                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                 mat_full_fp64_t** result) {
+    SETUP_TDBG("one_off_matrix_nv_fp64")
+#else
 compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
                                  bool bypass_tips, unsigned int nthreads,
                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                  mat_full_fp64_t** result) {
+# ifdef USE_UNFRAC_NVIDIA
+   if (ssu_should_use_nv()) return one_off_matrix_nv_fp64_v2(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                                         bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                                         result);
+# endif
+
     SETUP_TDBG("one_off_matrix")
+#endif
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
@@ -625,12 +644,27 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     }
 }
 
+#ifdef UNIFRAC_NVIDIA
+compute_status one_off_matrix_nv_fp32_v2(const char* biom_filename, const char* tree_filename,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, unsigned int nthreads,
+                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                      mat_full_fp32_t** result) {
+    SETUP_TDBG("one_off_matrix_nv_fp32")
+#else
 compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
                                       const char* unifrac_method, bool variance_adjust, double alpha,
                                       bool bypass_tips, unsigned int nthreads,
                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                       mat_full_fp32_t** result) {
+# ifdef USE_UNFRAC_NVIDIA
+   if (ssu_should_use_nv()) return one_off_matrix_nv_fp32_v2(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                                         bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                                         result);
+# endif
+
     SETUP_TDBG("one_off_matrix_fp32")
+#endif
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
