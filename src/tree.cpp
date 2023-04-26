@@ -101,6 +101,12 @@ void BPTree::get_c_struct(su_c_bptree_t& c_data) const {
     }
 }
 
+void destroy_su_c_bptree(su_c_bptree_t &c_data) {
+   if (c_data.structure != NULL) {free(c_data.structure); c_data.structure = NULL;}
+   if (c_data.lengths != NULL) {free(c_data.lengths); c_data.lengths = NULL;}
+   if (c_data.names != NULL) {free(c_data.names); c_data.names = NULL;}
+}
+
 BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) {
     
     std::vector<bool> new_structure = std::vector<bool>();

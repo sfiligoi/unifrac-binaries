@@ -176,6 +176,19 @@ namespace su {
             int32_t bwd(uint32_t i, int32_t d) const;
             int32_t enclose(uint32_t i) const;
     };
+
+    class BPTreeCWrapper {
+        public:
+            su_c_bptree_t c_data;
+
+            BPTreeCWrapper(BPTree &tree) {
+                tree.get_c_struct(c_data);
+            }
+
+            ~BPTreeCWrapper() {
+                destroy_su_c_bptree(c_data);
+            }
+    };
 }
 
 #endif /* UNIFRAC_TREE_H */

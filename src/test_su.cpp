@@ -1911,10 +1911,20 @@ void test_bptree_cstyle_constructor() {
 
     // copy version
     su::BPTree tree3(structure, lengths, names, 8);
-    su_c_bptree_t c_data3;
-    tree3.get_c_struct(c_data3);
-    su::BPTree tree4(c_data3);
-     _exec_test_bptree_cstyle_constructor_tests(tree4);
+    {
+       su_c_bptree_t c_data3;
+       tree3.get_c_struct(c_data3);
+       su::BPTree tree4(c_data3);
+        _exec_test_bptree_cstyle_constructor_tests(tree4);
+       destroy_su_c_bptree(c_data3);
+    }
+
+    su::BPTree tree4(structure, lengths, names, 8);
+    {
+       su::BPTreeCWrapper ctree4(tree4);
+       su::BPTree tree5(ctree4.c_data);
+        _exec_test_bptree_cstyle_constructor_tests(tree5);
+    }
 
     SUITE_END();
 }
