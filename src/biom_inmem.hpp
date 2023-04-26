@@ -16,11 +16,66 @@
 
 #include "biom_interface.hpp"
 
+/* C version of the biom_inmem data
+ *
+ * obs_ids <char**> the observation IDs
+ * sample_ids <char**> the sample IDs
+ * indices <int32_t**> the indices of the data values
+ * data <double**> the actual matrix values
+ * counts <int32_t*> raw counts
+ * sample_counts <double*> distilled counts
+ * n_obs <int> the number of observations, corresponding to length of obs_ids
+ * n_samples <int> the number of samples, corresponding to the length of sample_ids
+ */
+typedef struct su_c_biom_inmem {
+    char** obs_ids;
+    char** sample_ids;
+    uint32_t **indices;
+    double **data;
+    uint32_t *counts;
+    double *sample_counts;
+    int n_obs;
+    int n_samples;
+} su_c_biom_inmem_t;
+
+/* C version of the biom_inmem data in a sparse format
+ *
+ * obs_ids <char**> the observation IDs
+ * sample_ids <char**> the sample IDs
+ * indices <int32_t*> the indices of the data values
+ * indptr <int32_t*> the row offset of the data values
+ * data <double*> the actual matrix values
+ * n_obs <int> the number of observations, corresponding to length of obs_ids
+ * n_samples <int> the number of samples, corresponding to the length of sample_ids
+ */
+typedef struct su_c_biom_sparse {
+    char** obs_ids;
+    char** sample_ids;
+    uint32_t* indices;
+    uint32_t* indptr;
+    double* data;
+    int n_obs;
+    int n_samples;
+} su_c_biom_sparse_t;
+
 namespace su {
     class sparse_data {
         public:
             /* default constructor */
             sparse_data(bool _clean_on_destruction);
+
+            /* constructor from C structure
+             *
+             * @param n_obs number of observations
+             * @param indices array of vectors of index positions
+             * @param data array of vectors of observation counts
+             * @param counts vector of counts
+             */
+            sparse_data(const uint32_t n_obs,
+                        const uint32_t n_samples,
+                        uint32_t** indices,
+                        double** data,
+                        uint32_t *counts);
 
             /* constructor from compress sparse data
              *
@@ -69,7 +124,7 @@ namespace su {
             
             uint32_t **obs_indices_resident;
             double **obs_data_resident;
-            unsigned int *obs_counts_resident;
+            uint32_t *obs_counts_resident;
 
             // debug helper functions
             void describe_internals() const;
@@ -80,23 +135,17 @@ namespace su {
             /* default constructor */
             biom_inmem(bool _clean_on_destruction);
 
-            /* constructor from compress sparse data
-             *
-             * @param obs_ids vector of observation identifiers
-             * @param samp_ids vector of sample identifiers
-             * @param index vector of index positions
-             * @param indptr vector of indptr positions
-             * @param data vector of observation counts
-             * @param n_obs number of observations
-             * @param n_samples number of samples
+            /* contructor from the C structure
+             * Note: Not using const as we will link to the existing structures
+             *       to avoid copying big buffers.
              */
-            biom_inmem(const char* const * obs_ids,
-                       const char* const * samp_ids,
-                       uint32_t* index,
-                       uint32_t* indptr,
-                       double* data,
-                       const int n_obs,
-                       const int n_samples);
+            biom_inmem(su_c_biom_inmem_t &other);
+
+            /* contructor from the sparse C structure
+             * Note: Not using const as we will link to the existing structures
+             *       to avoid copying big buffers.
+             */
+            biom_inmem(su_c_biom_sparse_t &other);
 
             /* filtering constructor
              *
@@ -138,6 +187,13 @@ namespace su {
             virtual const std::vector<std::string> &get_sample_ids() const;
             virtual const std::vector<std::string> &get_obs_ids() const;
             virtual const double *get_sample_counts() const;
+
+            /* get the C version of the object 
+             *
+             * Note: The pointers link to internal structures in this object
+             *       so this object must outlive the C equivalent.
+             */
+            void get_c_struct(su_c_biom_inmem_t& c_data);
         protected:
             sparse_data resident_obj;
 
@@ -154,9 +210,15 @@ namespace su {
             std::vector<std::string> sample_ids;
             std::vector<std::string> obs_ids;
 
+            // optional C equivalents of sample_ids and obs_ids
+            // used for persistency
+            char** c_obs_ids;
+            char** c_sample_ids;
+
         protected:
 
             void compute_sample_counts();
+            void build_c_ids();
 
 
             /* create an index mapping an ID to its corresponding index 

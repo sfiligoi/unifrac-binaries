@@ -63,7 +63,7 @@ sparse_data::sparse_data(const sparse_data& other, bool _clean_on_destruction)
     if (_clean_on_destruction && (n_obs>0)) { // must make a copy
         malloc_resident();
         for (uint32_t i = 0; i < n_obs; i++) {
-            const unsigned int cnt = other.obs_counts_resident[i];
+            const uint32_t cnt = other.obs_counts_resident[i];
             obs_counts_resident[i]  = cnt;
             obs_data_resident[i]    = malloc_and_copy<double>(cnt, other.obs_data_resident[i]);
             obs_indices_resident[i] = malloc_and_copy<uint32_t>(cnt, other.obs_indices_resident[i]);
@@ -93,7 +93,7 @@ sparse_data::sparse_data(const sparse_data& other, const double sample_counts[],
 
         malloc_resident();
         for(unsigned int i = 0; i < other.n_obs; i++) {
-          const unsigned int cnt = other.count_filtered_els(i, sample_counts,min_sample_counts);
+          const uint32_t cnt = other.count_filtered_els(i, sample_counts,min_sample_counts);
           obs_counts_resident[i]  = cnt;
           if (cnt>0) {
             obs_data_resident[i]    = malloc_wcheck<double>(cnt);
@@ -104,9 +104,9 @@ sparse_data::sparse_data(const sparse_data& other, const double sample_counts[],
                uint32_t * __restrict__ my_indices = obs_indices_resident[i];
                const double   * __restrict__ other_data    = other.obs_data_resident[i];
                const uint32_t * __restrict__ other_indices = other.obs_indices_resident[i];
-               const unsigned int other_cnt = other.obs_counts_resident[i];
+               const uint32_t other_cnt = other.obs_counts_resident[i];
                uint32_t j_cnt = 0;
-               for (unsigned int j = 0; j < other_cnt; j++) {
+               for (uint32_t j = 0; j < other_cnt; j++) {
                   const uint32_t el_idx = other_indices[j];
                   if (sample_counts[el_idx]>=min_sample_counts) {
                      my_data[j_cnt] = other_data[j];
@@ -125,6 +125,20 @@ sparse_data::sparse_data(const sparse_data& other, const double sample_counts[],
     }
 }
 
+
+// not using const on indices/data as the pointers are being borrowed
+sparse_data::sparse_data(const uint32_t _n_obs,
+                         const uint32_t _n_samples,
+                         uint32_t** indices,
+                         double** data,
+                         uint32_t *counts)
+  : n_obs(_n_obs)
+  , n_samples(_n_samples)
+  , clean_on_destruction(false)
+  , obs_indices_resident(indices)
+  , obs_data_resident(data)
+  , obs_counts_resident(counts)
+{}
 
 // not using const on indices/indptr/data as the pointers are being borrowed
 sparse_data::sparse_data(const uint32_t _n_obs,
@@ -145,7 +159,7 @@ sparse_data::sparse_data(const uint32_t _n_obs,
     for(unsigned int i = 0; i < n_obs; i++)  {
         int32_t start = indptr[i];
         int32_t end = indptr[i + 1];
-        unsigned int count = end - start;
+        uint32_t count = end - start;
 
         uint32_t* index_ptr = (indices + start);
         double* data_ptr = (data + start);
@@ -166,17 +180,17 @@ sparse_data::~sparse_data() {
                     free(obs_data_resident[i]);
             }
         }
+        free_resident();
     } 
     // else, it is the responsibility of the entity constructing this object
     // to clean itself up
-    free_resident();
 }
 
 void sparse_data::malloc_resident() { 
     /* load obs sparse data */
-    obs_indices_resident = malloc_wcheck<uint32_t*   >(n_obs);
-    obs_data_resident    = malloc_wcheck<double*     >(n_obs);
-    obs_counts_resident  = malloc_wcheck<unsigned int>(n_obs);
+    obs_indices_resident = malloc_wcheck<uint32_t* >(n_obs);
+    obs_data_resident    = malloc_wcheck<double*   >(n_obs);
+    obs_counts_resident  = malloc_wcheck<uint32_t  >(n_obs);
 }
 
 void sparse_data::free_resident() { 
@@ -236,6 +250,8 @@ biom_inmem::biom_inmem(bool _clean_on_destruction)
   , sample_id_index()
   , sample_ids()
   , obs_ids()
+  , c_sample_ids(NULL)
+  , c_obs_ids(NULL)
 {}
 
 biom_inmem::biom_inmem(const biom_inmem& other, bool _clean_on_destruction)
@@ -246,6 +262,8 @@ biom_inmem::biom_inmem(const biom_inmem& other, bool _clean_on_destruction)
   , sample_id_index(other.sample_id_index)
   , sample_ids(other.sample_ids)
   , obs_ids(other.obs_ids)
+  , c_sample_ids(NULL)
+  , c_obs_ids(NULL)
 {}
 
 biom_inmem::biom_inmem(const biom_inmem &other, const double min_sample_counts)
@@ -256,6 +274,8 @@ biom_inmem::biom_inmem(const biom_inmem &other, const double min_sample_counts)
   , sample_id_index()
   , sample_ids()
   , obs_ids()
+  , c_sample_ids(NULL)
+  , c_obs_ids(NULL)
 {
     #pragma omp parallel for schedule(static)
     for(int i = 0; i < 2; i++) {
@@ -298,32 +318,70 @@ biom_inmem::biom_inmem(const biom_inmem &other, const double min_sample_counts)
 
 
 // not using const on indices/indptr/data as the pointers are being borrowed
-biom_inmem::biom_inmem(const char* const * obs_ids_in,
-                       const  char* const * samp_ids_in,
-                       uint32_t* indices,
-                       uint32_t* indptr,
-                       double* data,
-                       const int _n_obs,
-                       const int _n_samples)
-  : biom_interface(_n_samples, _n_obs)
-  , resident_obj(_n_obs,_n_samples,indices,indptr,data)
-  , sample_counts(NULL)
+biom_inmem::biom_inmem(su_c_biom_inmem_t &other)
+  : biom_interface(other.n_samples, other.n_obs)
+  , resident_obj(other.n_obs, other.n_samples, other.indices, other.data, other.counts)
+  , sample_counts(malloc_and_copy<double>(other.n_samples,other.sample_counts))
   , obs_id_index()
   , sample_id_index()
   , sample_ids()
-  , obs_ids() {
+  , obs_ids()
+  , c_sample_ids(NULL)
+  , c_obs_ids(NULL)
+{
 
     #pragma omp parallel for schedule(static)
     for(int x = 0; x < 2; x++) {
         if(x == 0) {
             obs_ids.resize(n_obs);
             for(int i = 0; i < n_obs; i++) {
-                obs_ids[i] = std::string(obs_ids_in[i]);
+                obs_ids[i] = std::string(other.obs_ids[i]);
             }
         } else {
             sample_ids.resize(n_samples);
             for(int i = 0; i < n_samples; i++) {
-                sample_ids[i] = std::string(samp_ids_in[i]);
+                sample_ids[i] = std::string(other.sample_ids[i]);
+            }
+        }
+    }
+
+    /* define a mapping between an ID and its corresponding offset */
+
+    #pragma omp parallel for schedule(static)
+    for(int i = 0; i < 2; i++) {
+        if(i == 0) {
+            create_id_index(obs_ids, obs_id_index);
+        } else if(i == 1) {
+            create_id_index(sample_ids, sample_id_index);
+        }
+    }
+
+}
+
+// not using const on indices/indptr/data as the pointers are being borrowed
+biom_inmem::biom_inmem(su_c_biom_sparse_t &other)
+  : biom_interface(other.n_samples, other.n_obs)
+  , resident_obj(other.n_obs, other.n_samples, other.indices, other.indptr, other.data)
+  , sample_counts(NULL)
+  , obs_id_index()
+  , sample_id_index()
+  , sample_ids()
+  , obs_ids()
+  , c_sample_ids(NULL)
+  , c_obs_ids(NULL)
+{
+
+    #pragma omp parallel for schedule(static)
+    for(int x = 0; x < 2; x++) {
+        if(x == 0) {
+            obs_ids.resize(n_obs);
+            for(int i = 0; i < n_obs; i++) {
+                obs_ids[i] = std::string(other.obs_ids[i]);
+            }
+        } else {
+            sample_ids.resize(n_samples);
+            for(int i = 0; i < n_samples; i++) {
+                sample_ids[i] = std::string(other.sample_ids[i]);
             }
         }
     }
@@ -344,6 +402,8 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
 
 biom_inmem::~biom_inmem() {
     if (sample_counts!=NULL) free(sample_counts);
+    if (c_sample_ids!=NULL) free(c_sample_ids);
+    if (c_obs_ids!=NULL) free(c_obs_ids);
 }
 
 void biom_inmem::create_id_index(const std::vector<std::string> &ids, 
@@ -357,7 +417,7 @@ void biom_inmem::create_id_index(const std::vector<std::string> &ids,
 
 template<class TFloat>
 void biom_inmem::get_obs_data_TT(const uint32_t idx, TFloat* out) const {
-    unsigned int count = resident_obj.obs_counts_resident[idx];
+    const uint32_t count = resident_obj.obs_counts_resident[idx];
     const uint32_t * const indices = resident_obj.obs_indices_resident[idx];
     const double * const data = resident_obj.obs_data_resident[idx];
 
@@ -388,7 +448,7 @@ void biom_inmem::get_obs_data(const std::string &id, float* out) const {
 // note: out is supposed to be fully filled, i.e. out[start:end]
 template<class TFloat>
 void biom_inmem::get_obs_data_range_TT(const uint32_t idx, unsigned int start, unsigned int end, bool normalize, TFloat* out) const {
-    unsigned int count = resident_obj.obs_counts_resident[idx];
+    const uint32_t count = resident_obj.obs_counts_resident[idx];
     const uint32_t * const indices = resident_obj.obs_indices_resident[idx];
     const double * const data = resident_obj.obs_data_resident[idx];
 
@@ -431,7 +491,7 @@ void biom_inmem::compute_sample_counts() {
     sample_counts = (double*)calloc(sizeof(double), n_samples);
 
     for(unsigned int i = 0; i < n_obs; i++) {
-        unsigned int count = resident_obj.obs_counts_resident[i];
+        uint32_t count = resident_obj.obs_counts_resident[i];
         uint32_t *indices = resident_obj.obs_indices_resident[i];
         double *data = resident_obj.obs_data_resident[i];
         for(unsigned int j = 0; j < count; j++) {
@@ -451,6 +511,44 @@ const std::vector<std::string> &biom_inmem::get_sample_ids() const {
 
 const std::vector<std::string> &biom_inmem::get_obs_ids() const {
   return obs_ids;
+}
+
+void biom_inmem::build_c_ids() {
+    #pragma omp parallel for schedule(static)
+    for(int x = 0; x < 2; x++) {
+        if(x == 0) {
+            c_obs_ids = malloc_wcheck<char *>(n_obs);
+            for(int i = 0; i < n_obs; i++) {
+                // cast away the const-ness to play nice with C
+                c_obs_ids[i] = (char *) obs_ids[i].c_str();
+            }
+        } else {
+            c_sample_ids = malloc_wcheck<char *>(n_samples);
+            for(int i = 0; i < n_samples; i++) {
+                // cast away the const-ness to play nice with C
+                c_sample_ids[i] = (char *) sample_ids[i].c_str();
+            }
+        }
+    }
+}
+
+/* get the C version of the object 
+ *
+ * Note: The pointers link to internal structures in this object
+ *       so this object must outlive the C equivalent.
+ */
+void biom_inmem::get_c_struct(su_c_biom_inmem_t& c_data) {
+  // we create the C objs only if needed
+  if (c_obs_ids==NULL) build_c_ids();
+  // at this point both c_obs_ids and c_sample_ids must be properly initialized 
+  c_data.obs_ids = c_obs_ids;
+  c_data.sample_ids = c_sample_ids;
+  c_data.indices = resident_obj.obs_indices_resident;
+  c_data.data = resident_obj.obs_data_resident;
+  c_data.counts = resident_obj.obs_counts_resident;
+  c_data.sample_counts = sample_counts;
+  c_data.n_obs = n_obs;
+  c_data.n_samples = n_samples;
 }
 
 void biom_inmem::describe_internals() const {

@@ -28,27 +28,6 @@ namespace su {
              */
             biom(std::string filename);
 
-            /* constructor from compress sparse data
-             * Note: deprecated, use biom_inmem directly, instead 
-             *
-             * @param obs_ids vector of observation identifiers
-             * @param samp_ids vector of sample identifiers
-             * @param index vector of index positions
-             * @param indptr vector of indptr positions
-             * @param data vector of observation counts
-             * @param n_obs number of observations
-             * @param n_samples number of samples
-             * @param nnz number of data points
-             */
-            biom(const char* const * obs_ids,
-                 const char* const * samp_ids,
-                 uint32_t* index,
-                 uint32_t* indptr,
-                 double* data,
-                 const int n_obs,
-                 const int n_samples,
-                 const int nnz);
-
             /* default destructor
              *
              * Temporary arrays are freed

@@ -502,8 +502,23 @@ void test_biom_constructor_from_sparse() {
     const char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
 
-    su::biom_inmem table(obs_ids, samp_ids, index, indptr, data, 5, 6);
+    su_c_biom_sparse_t c_sparse;
+    c_sparse.obs_ids = (char**) obs_ids;
+    c_sparse.sample_ids = (char**) samp_ids;
+    c_sparse.indices = index;
+    c_sparse.indptr = indptr;
+    c_sparse.data = data;
+    c_sparse.n_obs = 5;
+    c_sparse.n_samples = 6;
+    su::biom_inmem table(c_sparse);
     _exercise_get_obs_data(table);
+
+    // While technically not a sparse test, it is related
+    su_c_biom_inmem_t c_table;
+    table.get_c_struct(c_table);
+
+    su::biom_inmem table2(c_table);
+    _exercise_get_obs_data(table2);
    
     SUITE_END();
 }

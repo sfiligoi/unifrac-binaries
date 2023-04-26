@@ -822,13 +822,16 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
         return rc;
     }
 
-    su::biom_inmem table(table_data->obs_ids, 
-                         table_data->sample_ids, 
-                         table_data->indices,
-                         table_data->indptr,
-                         table_data->data,
-                         table_data->n_obs,
-                         table_data->n_samples);
+    su_c_biom_sparse_t c_table_data;
+    c_table_data.obs_ids = table_data->obs_ids;
+    c_table_data.sample_ids = table_data->sample_ids;
+    c_table_data.indices = table_data->indices;
+    c_table_data.indptr = table_data->indptr;
+    c_table_data.data = table_data->data;
+    c_table_data.n_obs = table_data->n_obs;
+    c_table_data.n_samples = table_data->n_samples;
+
+    su::biom_inmem table(c_table_data);
 
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,
@@ -882,13 +885,16 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
         return rc;
     }
 
-    su::biom_inmem table(table_data->obs_ids, 
-                         table_data->sample_ids, 
-                         table_data->indices,
-                         table_data->indptr,
-                         table_data->data,
-                         table_data->n_obs,
-                         table_data->n_samples);
+    su_c_biom_sparse_t c_table_data;
+    c_table_data.obs_ids = table_data->obs_ids;
+    c_table_data.sample_ids = table_data->sample_ids;
+    c_table_data.indices = table_data->indices;
+    c_table_data.indptr = table_data->indptr;
+    c_table_data.data = table_data->data;
+    c_table_data.n_obs = table_data->n_obs;
+    c_table_data.n_samples = table_data->n_samples;
+
+    su::biom_inmem table(c_table_data);
 
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,
