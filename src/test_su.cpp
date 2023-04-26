@@ -1837,15 +1837,7 @@ void test_set_tasks() {
     SUITE_END();
 }
 
-void test_bptree_cstyle_constructor() {
-    SUITE_START("test bptree constructor from c-style data");
-                                //01234567
-                                //11101000
-    bool structure[] = {true, true, true, false, true, false, false, false};
-    double lengths[] = {0, 0, 1, 0, 2, 0, 0, 0};
-    const char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};
-    su::BPTree tree(structure, lengths, names, 8);
-
+inline void _exec_test_bptree_cstyle_constructor_tests(su::BPTree &tree) {
     unsigned int exp_nparens = 8;
 
     std::vector<bool> exp_structure;
@@ -1893,6 +1885,36 @@ void test_bptree_cstyle_constructor() {
     ASSERT(tree.get_openclose() == exp_openclose);
     ASSERT(tree.lengths == exp_lengths);
     ASSERT(tree.names == exp_names);
+
+}
+
+void test_bptree_cstyle_constructor() {
+    SUITE_START("test bptree constructor from c-style data");
+                                //01234567
+                                //11101000
+    bool structure[] = {true, true, true, false, true, false, false, false};
+    double lengths[] = {0, 0, 1, 0, 2, 0, 0, 0};
+    const char* names[] = {"", "c", "123:foo; bar", "", "b", "", "", ""};
+
+    // single params version
+    su::BPTree tree(structure, lengths, names, 8);
+     _exec_test_bptree_cstyle_constructor_tests(tree);
+
+    // struct version
+    su_c_bptree_t c_data;
+    c_data.structure = structure;
+    c_data.lengths = lengths;
+    c_data.names = (char**) names;
+    c_data.n_parens = 8;
+    su::BPTree tree2(c_data);
+     _exec_test_bptree_cstyle_constructor_tests(tree2);
+
+    // copy version
+    su::BPTree tree3(structure, lengths, names, 8);
+    su_c_bptree_t c_data3;
+    tree3.get_c_struct(c_data3);
+    su::BPTree tree4(c_data3);
+     _exec_test_bptree_cstyle_constructor_tests(tree4);
 
     SUITE_END();
 }

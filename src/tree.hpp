@@ -16,6 +16,23 @@
 #include <vector>
 #include <unordered_set>
 
+/* support structure to carry in bptree information
+ *
+ * structure <bool*> the topology of the tree
+ * lengths <double*> the branch lengths of the tree
+ * names <char**> the names of the tips and internal nodes of hte tree
+ * n_parens <int> the length of the structure array
+ */
+typedef struct su_c_bptree {
+    bool* structure;
+    double* lengths;
+    char** names;
+    int n_parens;
+} su_c_bptree_t;
+
+// De-allocate buffers
+void destroy_su_c_bptree(su_c_bptree_t &c_data);
+
 namespace su {
     class BPTree {
         public:
@@ -42,7 +59,6 @@ namespace su {
              * @param input_names A vector of str of the vertex names
              */
             BPTree(std::vector<bool> input_structure, std::vector<double> input_lengths, std::vector<std::string> input_names);
-            ~BPTree();
 
             /* constructor from a defined topology using c-types
              *
@@ -52,6 +68,14 @@ namespace su {
              * @param n_parens The length of the topology
              */
             BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens);
+
+            /* constructor from a defined topology using c struct
+             *
+             * @param c_data C representation of the data
+             */
+            BPTree(const su_c_bptree_t& other) : BPTree(other.structure, other.lengths, other.names, other.n_parens) {}
+
+            ~BPTree();
 
             /* postorder tree traversal
              *
@@ -124,6 +148,14 @@ namespace su {
 
             BPTree collapse();
 
+            /* get the C version of the object 
+             *
+             * Note: Memory will be alocated and the caller is responsible for cleanup
+             *       by invoking destroy_su_c_bptree
+             *       Additionally, the structures point to data in this object
+             *       so this C+ object must outlive the C object.
+             */
+            void get_c_struct(su_c_bptree_t& c_data) const;
         private:
             std::vector<bool> structure;          // the topology
             std::vector<uint32_t> openclose;      // cache'd mapping between parentheses

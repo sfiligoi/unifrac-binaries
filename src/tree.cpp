@@ -6,15 +6,16 @@ using namespace su;
 
 BPTree::BPTree() { }
 
-BPTree::BPTree(std::string newick) {
-    openclose = std::vector<uint32_t>();
-    lengths = std::vector<double>();
-    names = std::vector<std::string>();
-    excess = std::vector<uint32_t>();
-
-    select_0_index = std::vector<uint32_t>();
-    select_1_index = std::vector<uint32_t>();
-    structure = std::vector<bool>();
+BPTree::BPTree(std::string newick) 
+    : lengths()
+    , names()
+    , nparens(0)
+    , structure()
+    , openclose()
+    , select_0_index()
+    , select_1_index()
+    , excess()
+{
     structure.reserve(500000);  // a fair sized tree... avoid reallocs, and its not _that_ much waste if this is wrong
 
     // three pass for parse. not ideal, but easier to map from IOW code    
@@ -33,16 +34,16 @@ BPTree::BPTree(std::string newick) {
     index_and_cache();
 }
 
-BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_lengths, std::vector<std::string> input_names) {
-    structure = input_structure;
-    lengths = input_lengths;
-    names = input_names;
-    
-    nparens = structure.size();
-
-    openclose = std::vector<uint32_t>();
-    select_0_index = std::vector<uint32_t>();
-    select_1_index = std::vector<uint32_t>();
+BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_lengths, std::vector<std::string> input_names) 
+    : lengths(input_lengths)
+    , names(input_names)
+    , nparens(input_structure.size())
+    , structure(input_structure)
+    , openclose()
+    , select_0_index()
+    , select_1_index()
+    , excess()
+{
     openclose.resize(nparens);
     select_0_index.resize(nparens / 2);
     select_1_index.resize(nparens / 2);
@@ -52,16 +53,19 @@ BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_leng
     index_and_cache();
 }
 
-BPTree::BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens) {
-    structure = std::vector<bool>();
-    lengths = std::vector<double>();
-    names = std::vector<std::string>();
-
+BPTree::BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens) 
+    : lengths()
+    , names()
+    , nparens(n_parens)
+    , structure()
+    , openclose()
+    , select_0_index()
+    , select_1_index()
+    , excess()
+{
     structure.resize(n_parens);
     lengths.resize(n_parens);
     names.resize(n_parens);
-
-    nparens = n_parens;
 
     //#pragma omp parallel for schedule(static)
     for(int i = 0; i < n_parens; i++) {
@@ -70,9 +74,6 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, const c
         names[i] = std::string(input_names[i]);
     }
 
-    openclose = std::vector<uint32_t>();
-    select_0_index = std::vector<uint32_t>();
-    select_1_index = std::vector<uint32_t>();
     openclose.resize(nparens);
     select_0_index.resize(nparens / 2);
     select_1_index.resize(nparens / 2);
@@ -80,6 +81,24 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, const c
 
     structure_to_openclose();
     index_and_cache();
+}
+
+void BPTree::get_c_struct(su_c_bptree_t& c_data) const {
+    c_data.n_parens = nparens;
+    c_data.structure = (bool*) malloc(sizeof(bool)*nparens);
+    c_data.lengths = (double*) malloc(sizeof(double)*nparens);
+    c_data.names = (char**) malloc(sizeof(char*)*nparens);
+    if ((c_data.structure == NULL) || (c_data.lengths == NULL) || (c_data.names== NULL)) {
+        fprintf(stderr, "Failed in malloc; [%s]:%d\n", 
+                 __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    for(int i = 0; i < nparens; i++) {
+        c_data.structure[i] = structure[i];
+        c_data.lengths[i] = lengths[i];
+        // just link
+        c_data.names[i] = (char *) names[i].c_str();
+    }
 }
 
 BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) {
