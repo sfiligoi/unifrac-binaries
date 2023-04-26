@@ -14,6 +14,9 @@
 #include "api.hpp"
 #endif
 
+#include "biom_inmem.hpp"
+#include "tree.hpp"
+
 #ifdef __cplusplus
 #define EXTERN extern "C"
 #endif
@@ -32,8 +35,8 @@ EXTERN bool ssu_should_use_nv();
 
 /* Compute UniFrac - condensed form
  *
- * biom_filename <const char*> the filename to the biom table.
- * tree_filename <const char*> the filename to the correspodning tree.
+ * biom_data <su_c_biom_inmem_t *> BIOM C data struct
+ * tree_data <su_c_bptree_t *> BPTree C data struct
  * unifrac_method <const char*> the requested unifrac method.
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
@@ -44,20 +47,18 @@ EXTERN bool ssu_should_use_nv();
  * one_off returns the following error codes:
  *
  * okay           : no problems encountered
- * table_missing  : the filename for the table does not exist
- * tree_missing   : the filename for the tree does not exist
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
-EXTERN ComputeStatus one_off_nv_fp64(const char* biom_filename, const char* tree_filename,
-                                     const char* unifrac_method, bool variance_adjust, double alpha,
-                                     bool bypass_tips, unsigned int n_substeps, mat_t** result);
+EXTERN ComputeStatus one_off_inmem_nv_fp64(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
+                                           const char* unifrac_method, bool variance_adjust, double alpha,
+                                           bool bypass_tips, unsigned int n_substeps, mat_t** result);
 
 
 /* Compute UniFrac - against in-memory objects returning full form matrix
  *
- * table <biom> a constructed BIOM object
- * tree <BPTree> a constructed BPTree object
+ * biom_data <su_c_biom_inmem_t *> BIOM C data struct
+ * tree_data <su_c_bptree_t *> BPTree C data struct
  * unifrac_method <const char*> the requested unifrac method.
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
@@ -74,16 +75,22 @@ EXTERN ComputeStatus one_off_nv_fp64(const char* biom_filename, const char* tree
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
-EXTERN ComputeStatus one_off_matrix_inmem_nv_fp64_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+EXTERN ComputeStatus one_off_matrix_inmem_nv_fp64_v2(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
                                                      const char* unifrac_method, bool variance_adjust, double alpha,
                                                      bool bypass_tips, unsigned int n_substeps,
                                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                                      mat_full_fp64_t** result);
 
+EXTERN ComputeStatus one_off_matrix_sparse_nv_fp64_v2(su_c_biom_sparse_t *biom_data, su_c_bptree_t *tree_data,
+                                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                                      bool bypass_tips, unsigned int n_substeps,
+                                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                                      mat_full_fp64_t** result);
+
 /* Compute UniFrac - against in-memory objects returning full form matrix, fp32
  *
- * table <biom> a constructed BIOM object
- * tree <BPTree> a constructed BPTree object
+ * biom_data <su_c_biom_inmem_t *> BIOM C data struct
+ * tree_data <su_c_bptree_t *> BPTree C data struct
  * unifrac_method <const char*> the requested unifrac method.
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
@@ -100,67 +107,16 @@ EXTERN ComputeStatus one_off_matrix_inmem_nv_fp64_v2(const support_biom_t *table
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
-EXTERN ComputeStatus one_off_matrix_inmem_nv_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+EXTERN ComputeStatus one_off_matrix_inmem_nv_fp32_v2(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
                                                      const char* unifrac_method, bool variance_adjust, double alpha,
                                                      bool bypass_tips, unsigned int n_substeps,
                                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                                      mat_full_fp32_t** result);
 
-/* Compute UniFrac - matrix form
- *
- * biom_filename <const char*> the filename to the biom table.
- * tree_filename <const char*> the filename to the correspodning tree.
- * unifrac_method <const char*> the requested unifrac method.
- * variance_adjust <bool> whether to apply variance adjustment.
- * alpha <double> GUniFrac alpha, only relevant if method == generalized.
- * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * n_substeps <uint> the number of substeps/blocks to use.
- * subsample_depth <uint> Depth of subsampling, if >0
- * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
- * mmap_dir <const char*> If not NULL, area to use for temp memory storage
- * result <mat_full_fp64_t**> the resulting distance matrix in matrix form, this is initialized within the method so using **
- *
- * one_off_matrix returns the following error codes:
- *
- * okay           : no problems encountered
- * table_missing  : the filename for the table does not exist
- * tree_missing   : the filename for the tree does not exist
- * unknown_method : the requested method is unknown.
- * table_empty    : the table does not have any entries
- */
-EXTERN ComputeStatus one_off_matrix_nv_fp64_v2(const char* biom_filename, const char* tree_filename,
-                                       const char* unifrac_method, bool variance_adjust, double alpha,
-                                       bool bypass_tips, unsigned int n_substeps,
-                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                       mat_full_fp64_t** result);
-
-
-/* Compute UniFrac - matrix form, fp32 variant
- *
- * biom_filename <const char*> the filename to the biom table.
- * tree_filename <const char*> the filename to the correspodning tree.
- * unifrac_method <const char*> the requested unifrac method.
- * variance_adjust <bool> whether to apply variance adjustment.
- * alpha <double> GUniFrac alpha, only relevant if method == generalized.
- * bypass_tips <bool> disregard tips, reduces compute by about 50%
- * n_substeps <uint> the number of substeps/blocks to use.
- * subsample_depth <uint> Depth of subsampling, if >0
- * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
- * mmap_dir <const char*> If not NULL, area to use for temp memory storage
- * result <mat_full_fp32_t**> the resulting distance matrix in matrix form, this is initialized within the method so using **
- *
- * one_off_matrix_fp32 returns the following error codes:
- *
- * okay           : no problems encountered
- * table_missing  : the filename for the table does not exist
- * tree_missing   : the filename for the tree does not exist
- * unknown_method : the requested method is unknown.
- * table_empty    : the table does not have any entries
- */
-EXTERN ComputeStatus one_off_matrix_nv_fp32_v2(const char* biom_filename, const char* tree_filename,
-                                            const char* unifrac_method, bool variance_adjust, double alpha,
-                                            bool bypass_tips, unsigned int n_substeps,
-                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                            mat_full_fp32_t** result);
+EXTERN ComputeStatus one_off_matrix_sparse_nv_fp32_v2(su_c_biom_sparse_t *biom_data, su_c_bptree_t *tree_data,
+                                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                                      bool bypass_tips, unsigned int n_substeps,
+                                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                                      mat_full_fp32_t** result);
 
 #endif
