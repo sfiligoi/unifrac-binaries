@@ -98,7 +98,16 @@
 using namespace su;
 using namespace std;
 
+#ifdef UNIFRAC_NVIDIA
+void ssu_set_random_seed_nv(unsigned int new_seed) {
+#else
 void ssu_set_random_seed(unsigned int new_seed) {
+  // set it also in all the dependent sub-systems
+# ifdef USE_UNIFRAC_NVIDIA
+  ssu_set_random_seed_nv(new_seed);
+#endif
+
+#endif
   su::set_random_seed(new_seed);
 }
 

@@ -22,6 +22,11 @@
 #endif
 
 /*
+ * Set random seed used by this library.
+ */
+EXTERN void ssu_set_random_seed_nv(unsigned int new_seed);
+
+/*
  * The following functions are equivalent to those in api.hpp
  * but are compiled with NVIDIA GPU support
  */
