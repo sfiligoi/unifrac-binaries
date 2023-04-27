@@ -14,6 +14,7 @@
 #include "api_noh5.cpp"
 
 #include "biom.hpp"
+#include <lz4.h>
 
 #define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
                                                         std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \

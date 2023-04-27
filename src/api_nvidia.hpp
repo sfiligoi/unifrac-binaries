@@ -18,6 +18,7 @@
 #include "tree.hpp"
 
 #ifdef __cplusplus
+#undef EXTERN
 #define EXTERN extern "C"
 #endif
 

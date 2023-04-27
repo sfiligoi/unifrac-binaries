@@ -35,7 +35,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <lz4.h>
 #include <time.h>
 
 #define MMAP_FD_MASK 0x0fff
@@ -545,19 +544,23 @@ compute_status partial_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bptree_t 
 }
 
 #ifdef UNIFRAC_NVIDIA
-compute_status one_off_inmem_nv_fp64(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
+compute_status one_off_inmem_nv_fp64(su_c_biom_inmem_t *table_data, su_c_bptree_t *tree_data,
                                      const char* unifrac_method, bool variance_adjust, double alpha,
                                      bool bypass_tips, unsigned int nthreads, mat_t** result) {
+    su_c_biom_inmem_t &c_table_data = *table_data;
+    su_c_bptree_t &c_tree_data = *tree_data;
     SETUP_TDBG("one_off_nv")
 
     // condensed form
     return one_off_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
-compute_status partial_inmem_nv(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
+compute_status partial_inmem_nv(su_c_biom_inmem_t *table_data, su_c_bptree_t *tree_data,
                                 const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
                                 unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
                                 partial_mat_t** result) {
+    su_c_biom_inmem_t &c_table_data = *table_data;
+    su_c_bptree_t &c_tree_data = *tree_data;
     SETUP_TDBG("partial_nv")
 
     return partial_inmem_cpp(c_table_data, c_tree_data,
@@ -797,7 +800,7 @@ compute_status one_off_matrix_inmem_nv_fp64_v2(su_c_biom_inmem_t *table_data, su
                                                bool bypass_tips, unsigned int nthreads,
                                                unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                                mat_full_fp64_t** result) {
-    su_c_inmem_sparse_t &c_table_data = *table_data;
+    su_c_biom_inmem_t &c_table_data = *table_data;
     su_c_bptree_t &c_tree_data = *tree_data;
     SETUP_TDBG("one_off_matrix_inmem_nv")
 
