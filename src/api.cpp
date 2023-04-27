@@ -14,6 +14,7 @@
 #include "api_noh5.cpp"
 
 #include "biom.hpp"
+#include "skbio_alt.hpp"
 #include <lz4.h>
 
 #define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
@@ -42,6 +43,10 @@ bool is_file_exists(const char *fileName) {
 #define CHECK_FILE(filename, err) if(!is_file_exists(filename)) { \
                                       return err;                 \
                                   }
+
+void ssu_set_random_seed(unsigned int new_seed) {
+  su::set_random_seed(new_seed);
+}
 
 
 inline compute_status is_fp64(const std::string &method_string, const std::string &format_string, bool &fp64, bool &save_dist) {
@@ -120,25 +125,104 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
                              result);
 }
 
+template<class TMat>
+compute_status one_off_matrix_cpp_v2(const char* biom_filename, const char* tree_filename,
+                                     const char* unifrac_method, bool variance_adjust, double alpha,
+                                     bool bypass_tips, unsigned int nthreads,
+                                     unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                     TMat** result) {
+    SETUP_TDBG("one_off_matrix_cpp")
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, biom_filename)
+    TDBG_STEP("load_files")
+
+    su::BPTreeCWrapper ctree(tree);
+    su_c_bptree_t &c_tree_data = ctree.c_data;
+    su_c_biom_inmem_t c_table_data;
+    if (subsample_depth>0) {
+        // We do not implement subsampling without replacement yet
+        if (!subsample_with_replacement) {
+          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
+          return table_empty;
+        }
+        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
+           return table_empty;
+        }
+        TDBG_STEP("subsample")
+        table_subsampled.get_c_struct(c_table_data);
+        // there is a small overhead going through the C interface, but keeps code simple
+        return one_off_matrix_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, mmap_dir,
+                                        result);
+    } else {
+        table.get_c_struct(c_table_data);
+        // there is a small overhead going through the C interface, but keeps code simple
+        return one_off_matrix_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, mmap_dir,
+                                        result);
+    }
+}
+
+template<class TMat>
+compute_status one_off_matrix_sparse_cpp_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int nthreads,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            TMat** result) {
+    SETUP_TDBG("one_off_sparse_cpp")
+    su_c_biom_sparse_t cs_table_data;
+    cs_table_data.obs_ids = table_data->obs_ids;
+    cs_table_data.sample_ids = table_data->sample_ids;
+    cs_table_data.indices = table_data->indices;
+    cs_table_data.indptr = table_data->indptr;
+    cs_table_data.data = table_data->data;
+    cs_table_data.n_obs = table_data->n_obs;
+    cs_table_data.n_samples = table_data->n_samples;
+
+    su_c_bptree_t c_tree_data;
+    c_tree_data.structure = tree_data->structure;
+    c_tree_data.lengths =   tree_data->lengths;
+    c_tree_data.names   =   tree_data->names;
+    c_tree_data.n_parens =  tree_data->n_parens;
+
+    su::biom_inmem table(cs_table_data);
+
+    su_c_biom_inmem_t c_table_data;
+    if (subsample_depth>0) {
+        // We do not implement subsampling without replacement yet
+        if (!subsample_with_replacement) {
+          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
+          return table_empty;
+        }
+        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
+           return table_empty;
+        }
+        TDBG_STEP("subsample")
+        table_subsampled.get_c_struct(c_table_data);
+        // there is a small overhead going through the C interface, but keeps code simple
+        return one_off_matrix_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, mmap_dir,
+                                        result);
+    } else {
+        table.get_c_struct(c_table_data);
+        // there is a small overhead going through the C interface, but keeps code simple
+        return one_off_matrix_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, mmap_dir,
+                                        result);
+    }
+}
 
 compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
                                  bool bypass_tips, unsigned int nthreads,
                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                  mat_full_fp64_t** result) {
-    SETUP_TDBG("one_off_matrix")
-    CHECK_FILE(biom_filename, table_missing)
-    CHECK_FILE(tree_filename, tree_missing)
-    PARSE_TREE_TABLE(tree_filename, biom_filename)
-    TDBG_STEP("load_files")
-    // there is a small overhead going through the C interface, but keeps code simple
-    su_c_biom_inmem_t c_table_data;
-    table.get_c_struct(c_table_data);
-    su::BPTreeCWrapper ctree(tree);
-    su_c_bptree_t &c_tree_data = ctree.c_data;
-    return one_off_matrix_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha,
-                                    bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                    result);
+    return one_off_matrix_cpp_v2(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                 bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                 result);
 }
 
 compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
@@ -146,19 +230,9 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
                                       bool bypass_tips, unsigned int nthreads,
                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                       mat_full_fp32_t** result) {
-    SETUP_TDBG("one_off_matrix_fp32")
-    CHECK_FILE(biom_filename, table_missing)
-    CHECK_FILE(tree_filename, tree_missing)
-    PARSE_TREE_TABLE(tree_filename, biom_filename)
-    TDBG_STEP("load_files")
-    // there is a small overhead going through the C interface, but keeps code simple
-    su_c_biom_inmem_t c_table_data;
-    table.get_c_struct(c_table_data);
-    su::BPTreeCWrapper ctree(tree);
-    su_c_bptree_t &c_tree_data = ctree.c_data;
-    return one_off_matrix_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha,
-                                    bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                    result);
+    return one_off_matrix_cpp_v2(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                 bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                 result);
 }
 
 // Old interface
@@ -176,6 +250,65 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
                                    const char *mmap_dir,
                                    mat_full_fp32_t** result) {
     return one_off_matrix_fp32_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
+}
+
+compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, unsigned int nthreads,
+                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                       mat_full_fp64_t** result) {
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc == okay) {
+        if (!fp64) {
+            return invalid_method;
+        }
+    } else {
+        return rc;
+    }
+
+    return one_off_matrix_sparse_cpp_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                        result);
+}
+
+compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int nthreads,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            mat_full_fp32_t** result) {
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc == okay) {
+        if (fp64) {
+            return invalid_method;
+        }
+    } else {
+        return rc;
+    }
+
+    return one_off_matrix_sparse_cpp_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                        result);
+}
+
+// Old interface
+compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int nthreads, mat_full_fp64_t** result) {
+    return one_off_matrix_inmem_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
+                                   0, true,  NULL,
+                                   result);
+}
+
+compute_status one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, unsigned int nthreads, mat_full_fp32_t** result) {
+    return one_off_matrix_inmem_fp32_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
+                                        0, true,  NULL,
+                                        result);
 }
 
 compute_status faith_pd_one_off(const char* biom_filename, const char* tree_filename,

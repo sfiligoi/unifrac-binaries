@@ -21,7 +21,6 @@
 #include "tree.hpp"
 #include "tsv.hpp"
 #include "unifrac.hpp"
-#include "skbio_alt.hpp"
 #include <fstream>
 #include <iomanip>
 #include <thread>
@@ -96,20 +95,6 @@
 
 using namespace su;
 using namespace std;
-
-#ifdef UNIFRAC_NVIDIA
-void ssu_set_random_seed_nv(unsigned int new_seed) {
-#else
-void ssu_set_random_seed(unsigned int new_seed) {
-  // set it also in all the dependent sub-systems
-# ifdef USE_UNIFRAC_NVIDIA
-  ssu_set_random_seed_nv(new_seed);
-#endif
-
-#endif
-  su::set_random_seed(new_seed);
-}
-
 
 void destroy_stripes(vector<double*> &dm_stripes, vector<double*> &dm_stripes_total, unsigned int n_samples,
                      unsigned int stripe_start, unsigned int stripe_stop) {
@@ -632,174 +617,12 @@ compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
     return okay;
 }
 
-template<class TReal, class TMat>
-compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
-                                const char* unifrac_method, bool variance_adjust, double alpha,
-                                bool bypass_tips, unsigned int nthreads,
-                                unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                TMat** result) {
-    if (subsample_depth>0) {
-        SETUP_TDBG("one_off_matrix_subsampled")
-        // We do not implement subsampling without replacement yet
-        if (!subsample_with_replacement) {
-          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-          return table_empty;
-        }
-        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
-        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
-           return table_empty;
-        }
-        TDBG_STEP("subsample")
-        return one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    } else {
-        return one_off_matrix_T<TReal,TMat>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    }
-}
-
 #ifdef UNIFRAC_NVIDIA
-compute_status one_off_matrix_sparse_nv_fp64_v2(su_c_biom_sparse_t *table_data, su_c_bptree_t *tree_data,
-                                                const char* unifrac_method, bool variance_adjust, double alpha,
-                                                bool bypass_tips, unsigned int nthreads,
-                                                unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                                mat_full_fp64_t** result) {
-    su_c_biom_sparse_t &c_table_data = *table_data;
-    su_c_bptree_t &c_tree_data = *tree_data;
-    SETUP_TDBG("one_off_matrix_inmem_nv")
-
-#else
-compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                                       const char* unifrac_method, bool variance_adjust, double alpha,
-                                       bool bypass_tips, unsigned int nthreads,
-                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                       mat_full_fp64_t** result) {
-    su_c_biom_sparse_t c_table_data;
-    c_table_data.obs_ids = table_data->obs_ids;
-    c_table_data.sample_ids = table_data->sample_ids;
-    c_table_data.indices = table_data->indices;
-    c_table_data.indptr = table_data->indptr;
-    c_table_data.data = table_data->data;
-    c_table_data.n_obs = table_data->n_obs;
-    c_table_data.n_samples = table_data->n_samples;
-
-    su_c_bptree_t c_tree_data;
-    c_tree_data.structure = tree_data->structure;
-    c_tree_data.lengths =   tree_data->lengths;
-    c_tree_data.names   =   tree_data->names;
-    c_tree_data.n_parens =  tree_data->n_parens;
-# ifdef USE_UNIFRAC_NVIDIA
-   if (ssu_should_use_nv()) return one_off_matrix_sparse_nv_fp64_v2(&c_table_data, &c_tree_data,
-                                              unifrac_method, variance_adjust, alpha,
-                                              bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                              result);
-# endif
-
-    SETUP_TDBG("one_off_matrix_inmem")
-
-#endif
-    bool fp64;
-    compute_status rc = is_fp64_method(unifrac_method, fp64);
-
-    if (rc == okay) {
-        if (!fp64) {
-            return invalid_method;
-        }
-    } else {
-        return rc;
-    }
-
-    su::biom_inmem table(c_table_data);
-    su::BPTree tree(c_tree_data);
-    return one_off_matrix_T<double,mat_full_fp64_t>(table, tree, unifrac_method, variance_adjust, alpha,
-                                                    bypass_tips,nthreads,mmap_dir,
-                                                    result);
-}
-
-#ifdef UNIFRAC_NVIDIA
-compute_status one_off_matrix_sparse_nv_fp32_v2(su_c_biom_sparse_t *table_data, su_c_bptree_t *tree_data,
-                                                const char* unifrac_method, bool variance_adjust, double alpha,
-                                                bool bypass_tips, unsigned int nthreads,
-                                                unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                                mat_full_fp32_t** result) {
-    su_c_biom_sparse_t &c_table_data = *table_data;
-    su_c_bptree_t &c_tree_data = *tree_data;
-    SETUP_TDBG("one_off_matrix_sparse_nv_fp32")
-
-#else
-compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+compute_status one_off_matrix_inmem_nv_fp64(su_c_biom_inmem_t *table_data, su_c_bptree_t *tree_data,
                                             const char* unifrac_method, bool variance_adjust, double alpha,
                                             bool bypass_tips, unsigned int nthreads,
-                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                            mat_full_fp32_t** result) {
-    su_c_biom_sparse_t c_table_data;
-    c_table_data.obs_ids = table_data->obs_ids;
-    c_table_data.sample_ids = table_data->sample_ids;
-    c_table_data.indices = table_data->indices;
-    c_table_data.indptr = table_data->indptr;
-    c_table_data.data = table_data->data;
-    c_table_data.n_obs = table_data->n_obs;
-    c_table_data.n_samples = table_data->n_samples;
-
-    su_c_bptree_t c_tree_data;
-    c_tree_data.structure = tree_data->structure;
-    c_tree_data.lengths =   tree_data->lengths;
-    c_tree_data.names   =   tree_data->names;
-    c_tree_data.n_parens =  tree_data->n_parens;
-
-# ifdef USE_UNIFRAC_NVIDIA
-   if (ssu_should_use_nv()) return one_off_matrix_sparse_nv_fp32_v2(&c_table_data, &c_tree_data,
-                                              unifrac_method, variance_adjust, alpha,
-                                              bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
-                                              result);
-# endif
-
-    SETUP_TDBG("one_off_matrix_inmem_fp32")
-
-#endif
-    bool fp64;
-    compute_status rc = is_fp64_method(unifrac_method, fp64);
-
-    if (rc == okay) {
-        if (fp64) {
-            return invalid_method;
-        }
-    } else {
-        return rc;
-    }
-
-    su::biom_inmem table(c_table_data);
-    su::BPTree tree(c_tree_data);
-    return one_off_matrix_T<float,mat_full_fp32_t>(table, tree, unifrac_method, variance_adjust, alpha,
-                                                   bypass_tips, nthreads, mmap_dir,
-                                                   result);
-}
-
-#ifdef UNIFRAC_NVIDIA
-// Don't define these functions to avoid unresolved references
-#else
-// Old interface
-compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int nthreads, mat_full_fp64_t** result) {
-    return one_off_matrix_inmem_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
-                                   0, true,  NULL,
-                                   result);
-}
-
-compute_status one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, unsigned int nthreads, mat_full_fp32_t** result) {
-    return one_off_matrix_inmem_fp32_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
-                                        0, true,  NULL,
-                                        result);
-}
-#endif
-
-#ifdef UNIFRAC_NVIDIA
-compute_status one_off_matrix_inmem_nv_fp64_v2(su_c_biom_inmem_t *table_data, su_c_bptree_t *tree_data,
-                                               const char* unifrac_method, bool variance_adjust, double alpha,
-                                               bool bypass_tips, unsigned int nthreads,
-                                               unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                               mat_full_fp64_t** result) {
+                                            const char *mmap_dir,
+                                            mat_full_fp64_t** result) {
     su_c_biom_inmem_t &c_table_data = *table_data;
     su_c_bptree_t &c_tree_data = *tree_data;
     SETUP_TDBG("one_off_matrix_inmem_nv")
@@ -808,12 +631,12 @@ compute_status one_off_matrix_inmem_nv_fp64_v2(su_c_biom_inmem_t *table_data, su
 compute_status one_off_matrix_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bptree_t &c_tree_data,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
                                         bool bypass_tips, unsigned int nthreads,
-                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                        const char *mmap_dir,
                                         mat_full_fp64_t** result) {
 # ifdef USE_UNIFRAC_NVIDIA
-   if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp64_v2(&c_table_data, &c_tree_data,
+   if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp64(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
-                                              bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                              bypass_tips, nthreads, mmap_dir,
                                               result);
 # endif
 
@@ -839,11 +662,11 @@ compute_status one_off_matrix_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bp
 }
 
 #ifdef UNIFRAC_NVIDIA
-compute_status one_off_matrix_inmem_nv_fp32_v2(su_c_biom_inmem_t *table_data, su_c_bptree_t *tree_data,
-                                               const char* unifrac_method, bool variance_adjust, double alpha,
-                                               bool bypass_tips, unsigned int nthreads,
-                                               unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                               mat_full_fp32_t** result) {
+compute_status one_off_matrix_inmem_nv_fp32(su_c_biom_inmem_t *table_data, su_c_bptree_t *tree_data,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int nthreads,
+                                            const char *mmap_dir,
+                                            mat_full_fp32_t** result) {
     su_c_biom_inmem_t &c_table_data = *table_data;
     su_c_bptree_t &c_tree_data = *tree_data;
     SETUP_TDBG("one_off_matrix_inmem_nv_fp32")
@@ -852,12 +675,12 @@ compute_status one_off_matrix_inmem_nv_fp32_v2(su_c_biom_inmem_t *table_data, su
 compute_status one_off_matrix_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bptree_t &c_tree_data,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
                                         bool bypass_tips, unsigned int nthreads,
-                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                        const char *mmap_dir,
                                         mat_full_fp32_t** result) {
 # ifdef USE_UNIFRAC_NVIDIA
-   if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp32_v2(&c_table_data, &c_tree_data,
+   if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp32(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
-                                              bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                              bypass_tips, nthreads, mmap_dir,
                                               result);
 # endif
 
