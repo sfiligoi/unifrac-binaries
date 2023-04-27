@@ -55,6 +55,32 @@ EXTERN ComputeStatus one_off_inmem_nv_fp64(su_c_biom_inmem_t *biom_data, su_c_bp
                                            bool bypass_tips, unsigned int n_substeps, mat_t** result);
 
 
+/* Compute a subset of a UniFrac distance matrix
+ *
+ * biom_data <su_c_biom_inmem_t *> BIOM C data struct
+ * tree_data <su_c_bptree_t *> BPTree C data struct
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * n_substeps <uint> the number of substeps to use.
+ * stripe_start <uint> the starting stripe to compute
+ * stripe_stop <uint> the last stripe to compute
+ * result <partial_mat_t**> the resulting distance matrix in condensed form, this is initialized within the method so using **
+ *
+ * partial returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * table_missing  : the filename for the table does not exist
+ * tree_missing   : the filename for the tree does not exist
+ * unknown_method : the requested method is unknown.
+ */
+
+EXTERN ComputeStatus partial_inmem_nv(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, unsigned int n_substeps, unsigned int stripe_start,
+                                      unsigned int stripe_stop, partial_mat_t** result);
+
 /* Compute UniFrac - against in-memory objects returning full form matrix
  *
  * biom_data <su_c_biom_inmem_t *> BIOM C data struct

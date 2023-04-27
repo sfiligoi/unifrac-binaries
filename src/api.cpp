@@ -12,7 +12,7 @@
 #else
 #include "api.hpp"
 // NVIDIA header must be after for proper exports to be in place
-# ifdef USE_UNFRAC_NVIDIA
+# ifdef USE_UNIFRAC_NVIDIA
 # include "api_nvidia.hpp"
 # endif
 #endif
@@ -540,18 +540,17 @@ compute_status one_off_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bptree_t 
     return okay;
 }
 
-compute_status partial(const char* biom_filename, const char* tree_filename,
-                       const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
-                       unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
-                       partial_mat_t** result) {
+compute_status partial_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bptree_t &c_tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
+                                 unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
+                                 partial_mat_t** result) {
 
-    SETUP_TDBG("partial")
-    CHECK_FILE(biom_filename, table_missing)
-    CHECK_FILE(tree_filename, tree_missing)
+    SETUP_TDBG("partial_inmem")
+    su::biom_inmem table(c_table_data);
+    su::BPTree tree(c_tree_data);
+    SYNC_TREE_TABLE(tree, table)
     SET_METHOD(unifrac_method, unknown_method)
-    PARSE_SYNC_TREE_TABLE(tree_filename, table_filename)
 
-    TDBG_STEP("load_files")
     // we resize to the largest number of possible stripes even if only computing
     // partial, however we do not allocate arrays for non-computed stripes so
     // there is a little memory waste here but should be on the order of
@@ -603,7 +602,7 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
     table.get_c_struct(c_table_data);
     su::BPTreeCWrapper ctree(tree);
     su_c_bptree_t &c_tree_data = ctree.c_data;
-# ifdef USE_UNFRAC_NVIDIA
+# ifdef USE_UNIFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_inmem_nv_fp64(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
                                               bypass_tips, nthreads,
@@ -613,6 +612,44 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
 #endif
     // condensed form
     return one_off_inmem_cpp(c_table_data, c_tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
+}
+
+#ifdef UNIFRAC_NVIDIA
+compute_status partial_inmem_nv(su_c_biom_inmem_t *biom_data, su_c_bptree_t *tree_data,
+                                const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
+                                unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
+                                partial_mat_t** result) {
+    SETUP_TDBG("partial_nv")
+#else
+compute_status partial(const char* biom_filename, const char* tree_filename,
+                       const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
+                       unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
+                       partial_mat_t** result) {
+
+    SETUP_TDBG("partial")
+    CHECK_FILE(biom_filename, table_missing)
+    CHECK_FILE(tree_filename, tree_missing)
+    PARSE_TREE_TABLE(tree_filename, table_filename)
+
+    TDBG_STEP("load_files")
+    // there is a small overhead going through the C interface, but keeps code simple
+    su_c_biom_inmem_t c_table_data;
+    table.get_c_struct(c_table_data);
+    su::BPTreeCWrapper ctree(tree);
+    su_c_bptree_t &c_tree_data = ctree.c_data;
+# ifdef USE_UNIFRAC_NVIDIA
+   if (ssu_should_use_nv()) return partial_inmem_nv(&c_table_data, &c_tree_data,
+                                        unifrac_method, variance_adjust, alpha,
+                                        bypass_tips, nthreads, stripe_start, stripe_stop,
+                                        result);
+# endif
+
+#endif
+
+    return partial_inmem_cpp(c_table_data, c_tree_data,
+                             unifrac_method, variance_adjust, alpha,
+                             bypass_tips, nthreads, stripe_start, stripe_stop,
+                             result);
 }
 
 // TMat mat_full_fp32_t
@@ -731,7 +768,7 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
     c_tree_data.lengths =   tree_data->lengths;
     c_tree_data.names   =   tree_data->names;
     c_tree_data.n_parens =  tree_data->n_parens;
-# ifdef USE_UNFRAC_NVIDIA
+# ifdef USE_UNIFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_matrix_sparse_nv_fp64_v2(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
                                               bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
@@ -790,7 +827,7 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
     c_tree_data.names   =   tree_data->names;
     c_tree_data.n_parens =  tree_data->n_parens;
 
-# ifdef USE_UNFRAC_NVIDIA
+# ifdef USE_UNIFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_matrix_sparse_nv_fp32_v2(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
                                               bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
@@ -855,7 +892,7 @@ compute_status one_off_matrix_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bp
                                         bool bypass_tips, unsigned int nthreads,
                                         unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                         mat_full_fp64_t** result) {
-# ifdef USE_UNFRAC_NVIDIA
+# ifdef USE_UNIFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp64_v2(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
                                               bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
@@ -899,7 +936,7 @@ compute_status one_off_matrix_inmem_cpp(su_c_biom_inmem_t &c_table_data, su_c_bp
                                         bool bypass_tips, unsigned int nthreads,
                                         unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                         mat_full_fp32_t** result) {
-# ifdef USE_UNFRAC_NVIDIA
+# ifdef USE_UNIFRAC_NVIDIA
    if (ssu_should_use_nv()) return one_off_matrix_inmem_nv_fp32_v2(&c_table_data, &c_tree_data,
                                               unifrac_method, variance_adjust, alpha,
                                               bypass_tips, nthreads, subsample_depth, subsample_with_replacement, mmap_dir,
