@@ -84,14 +84,9 @@ cat > setup_scripts/setup_nv_hpc_bins.sh << EOF
 PATH=$PWD/conda_nv_bins:`ls -d $PWD/hpc_sdk/*/202*/compilers/bin`:\$PATH
 
 # pgc++ does not define it, but gcc libraries expect it
-# also remove the existing conda flags, which are not compatible
-export CPPFLAGS=-D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=0
-export CXXFLAGS=\${CPPFLAGS}
-export CFLAGS=\${CPPFLAGS}
-
-unset DEBUG_CPPFLAGS
-unset DEBUG_CXXFLAGS
-unset DEBUG_CFLAGS
+export NVCPPFLAGS=-D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=0
+export NVCXXFLAGS=\${NVCPPFLAGS}
+export NVCFLAGS=\${NVCPPFLAGS}
 
 EOF
 
@@ -123,8 +118,6 @@ done
 
 cat > setup_nv_h5.sh  << EOF
 source $PWD/setup_scripts/setup_nv_hpc_bins.sh
-
-PATH=${PWD}/conda_h5:\$PATH
 EOF
 
 # we don't need the install dir anymore
