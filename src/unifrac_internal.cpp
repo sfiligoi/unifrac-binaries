@@ -88,7 +88,7 @@ PropStack<TFloat>::PropStack(uint32_t vecsize)
 template<class TFloat>
 PropStack<TFloat>::~PropStack() {
     // drain stack
-    for(unsigned int i = 0; i < prop_stack.size(); i++) {
+    while (!prop_stack.empty()) {
         TFloat *vec = prop_stack.top();
         prop_stack.pop();
         free(vec);
