@@ -73,6 +73,7 @@ linked_sparse_transposed::linked_sparse_transposed(sparse_data &other)
 
 linked_sparse_transposed::~linked_sparse_transposed() {
     if(obs_data_resident != NULL) {
+        for (uint32_t i=0; i<n_obs; i++) free(obs_data_resident[i]);
         free(obs_data_resident);
         obs_data_resident = NULL;
     }
