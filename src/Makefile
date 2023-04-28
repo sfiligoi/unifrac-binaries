@@ -34,6 +34,8 @@ ifeq ($(PLATFORM),Darwin)
 else
 	AVX2 := $(shell grep "^flags" /proc/cpuinfo | head -n 1 | grep -c avx2)
 	LDDFLAGS = -shared
+	LDDFLAGS += -L${CONDA_BUILD_SYSROOT}/usr/lib64 -Wl,-rpath,${CONDA_BUILD_SYSROOT}/usr/lib64
+	LDDFLAGS += -L$(PREFIX)/lib -Wl,-rpath,$(PREFIX)/lib
 endif
 
 EXEFLAGS =
