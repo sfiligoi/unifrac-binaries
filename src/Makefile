@@ -16,7 +16,7 @@ else
 		OPT = -fast
 	else
 	  ifneq (,$(findstring gcc,$(COMPILER)))
-		OPT = -O4
+		OPT = -Ofast
 		TGTFLAGS = -fwhole-program
 	  else
 		OPT = -O3
