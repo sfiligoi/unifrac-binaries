@@ -26,7 +26,7 @@ ls -l ${EXE_PREFIX}gcc
 
 mkdir conda_nv_bins
 (cd conda_nv_bins && for f in \
-  ar as c++ cc cpp g++ gcc ld nm ranlib strip; \
+  ar as c++ cc cpp g++ gcc ld nm ranlib gfortran strip; \
   do \
     ln -s ${EXE_PREFIX}${f} ${f}; \
   done )
