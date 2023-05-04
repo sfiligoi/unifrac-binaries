@@ -78,7 +78,7 @@ ifneq ($(BUILD_FULL_OPTIMIZATION),False)
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
 	   ifeq ($(PLATFORM),Darwin)
-		CPPFLAGS += -mfma -mpopcnt -msse
+		CPPFLAGS += -mpopcnt
 	   else
 		# enable avx2
 		CPPFLAGS += -march=haswell -mtune=znver2
