@@ -72,7 +72,7 @@ endif
 ifneq ($(BUILD_FULL_OPTIMIZATION),False)
     ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -tp=sandybridge -Mvect=simd:256
+		CPPFLAGS += -tp=haswell -Mvect=simd:256
 	endif
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
@@ -84,7 +84,8 @@ ifneq ($(BUILD_FULL_OPTIMIZATION),False)
 else
     ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -tp=px
+		# PGI does not support anything older than sandybridge
+		CPPFLAGS += -tp=sandybridge -Mvect=simd:256
 	endif
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
