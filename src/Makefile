@@ -72,13 +72,15 @@ endif
 ifneq ($(BUILD_FULL_OPTIMIZATION),False)
     ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
+		# enable avx2
 		CPPFLAGS += -tp=haswell -Mvect=simd:256
 	endif
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -mtune=generic -mavx
+		# enable avx2
+		CPPFLAGS += -march=haswell -mtune=znver2
 	else
-		CPPFLAGS += -mavx -mfma -march=native
+		CPPFLAGS += -march=native -mtune=native
 	endif
     endif
 else
@@ -89,9 +91,9 @@ else
 	endif
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -mtune=generic
+		CPPFLAGS += -mtune=core2
 	else
-		CPPFLAGS += -march=native
+		CPPFLAGS += -march=native -mtune=native
 	endif
     endif
 endif
