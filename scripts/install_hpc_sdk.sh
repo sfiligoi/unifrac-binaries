@@ -26,7 +26,7 @@ ls -l ${EXE_PREFIX}gcc
 
 mkdir conda_nv_bins
 (cd conda_nv_bins && for f in \
-  ar as c++ cc cpp g++ gcc ld nm ranlib strip; \
+  ar as c++ cc cpp g++ gcc ld nm ranlib gfortran strip; \
   do \
     ln -s ${EXE_PREFIX}${f} ${f}; \
   done )
@@ -36,9 +36,9 @@ export PATH=$PWD/conda_nv_bins:$PATH
 # Install the NVIDIA HPC SDK
 
 # This link may need to be updated, as new compiler versions are released
-# Note: Verified that it works with v21.7
+# Note: Verified that it works with v22.11
 if [ "x${NV_URL}" == "x" ]; then
-  NV_URL=https://developer.download.nvidia.com/hpc-sdk/21.7/nvhpc_2021_217_Linux_x86_64_cuda_multi.tar.gz
+  NV_URL=https://developer.download.nvidia.com/hpc-sdk/22.11/nvhpc_2022_2211_Linux_x86_64_cuda_multi.tar.gz
 fi
 
 echo "Downloading the NVIDIA HPC SDK"

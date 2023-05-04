@@ -16,7 +16,7 @@ else
 		OPT = -fast
 	else
 	  ifneq (,$(findstring gcc,$(COMPILER)))
-		OPT = -O4
+		OPT = -Ofast
 		TGTFLAGS = -fwhole-program
 	  else
 		OPT = -O3
@@ -72,25 +72,32 @@ endif
 ifneq ($(BUILD_FULL_OPTIMIZATION),False)
     ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -tp=sandybridge -Mvect=simd:256
+		# enable avx2
+		CPPFLAGS += -tp=haswell -Mvect=simd:256
 	endif
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -mtune=generic -mavx
+	   ifeq ($(PLATFORM),Darwin)
+		CPPFLAGS += -mpopcnt
+	   else
+		# enable avx2
+		CPPFLAGS += -march=haswell -mtune=znver2
+	   endif
 	else
-		CPPFLAGS += -mavx -mfma -march=native
+		CPPFLAGS += -march=native -mtune=native
 	endif
     endif
 else
     ifneq (,$(findstring pgi,$(COMPILER)))
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -tp=px
+		# PGI does not support anything older than sandybridge
+		CPPFLAGS += -tp=sandybridge -Mvect=simd:256
 	endif
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
-		CPPFLAGS += -mtune=generic
+		CPPFLAGS += -mtune=core2
 	else
-		CPPFLAGS += -march=native
+		CPPFLAGS += -march=native -mtune=native
 	endif
     endif
 endif
