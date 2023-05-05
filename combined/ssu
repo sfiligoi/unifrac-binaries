@@ -1,0 +1,43 @@
+#!/bin/bash
+
+#default
+SSU=ssu_nv
+
+# Need at least AVX to support GPUs
+if [ "${UNIFRAC_MAX_CPU}" == "basic" ]; then
+   has_no_avx=1
+else
+   cat /proc/cpuinfo |grep flags |head -1 | grep -q avx
+   has_no_avx=$?
+fi
+
+if [ "${has_no_avx}" -eq 1 ]; then
+   if [ "${UNIFRAC_GPU_INFO}" == "Y" ]; then
+     echo "INFO (unifrac): CPU too old, disabling GPU"
+   fi
+   SSU=ssu_cpu_basic
+else
+
+if [ "${UNIFRAC_MAX_CPU}" == "avx" ]; then
+   has_no_avx2=1
+else
+   cat /proc/cpuinfo |grep flags |head -1 | grep -q avx2
+   has_no_avx2=$?
+fi
+
+if [ "${has_no_avx2}" -eq 1 ]; then
+   SSU=ssu_nv
+else
+   SSU=ssu_nv_avx2
+fi # if "${has_no_avx2}" -eq 1 
+
+
+fi # if "${has_no_avx}" -eq 1 
+
+#
+#
+#
+BASEDIR=$(dirname "$0")
+
+exec ${BASEDIR}/${SSU} "$@"
+
