@@ -8,10 +8,6 @@
 static void *dl_handle = NULL;
 
 static const char *ssu_get_lib_name() {
-   /*
-    *  TODO: Auto-detect appropriate CPU architecture
-    */
-
    __builtin_cpu_init ();
    bool has_avx  = __builtin_cpu_supports ("avx");
    bool has_avx2 = __builtin_cpu_supports ("avx2");
