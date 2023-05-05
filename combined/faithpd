@@ -31,6 +31,10 @@ fi # if "${has_no_avx2}" -eq 1
 
 fi # if "${has_no_avx}" -eq 1 
 
+if [ "${UNIFRAC_CPU_INFO}" == "Y" ]; then
+  echo "INFO (unifrac): Using executable" ${FPD}
+fi
+
 #
 #
 #

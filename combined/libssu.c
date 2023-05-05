@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <dlfcn.h>
 
 #include "../src/api.hpp"
@@ -10,7 +11,41 @@ static const char *ssu_get_lib_name() {
    /*
     *  TODO: Auto-detect appropriate CPU architecture
     */
-   return "libssu_nv.so";
+
+   __builtin_cpu_init ();
+   bool has_avx  = __builtin_cpu_supports ("avx");
+   bool has_avx2 = __builtin_cpu_supports ("avx2");
+
+   const char* env_max_cpu = getenv("UNIFRAC_MAX_CPU");
+
+   if ((env_max_cpu!=NULL) && (strcmp(env_max_cpu,"basic")==0)) {
+      has_avx = false;
+      has_avx2 = false;
+   }
+
+   const char *ssu = "libssu_nv.so";
+   if (has_avx) {
+      if ((env_max_cpu!=NULL) && (strcmp(env_max_cpu,"avx")==0)) {
+         has_avx2 = false;
+      }
+      if (has_avx2) {
+         ssu="libssu_nv_avx2.so";
+      } else {
+         ssu="libssu_nv.so";
+      }
+   } else { // no avx
+      const char* env_gpu_info = getenv("UNIFRAC_GPU_INFO");
+      if ((env_gpu_info!=NULL) && (env_gpu_info[0]=='Y')) {
+         printf("INFO (unifrac): CPU too old, disabling GPU\n");
+      }
+      ssu="libssu_cpu_basic.so";
+   }
+
+   const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
+   if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
+      printf("INFO (unifrac): Using shared library %s\n",ssu);
+   }
+   return ssu;
 }
 
 

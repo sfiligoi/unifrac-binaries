@@ -18,6 +18,7 @@ libssu.so: libssu.o
 install: libssu.so
 	rm -f ${PREFIX}/lib//libssu.so; cp libssu.so ${PREFIX}/lib/
 	rm -f ${PREFIX}/bin/ssu; cp ssu ${PREFIX}/bin/
+	rm -f ${PREFIX}/bin/faithpd; cp faithpd ${PREFIX}/bin/
 
 clean:
 	rm -f libssu.o libssu.so
