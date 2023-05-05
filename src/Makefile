@@ -1,4 +1,4 @@
-.PHONY: all make api test test_binaries install clean rapi_test
+.PHONY: all main api test test_binaries install clean rapi_test
 
 CXX := h5c++
 
