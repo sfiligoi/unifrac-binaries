@@ -12,6 +12,8 @@ clean:
 	-cd test && make clean
 	-cd src && make clean
 
+########### all
+
 all_combined: all_cpu_basic all_nv all_nv_avx2
 
 all_cpu_basic: api_cpu_basic main_cpu_basic install_cpu_basic

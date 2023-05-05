@@ -161,14 +161,14 @@ test: test_binaries
 	./test_ska
 	./test_api
 
-install: lib$(SSU).so $(FPD)
-	cp lib$(SSU).so ${PREFIX}/lib/
-	cp $(SSU) ${PREFIX}/bin/
-	cp $(FPD) ${PREFIX}/bin/
+install: lib$(SSU).so $(SSU) $(FPD)
+	rm -f ${PREFIX}/lib//lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
+	rm -f ${PREFIX}/bin/$(SSU); cp $(SSU) ${PREFIX}/bin/
+	rm -f ${PREFIX}/bin/$(FPD); cp $(FPD) ${PREFIX}/bin/
 	mkdir -p ${PREFIX}/include/unifrac
-	cp task_parameters.hpp ${PREFIX}/include/unifrac/
-	cp api.hpp ${PREFIX}/include/unifrac/
-	cp status_enum.hpp ${PREFIX}/include/unifrac/
+	rm -f ${PREFIX}/include/unifrac/task_parameters.hpp; cp task_parameters.hpp ${PREFIX}/include/unifrac/
+	rm -f ${PREFIX}/include/unifrac/api.hpp; cp api.hpp ${PREFIX}/include/unifrac/
+	rm -f ${PREFIX}/include/unifrac/status_enum.hpp; cp status_enum.hpp ${PREFIX}/include/unifrac/
 
 rapi_test: main
 	mkdir -p ~/.R
