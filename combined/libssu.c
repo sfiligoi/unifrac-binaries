@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2023, UniFrac development team.
+ * All rights reserved.
+ *
+ * See LICENSE file for more details
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,8 +14,15 @@
 
 #include "../src/api.hpp"
 
-static void *dl_handle = NULL;
+/*
+ * Implement wrappers around all the EXTERN functions
+ * defined in api.hpp.
+ *
+ */
 
+/*********************************************************************/
+
+/* Pick the right libssu implementation */
 static const char *ssu_get_lib_name() {
    __builtin_cpu_init ();
    bool has_avx  = __builtin_cpu_supports ("avx");
@@ -44,6 +60,11 @@ static const char *ssu_get_lib_name() {
    return ssu;
 }
 
+/*********************************************************************/
+
+/* Handle pointing to the approriate libssu implementing the functionality
+ * Initialized on first use. */
+static void *dl_handle = NULL;
 
 static void ssu_load(const char *fncname,
                      void **dl_ptr) {
@@ -64,6 +85,10 @@ static void ssu_load(const char *fncname,
    }
 }
 
+/*********************************************************************/
+/* All the functons below are wrappers
+ * and each has its own function pointer
+ * that is initialized on first use */
 /*********************************************************************/
 
 static void (*dl_ssu_set_random_seed)(unsigned int) = NULL;
@@ -180,6 +205,61 @@ ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support
 
 /*********************************************************************/
 
+static ComputeStatus (*dl_one_off_matrix_v2)(const char*, const char*, const char*, bool, double,
+                                             bool, unsigned int, unsigned int, bool, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix)(const char*, const char*, const char*, bool, double,
+                                          bool, unsigned int, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_fp32_v2)(const char*, const char*, const char*, bool, double,
+                                                  bool, unsigned int, unsigned int, bool, const char *, mat_full_fp32_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_fp32)(const char*, const char*, const char*, bool, double,
+                                               bool, unsigned int, const char *, mat_full_fp32_t**) = NULL;
+
+ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, unsigned int n_substeps,
+                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                       mat_full_fp64_t** result) {
+   if (dl_one_off_matrix_v2==NULL) ssu_load("one_off_matrix_v2", (void **) &dl_one_off_matrix_v2);
+
+   (*dl_one_off_matrix_v2)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                           bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
+                                    const char* unifrac_method, bool variance_adjust, double alpha,
+                                    bool bypass_tips, unsigned int n_substeps,
+                                    const char *mmap_dir,
+                                    mat_full_fp64_t** result) {
+   if (dl_one_off_matrix==NULL) ssu_load("one_off_matrix", (void **) &dl_one_off_matrix);
+
+   (*dl_one_off_matrix)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                        bypass_tips, n_substeps, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int n_substeps,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_fp32_v2==NULL) ssu_load("one_off_matrix_fp32_v2", (void **) &dl_one_off_matrix_fp32_v2);
+
+   (*dl_one_off_matrix_fp32_v2)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
+                                         const char* unifrac_method, bool variance_adjust, double alpha,
+                                         bool bypass_tips, unsigned int n_substeps,
+                                         const char *mmap_dir,
+                                         mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_fp32==NULL) ssu_load("one_off_matrix_fp32", (void **) &dl_one_off_matrix_fp32);
+
+   (*dl_one_off_matrix_fp32)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                             bypass_tips, n_substeps, mmap_dir, result);
+}
+
+/*********************************************************************/
+
 static ComputeStatus (*dl_faith_pd_one_off)(const char*, const char*, r_vec**) = NULL;
 ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tree_filename,
                                       r_vec** result) {
@@ -187,4 +267,76 @@ ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tree_filen
 
    (*dl_faith_pd_one_off)(biom_filename, tree_filename, result);
 }
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_unifrac_to_file_v2)(const char*, const char*, const char*, const char*, bool, double,
+                                              bool, unsigned int, const char*, unsigned int, bool, 
+                                              unsigned int, unsigned int, const char *, const char *, const char *) = NULL;
+static ComputeStatus (*dl_unifrac_to_file)(const char*, const char*, const char*, const char*, bool, double,
+                                           bool, unsigned int, const char*, unsigned int, const char *) = NULL;
+static ComputeStatus (*dl_unifrac_multi_to_file_v2)(const char*, const char*, const char*, const char*, bool, double,
+                                              bool, unsigned int, const char*, unsigned int, unsigned int, bool, 
+                                              unsigned int, unsigned int, const char *, const char *, const char *) = NULL;
+
+ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps, const char* format,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, 
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir){
+   if (dl_unifrac_to_file_v2==NULL) ssu_load("unifrac_to_file_v2", (void **) &dl_unifrac_to_file_v2);
+
+   (*dl_unifrac_to_file_v2)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha,
+                            bypass_tips, n_substeps, format, subsample_depth, subsample_with_replacement,
+                            pcoa_dims, permanova_perms, grouping_filename, grouping_columns, mmap_dir);
+}
+
+ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                     const char* unifrac_method, bool variance_adjust, double alpha,
+                                     bool bypass_tips, unsigned int n_substeps, const char* format,
+                                     unsigned int pcoa_dims, const char *mmap_dir) {
+   if (dl_unifrac_to_file==NULL) ssu_load("unifrac_to_file", (void **) &dl_unifrac_to_file);
+
+   (*dl_unifrac_to_file)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha, 
+                         bypass_tips, n_substeps, format, pcoa_dims, mmap_dir);
+}
+
+ComputeStatus unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                              const char* unifrac_method, bool variance_adjust, double alpha,
+                                              bool bypass_tips, unsigned int n_substeps, const char* format,
+                                              unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement, 
+                                              unsigned int pcoa_dims,
+                                              unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                              const char *mmap_dir) {
+   if (dl_unifrac_multi_to_file_v2==NULL) ssu_load("unifrac_multi_to_file_v2", (void **) &dl_unifrac_multi_to_file_v2);
+
+   (*dl_unifrac_multi_to_file_v2)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha,
+                                  bypass_tips, n_substeps, format, n_subsamples, subsample_depth, subsample_with_replacement,
+                                  pcoa_dims, permanova_perms, grouping_filename, grouping_columns, mmap_dir);
+}
+
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_compute_permanova_fp64)(const char *, unsigned int, const char**, mat_full_fp64_t *, unsigned int, double *, double *) = NULL;
+static ComputeStatus (*dl_compute_permanova_fp32)(const char *, unsigned int, const char**, mat_full_fp32_t *, unsigned int, float *, float *) = NULL;
+
+ComputeStatus compute_permanova_fp64(const char *grouping_filename, unsigned int n_columns, const char* *columns,
+                                            mat_full_fp64_t * result, unsigned int permanova_perms,
+                                            double *fstats, double *pvalues) {
+   if (dl_compute_permanova_fp64==NULL) ssu_load("compute_permanova_fp64", (void **) &dl_compute_permanova_fp64);
+
+   (*dl_compute_permanova_fp64)(grouping_filename, n_columns, columns, result, permanova_perms, fstats, pvalues);
+}
+
+ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int n_columns, const char* * columns,
+                                            mat_full_fp32_t * result, unsigned int permanova_perms,
+                                            float *fstats, float *pvalues) {
+   if (dl_compute_permanova_fp32==NULL) ssu_load("compute_permanova_fp32", (void **) &dl_compute_permanova_fp32);
+
+   (*dl_compute_permanova_fp32)(grouping_filename, n_columns, columns, result, permanova_perms, fstats, pvalues);
+}
+
 

@@ -461,7 +461,7 @@ EXTERN ComputeStatus compute_permanova_fp64(const char *grouping_filename, unsig
  * okay               : no problems encountered
  * grouping_missing  : the filename for the grouping does not exist or is not valid
  */
-EXTERN ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int n_columns, const char* const* columns,
+EXTERN ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int n_columns, const char* * columns,
                                             mat_full_fp32_t * result, unsigned int permanova_perms,
                                             float *fstats, float *pvalues);
 
