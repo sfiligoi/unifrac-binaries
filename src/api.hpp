@@ -11,6 +11,14 @@
 #define EXTERN
 #endif
 
+/*
+ *
+ * Note: Each function declared EXTERN must both have 
+ *       an implementation in api.cpp, AND
+ *       a wrapper in ../combined/libssu.c
+ *
+ */
+
 #define PARTIAL_MAGIC "SSU-PARTIAL-01"
 #define PARTIAL_MAGIC_V2 0x088ABA02
 

@@ -75,6 +75,51 @@ void ssu_set_random_seed(unsigned int new_seed) {
 
 /*********************************************************************/
 
+static void (*dl_destroy_mat)(mat_t**) = NULL;
+static void (*dl_destroy_mat_full_fp64)(mat_full_fp64_t**) = NULL;
+static void (*dl_destroy_mat_full_fp32)(mat_full_fp32_t**) = NULL;
+static void (*dl_destroy_partial_mat)(partial_mat_t**) = NULL;
+static void (*dl_destroy_partial_dyn_mat)(partial_dyn_mat_t**) = NULL;
+static void (*dl_destroy_results_vec)(r_vec**) = NULL;
+
+void destroy_mat(mat_t** result) {
+   if (dl_destroy_mat==NULL) ssu_load("destroy_mat", (void **) &dl_destroy_mat);
+
+   (*dl_destroy_mat)(result);
+}
+
+void destroy_mat_full_fp64(mat_full_fp64_t** result) {
+   if (dl_destroy_mat_full_fp64==NULL) ssu_load("destroy_mat_full_fp64", (void **) &dl_destroy_mat_full_fp64);
+
+   (*dl_destroy_mat_full_fp64)(result);
+}
+
+void destroy_mat_full_fp32(mat_full_fp32_t** result) {
+   if (dl_destroy_mat_full_fp32==NULL) ssu_load("destroy_mat_full_fp32", (void **) &dl_destroy_mat_full_fp32);
+
+   (*dl_destroy_mat_full_fp32)(result);
+}
+
+void destroy_partial_mat(partial_mat_t** result) {
+   if (dl_destroy_partial_mat==NULL) ssu_load("destroy_partial_mat", (void **) &dl_destroy_partial_mat);
+
+   (*dl_destroy_partial_mat)(result);
+}
+
+void destroy_partial_dyn_mat(partial_dyn_mat_t** result) {
+   if (dl_destroy_partial_dyn_mat==NULL) ssu_load("destroy_partial_dyn_mat", (void **) &dl_destroy_partial_dyn_mat);
+
+   (*dl_destroy_partial_dyn_mat)(result);
+}
+
+void destroy_results_vec(r_vec** result) {
+   if (dl_destroy_results_vec==NULL) ssu_load("destroy_results_vec", (void **) &dl_destroy_results_vec);
+
+   (*dl_destroy_results_vec)(result);
+}
+
+/*********************************************************************/
+
 static ComputeStatus (*dl_one_off)(const char*, const char*, const char*, bool, double, bool, unsigned int, mat_t**) = NULL;
 ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
@@ -86,7 +131,56 @@ ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
 
 /*********************************************************************/
 
-static ComputeStatus (*dl_faith_pd_one_off)(const char*, const char*, r_vec**);
+static ComputeStatus (*dl_one_off_matrix_inmem_v2)(const support_biom_t *, const support_bptree_t *, const char*, bool, double, 
+                                                   bool, unsigned int, unsigned int, bool, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_inmem)(const support_biom_t *, const support_bptree_t *, const char*, bool, double,
+                                         bool, unsigned int, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_inmem_fp32_v2)(const support_biom_t *, const support_bptree_t *, const char*, bool, double,
+                                                        bool, unsigned int, unsigned int, bool, const char *, mat_full_fp32_t**) = NULL;
+static ComputeStatus (*dl_one_off_inmem_fp32)(const support_biom_t *, const support_bptree_t *, const char*, bool, double,
+                                              bool, unsigned int, mat_full_fp32_t**) = NULL;
+
+ComputeStatus one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp64_t** result) {
+   if (dl_one_off_matrix_inmem_v2==NULL) ssu_load("one_off_matrix_inmem_v2", (void **) &dl_one_off_matrix_inmem_v2);
+
+   (*dl_one_off_matrix_inmem_v2)(table_data, tree_data, unifrac_method, variance_adjust, alpha,
+                                 bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int n_substeps, mat_full_fp64_t** result) {
+   if (dl_one_off_inmem==NULL) ssu_load("one_off_inmem", (void **) &dl_one_off_inmem);
+
+   (*dl_one_off_inmem)(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
+ComputeStatus one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                                  bool bypass_tips, unsigned int n_substeps,
+                                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                                  mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_inmem_fp32_v2==NULL) ssu_load("one_off_matrix_inmem_fp32_v2", (void **) &dl_one_off_matrix_inmem_fp32_v2);
+
+   (*dl_one_off_matrix_inmem_fp32_v2)(table_data, tree_data, unifrac_method, variance_adjust, alpha,
+                                      bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps, mat_full_fp32_t** result) {
+   if (dl_one_off_inmem_fp32==NULL) ssu_load("one_off_inmem_fp32", (void **) &dl_one_off_inmem_fp32);
+
+   (*dl_one_off_inmem_fp32)(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_faith_pd_one_off)(const char*, const char*, r_vec**) = NULL;
 ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tree_filename,
                                       r_vec** result) {
    if (dl_faith_pd_one_off==NULL) ssu_load("faith_pd_one_off", (void **) &dl_faith_pd_one_off);
