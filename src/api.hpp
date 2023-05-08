@@ -626,7 +626,7 @@ EXTERN IOStatus write_vec(const char* filename, r_vec* result);
  * unknown_method : the requested method is unknown.
  */
 
-EXTERN ComputeStatus partial(const char* biom_filename, const char* tree_filename,
+ComputeStatus partial(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, unsigned int stripe_start,
                              unsigned int stripe_stop, partial_mat_t** result);
@@ -672,7 +672,7 @@ EXTERN ComputeStatus partial(const char* biom_filename, const char* tree_filenam
  * ### FOOTER ###
  * <MAGIC>              : char, e.g., SSU-PARTIAL-01, same as starting magic
  */
-EXTERN IOStatus write_partial(const char* filename, const partial_mat_t* result);
+IOStatus write_partial(const char* filename, const partial_mat_t* result);
 
 /* Read a partial matrix object
  *
@@ -687,7 +687,7 @@ EXTERN IOStatus write_partial(const char* filename, const partial_mat_t* result)
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-EXTERN IOStatus read_partial(const char* filename, partial_mat_t** result);
+IOStatus read_partial(const char* filename, partial_mat_t** result);
 
 /* Read a partial matrix object header
  *
@@ -702,7 +702,7 @@ EXTERN IOStatus read_partial(const char* filename, partial_mat_t** result);
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-EXTERN IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out);
+IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out);
 
 /* Read a stripe of a partial matrix
  *
@@ -718,12 +718,12 @@ EXTERN IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-EXTERN IOStatus read_partial_one_stripe(partial_dyn_mat_t* result, uint32_t stripe_idx);
+IOStatus read_partial_one_stripe(partial_dyn_mat_t* result, uint32_t stripe_idx);
 
 /*
  * Description TBD
  */
-EXTERN MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials);
+MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials);
 
 /* Merge partial results
  *
@@ -738,7 +738,7 @@ EXTERN MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mat
  * sample_id_consistency : samples described by stripes are inconsistent
  * square_mismatch       : inconsistency on denotation of square matrix
  */
-EXTERN MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result);
+MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result);
 
 /* Merge partial results
  *
