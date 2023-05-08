@@ -1,10 +1,14 @@
 .PHONY: test_binaries test install clean all all_combined all_basic all_nv all_nv_avx2
 
+# Note: This Makefile will NOT properly work with the -j option 
+
 ifeq ($(PLATFORM),Darwin)
 all: api main install
 
 else
-all: all_cpu_basic all_nv all_nv_avx2 all_combined
+
+# Note: important that all_nv is after all_cpu_basic and all_nv_avx2 for tests to work
+all: all_cpu_basic all_nv_avx2 all_nv all_combined
 
 all_cpu_basic: api_cpu_basic main_cpu_basic install_cpu_basic
 
