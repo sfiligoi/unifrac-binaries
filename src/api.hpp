@@ -488,7 +488,7 @@ EXTERN IOStatus write_mat(const char* filename, mat_t* result);
  * write_okay : no problems
  */
 // backwards compatible version, deprecated
-EXTERN IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
+IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object using hdf5 format, using fp32 precision
  *
@@ -502,7 +502,7 @@ EXTERN IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigne
  * write_okay : no problems
  */
 // backwards compatible version, deprecated
-EXTERN IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
+IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
 /* Write a matrix object
  *
