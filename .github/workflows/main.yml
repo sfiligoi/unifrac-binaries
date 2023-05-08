@@ -62,7 +62,6 @@ jobs:
         pushd src
         if [[ "$(uname -s)" == "Linux" ]]; 
         then
-          make clean
           rm -f ~/.R/Makevars
           conda install -q --yes  --strict-channel-priority -c conda-forge r-base
           unset CXXFLAGS
