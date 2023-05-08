@@ -61,9 +61,8 @@ jobs:
         echo "======= begin env ====="
         env
         echo "=======  end env  ====="
-        # all == build and install
+        # all == build (shlib,bins,tests) and install
         make all
-        make test_binaries
         df -h .
         pushd src
         if [[ "$(uname -s)" == "Linux" ]]; 

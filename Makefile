@@ -1,14 +1,14 @@
-.PHONY: test_binaries test install clean all all_combined all_basic all_nv all_nv_avx2
+.PHONY: test clean all
 
 # Note: This Makefile will NOT properly work with the -j option 
 
 ifeq ($(PLATFORM),Darwin)
-all: api main install
+all: api main install test_binaries
 
 else
 
 # Note: important that all_nv is after all_cpu_basic and all_nv_avx2 for tests to work
-all: all_cpu_basic all_nv_avx2 all_nv all_combined
+all: all_cpu_basic all_nv_avx2 all_nv all_combined test_binaries_nv
 
 all_cpu_basic: api_cpu_basic main_cpu_basic install_cpu_basic
 
@@ -77,6 +77,11 @@ install_combined:
 
 test_binaries:
 	cd src && make test_binaries
+	cd test && make test_binaries
+
+test_binaries_nv:
+	source ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make test_binaries
+	# use the default compiler for the test subdir as it tests the combined shlib
 	cd test && make test_binaries
 
 test:
