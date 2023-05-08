@@ -49,12 +49,11 @@ jobs:
           clang -v
         fi
         which h5c++
-        if [[ "$(uname -s)" == "Linux" && "${{ matrix.fullopt }}" != "False" ]];
+        if [[ "$(uname -s)" == "Linux" ]];
         then
-          # always use PGI when fully optimizing
-          # but never when in compatible/low-optimization mode
+          # install PGI but do not source it
+          # the makefile will do it automatically
           ./scripts/install_hpc_sdk.sh </dev/null
-          source setup_nv_h5.sh
         fi
         df -h .
         export PERFORMING_CONDA_BUILD=True
@@ -62,14 +61,14 @@ jobs:
         echo "======= begin env ====="
         env
         echo "=======  end env  ====="
-        make api && \
-        make main && \
-        make install && \
+        # all == build and install
+        make all
         make test_binaries
         df -h .
         pushd src
         if [[ "$(uname -s)" == "Linux" ]]; 
         then
+          make clean
           rm -f ~/.R/Makevars
           conda install -q --yes  --strict-channel-priority -c conda-forge r-base
           unset CXXFLAGS
