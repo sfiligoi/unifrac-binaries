@@ -2,6 +2,9 @@
 
 # Note: This Makefile will NOT properly work with the -j option 
 
+PLATFORM := $(shell uname -s)
+COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
+
 ifeq ($(PLATFORM),Darwin)
 all: api main install test_binaries
 
