@@ -1,8 +1,11 @@
-.PHONY: all main install clean
+.PHONY: all api main install clean
 
-all: main install
+all: api install
 
-main: libssu.so
+api: libssu.so
+
+# no-op, just for completeness
+main:
 
 
 ifeq ($(PREFIX),)
