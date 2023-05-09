@@ -1,9 +1,17 @@
-.PHONY: all make api test test_binaries install clean rapi_test
+.PHONY: all main api test test_binaries install clean rapi_test
 
 CXX := h5c++
 
 PLATFORM := $(shell uname -s)
 COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
+
+ifeq ($(BUILD_VARIANT),)
+	SSU = ssu
+	FPD = faithpd
+else
+	SSU = ssu_$(BUILD_VARIANT)
+	FPD = faithpd_$(BUILD_VARIANT)
+endif
 
 ifdef DEBUG
 	ifneq (,$(findstring pgi,$(COMPILER)))
@@ -32,7 +40,7 @@ BLASLIB=-llapacke -lcblas
 
 ifeq ($(PLATFORM),Darwin)
 	AVX2 := $(shell sysctl -a | grep -c AVX2)
-	LDDFLAGS = -dynamiclib -install_name @rpath/libssu.so
+	LDDFLAGS = -dynamiclib -install_name @rpath/lib$(SSU).so
 else
 	AVX2 := $(shell grep "^flags" /proc/cpuinfo | head -n 1 | grep -c avx2)
 	LDDFLAGS = -shared
@@ -114,9 +122,9 @@ CPPFLAGS += -Wall  -std=c++14 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
 all: api main install
 
-main: ssu faithpd
+main: $(SSU) $(FPD)
 
-api: libssu.so
+api: lib$(SSU).so
 
 test_binaries: test_su test_ska test_api
 
@@ -127,14 +135,14 @@ test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsamp
 test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 
-ssu: su.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o ssu tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+$(SSU): su.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $(SSU) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
-faithpd: faithpd.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o faithpd tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+$(FPD): faithpd.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $(FPD) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
-libssu.so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(LDDFLAGS) -o libssu.so tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
+lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(LDDFLAGS) -o lib$(SSU).so tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
@@ -153,13 +161,14 @@ test: test_binaries
 	./test_ska
 	./test_api
 
-install: libssu.so ssu faithpd
-	cp libssu.so ${PREFIX}/lib/
-	cp ssu faithpd ${PREFIX}/bin/
+install: lib$(SSU).so $(SSU) $(FPD)
+	rm -f ${PREFIX}/lib//lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
+	rm -f ${PREFIX}/bin/$(SSU); cp $(SSU) ${PREFIX}/bin/
+	rm -f ${PREFIX}/bin/$(FPD); cp $(FPD) ${PREFIX}/bin/
 	mkdir -p ${PREFIX}/include/unifrac
-	cp task_parameters.hpp ${PREFIX}/include/unifrac/
-	cp api.hpp ${PREFIX}/include/unifrac/
-	cp status_enum.hpp ${PREFIX}/include/unifrac/
+	rm -f ${PREFIX}/include/unifrac/task_parameters.hpp; cp task_parameters.hpp ${PREFIX}/include/unifrac/
+	rm -f ${PREFIX}/include/unifrac/api.hpp; cp api.hpp ${PREFIX}/include/unifrac/
+	rm -f ${PREFIX}/include/unifrac/status_enum.hpp; cp status_enum.hpp ${PREFIX}/include/unifrac/
 
 rapi_test: main
 	mkdir -p ~/.R
@@ -180,5 +189,5 @@ rapi_test: main
 	rm -f *.o
 
 clean:
-	-rm -f *.o ssu faithpd test_su test_ska test_api libssu.so
+	-rm -f *.o $(SSU) $(FPD) test_su test_ska test_api lib$(SSU).so
 

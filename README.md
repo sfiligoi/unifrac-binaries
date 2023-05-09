@@ -90,6 +90,17 @@ To restrict the number of cores used, set:
 
     export OMP_NUM_THREADS=nthreads
 
+## Older CPU support
+
+On Linux platforms, Unifrac will auto-detect the CPU generation, i.e. if it supports avx or avx2 vector instructions.
+To force the most compatible binary variant, one can set:
+
+    export UNIFRAC_MAX_CPU=basic
+
+To check which binary is used (Unifrac will print it to standard output at runtime), set:
+
+    export UNIFRAC_CPU_INFO=Y
+
 ## GPU support
 
 On Linux platforms, Unifrac will run on a GPU, if one is found. 

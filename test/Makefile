@@ -7,11 +7,6 @@ ifeq ($(PREFIX),)
 	PREFIX := $(CONDA_PREFIX)
 endif
 
-ifneq ($(PLATFORM),Darwin)
-	CC := gcc
-	LD := ld
-endif
-
 test: capi_test
 	./capi_test 1
 

@@ -1,0 +1,415 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2023, UniFrac development team.
+ * All rights reserved.
+ *
+ * See LICENSE file for more details
+ */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <dlfcn.h>
+
+#include "../src/api.hpp"
+
+/*
+ * Implement wrappers around all the EXTERN functions
+ * defined in api.hpp.
+ *
+ */
+
+/*********************************************************************/
+
+/* Pick the right libssu implementation */
+static const char *ssu_get_lib_name() {
+   __builtin_cpu_init ();
+   bool has_avx  = __builtin_cpu_supports ("avx");
+   bool has_avx2 = __builtin_cpu_supports ("avx2");
+
+   const char* env_max_cpu = getenv("UNIFRAC_MAX_CPU");
+
+   if ((env_max_cpu!=NULL) && (strcmp(env_max_cpu,"basic")==0)) {
+      has_avx = false;
+      has_avx2 = false;
+   }
+
+   const char *ssu = "libssu_nv.so";
+   if (has_avx) {
+      if ((env_max_cpu!=NULL) && (strcmp(env_max_cpu,"avx")==0)) {
+         has_avx2 = false;
+      }
+      if (has_avx2) {
+         ssu="libssu_nv_avx2.so";
+      } else {
+         ssu="libssu_nv.so";
+      }
+   } else { // no avx
+      const char* env_gpu_info = getenv("UNIFRAC_GPU_INFO");
+      if ((env_gpu_info!=NULL) && (env_gpu_info[0]=='Y')) {
+         printf("INFO (unifrac): CPU too old, disabling GPU\n");
+      }
+      ssu="libssu_cpu_basic.so";
+   }
+
+   const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
+   if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
+      printf("INFO (unifrac): Using shared library %s\n",ssu);
+   }
+   return ssu;
+}
+
+/*********************************************************************/
+
+/* Handle pointing to the approriate libssu implementing the functionality
+ * Initialized on first use. */
+static void *dl_handle = NULL;
+
+static void ssu_load(const char *fncname,
+                     void **dl_ptr) {
+   char *error;
+
+   if (dl_handle==NULL) {
+       dl_handle = dlopen(ssu_get_lib_name(), RTLD_LAZY);
+       if (!dl_handle) {
+          fputs(dlerror(), stderr);
+          exit(1);
+       }
+   }
+
+   *dl_ptr = dlsym(dl_handle, fncname);
+   if ((error = dlerror()) != NULL)  {
+       fputs(error, stderr);
+       exit(1);
+   }
+}
+
+/*********************************************************************/
+/* All the functons below are wrappers
+ * and each has its own function pointer
+ * that is initialized on first use */
+/*********************************************************************/
+
+static void (*dl_ssu_set_random_seed)(unsigned int) = NULL;
+void ssu_set_random_seed(unsigned int new_seed) {
+   if (dl_ssu_set_random_seed==NULL) ssu_load("ssu_set_random_seed", (void **) &dl_ssu_set_random_seed);
+
+   (*dl_ssu_set_random_seed)(new_seed);
+}
+
+/*********************************************************************/
+
+static void (*dl_destroy_mat)(mat_t**) = NULL;
+static void (*dl_destroy_mat_full_fp64)(mat_full_fp64_t**) = NULL;
+static void (*dl_destroy_mat_full_fp32)(mat_full_fp32_t**) = NULL;
+static void (*dl_destroy_partial_mat)(partial_mat_t**) = NULL;
+static void (*dl_destroy_partial_dyn_mat)(partial_dyn_mat_t**) = NULL;
+static void (*dl_destroy_results_vec)(r_vec**) = NULL;
+
+void destroy_mat(mat_t** result) {
+   if (dl_destroy_mat==NULL) ssu_load("destroy_mat", (void **) &dl_destroy_mat);
+
+   (*dl_destroy_mat)(result);
+}
+
+void destroy_mat_full_fp64(mat_full_fp64_t** result) {
+   if (dl_destroy_mat_full_fp64==NULL) ssu_load("destroy_mat_full_fp64", (void **) &dl_destroy_mat_full_fp64);
+
+   (*dl_destroy_mat_full_fp64)(result);
+}
+
+void destroy_mat_full_fp32(mat_full_fp32_t** result) {
+   if (dl_destroy_mat_full_fp32==NULL) ssu_load("destroy_mat_full_fp32", (void **) &dl_destroy_mat_full_fp32);
+
+   (*dl_destroy_mat_full_fp32)(result);
+}
+
+void destroy_partial_mat(partial_mat_t** result) {
+   if (dl_destroy_partial_mat==NULL) ssu_load("destroy_partial_mat", (void **) &dl_destroy_partial_mat);
+
+   (*dl_destroy_partial_mat)(result);
+}
+
+void destroy_partial_dyn_mat(partial_dyn_mat_t** result) {
+   if (dl_destroy_partial_dyn_mat==NULL) ssu_load("destroy_partial_dyn_mat", (void **) &dl_destroy_partial_dyn_mat);
+
+   (*dl_destroy_partial_dyn_mat)(result);
+}
+
+void destroy_results_vec(r_vec** result) {
+   if (dl_destroy_results_vec==NULL) ssu_load("destroy_results_vec", (void **) &dl_destroy_results_vec);
+
+   (*dl_destroy_results_vec)(result);
+}
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_one_off)(const char*, const char*, const char*, bool, double, bool, unsigned int, mat_t**) = NULL;
+ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+   if (dl_one_off==NULL) ssu_load("one_off", (void **) &dl_one_off);
+
+   return (*dl_one_off)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_one_off_matrix_inmem_v2)(const support_biom_t *, const support_bptree_t *, const char*, bool, double, 
+                                                   bool, unsigned int, unsigned int, bool, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_inmem)(const support_biom_t *, const support_bptree_t *, const char*, bool, double,
+                                         bool, unsigned int, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_inmem_fp32_v2)(const support_biom_t *, const support_bptree_t *, const char*, bool, double,
+                                                        bool, unsigned int, unsigned int, bool, const char *, mat_full_fp32_t**) = NULL;
+static ComputeStatus (*dl_one_off_inmem_fp32)(const support_biom_t *, const support_bptree_t *, const char*, bool, double,
+                                              bool, unsigned int, mat_full_fp32_t**) = NULL;
+
+ComputeStatus one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp64_t** result) {
+   if (dl_one_off_matrix_inmem_v2==NULL) ssu_load("one_off_matrix_inmem_v2", (void **) &dl_one_off_matrix_inmem_v2);
+
+   return (*dl_one_off_matrix_inmem_v2)(table_data, tree_data, unifrac_method, variance_adjust, alpha,
+                                 bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int n_substeps, mat_full_fp64_t** result) {
+   if (dl_one_off_inmem==NULL) ssu_load("one_off_inmem", (void **) &dl_one_off_inmem);
+
+   return (*dl_one_off_inmem)(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
+ComputeStatus one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                                  bool bypass_tips, unsigned int n_substeps,
+                                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                                  mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_inmem_fp32_v2==NULL) ssu_load("one_off_matrix_inmem_fp32_v2", (void **) &dl_one_off_matrix_inmem_fp32_v2);
+
+   return (*dl_one_off_matrix_inmem_fp32_v2)(table_data, tree_data, unifrac_method, variance_adjust, alpha,
+                                      bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps, mat_full_fp32_t** result) {
+   if (dl_one_off_inmem_fp32==NULL) ssu_load("one_off_inmem_fp32", (void **) &dl_one_off_inmem_fp32);
+
+   return (*dl_one_off_inmem_fp32)(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_one_off_matrix_v2)(const char*, const char*, const char*, bool, double,
+                                             bool, unsigned int, unsigned int, bool, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix)(const char*, const char*, const char*, bool, double,
+                                          bool, unsigned int, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_fp32_v2)(const char*, const char*, const char*, bool, double,
+                                                  bool, unsigned int, unsigned int, bool, const char *, mat_full_fp32_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_fp32)(const char*, const char*, const char*, bool, double,
+                                               bool, unsigned int, const char *, mat_full_fp32_t**) = NULL;
+
+ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, unsigned int n_substeps,
+                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                       mat_full_fp64_t** result) {
+   if (dl_one_off_matrix_v2==NULL) ssu_load("one_off_matrix_v2", (void **) &dl_one_off_matrix_v2);
+
+   return (*dl_one_off_matrix_v2)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                           bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
+                                    const char* unifrac_method, bool variance_adjust, double alpha,
+                                    bool bypass_tips, unsigned int n_substeps,
+                                    const char *mmap_dir,
+                                    mat_full_fp64_t** result) {
+   if (dl_one_off_matrix==NULL) ssu_load("one_off_matrix", (void **) &dl_one_off_matrix);
+
+   return (*dl_one_off_matrix)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                        bypass_tips, n_substeps, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int n_substeps,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_fp32_v2==NULL) ssu_load("one_off_matrix_fp32_v2", (void **) &dl_one_off_matrix_fp32_v2);
+
+   return (*dl_one_off_matrix_fp32_v2)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
+                                         const char* unifrac_method, bool variance_adjust, double alpha,
+                                         bool bypass_tips, unsigned int n_substeps,
+                                         const char *mmap_dir,
+                                         mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_fp32==NULL) ssu_load("one_off_matrix_fp32", (void **) &dl_one_off_matrix_fp32);
+
+   return (*dl_one_off_matrix_fp32)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                             bypass_tips, n_substeps, mmap_dir, result);
+}
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_faith_pd_one_off)(const char*, const char*, r_vec**) = NULL;
+ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tree_filename,
+                                      r_vec** result) {
+   if (dl_faith_pd_one_off==NULL) ssu_load("faith_pd_one_off", (void **) &dl_faith_pd_one_off);
+
+   return (*dl_faith_pd_one_off)(biom_filename, tree_filename, result);
+}
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_unifrac_to_file_v2)(const char*, const char*, const char*, const char*, bool, double,
+                                              bool, unsigned int, const char*, unsigned int, bool, 
+                                              unsigned int, unsigned int, const char *, const char *, const char *) = NULL;
+static ComputeStatus (*dl_unifrac_to_file)(const char*, const char*, const char*, const char*, bool, double,
+                                           bool, unsigned int, const char*, unsigned int, const char *) = NULL;
+static ComputeStatus (*dl_unifrac_multi_to_file_v2)(const char*, const char*, const char*, const char*, bool, double,
+                                              bool, unsigned int, const char*, unsigned int, unsigned int, bool, 
+                                              unsigned int, unsigned int, const char *, const char *, const char *) = NULL;
+
+ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps, const char* format,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, 
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir){
+   if (dl_unifrac_to_file_v2==NULL) ssu_load("unifrac_to_file_v2", (void **) &dl_unifrac_to_file_v2);
+
+   return (*dl_unifrac_to_file_v2)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha,
+                            bypass_tips, n_substeps, format, subsample_depth, subsample_with_replacement,
+                            pcoa_dims, permanova_perms, grouping_filename, grouping_columns, mmap_dir);
+}
+
+ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                     const char* unifrac_method, bool variance_adjust, double alpha,
+                                     bool bypass_tips, unsigned int n_substeps, const char* format,
+                                     unsigned int pcoa_dims, const char *mmap_dir) {
+   if (dl_unifrac_to_file==NULL) ssu_load("unifrac_to_file", (void **) &dl_unifrac_to_file);
+
+   return (*dl_unifrac_to_file)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha, 
+                         bypass_tips, n_substeps, format, pcoa_dims, mmap_dir);
+}
+
+ComputeStatus unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                              const char* unifrac_method, bool variance_adjust, double alpha,
+                                              bool bypass_tips, unsigned int n_substeps, const char* format,
+                                              unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement, 
+                                              unsigned int pcoa_dims,
+                                              unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                              const char *mmap_dir) {
+   if (dl_unifrac_multi_to_file_v2==NULL) ssu_load("unifrac_multi_to_file_v2", (void **) &dl_unifrac_multi_to_file_v2);
+
+   return (*dl_unifrac_multi_to_file_v2)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha,
+                                  bypass_tips, n_substeps, format, n_subsamples, subsample_depth, subsample_with_replacement,
+                                  pcoa_dims, permanova_perms, grouping_filename, grouping_columns, mmap_dir);
+}
+
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_compute_permanova_fp64)(const char *, unsigned int, const char**, mat_full_fp64_t *, unsigned int, double *, double *) = NULL;
+static ComputeStatus (*dl_compute_permanova_fp32)(const char *, unsigned int, const char**, mat_full_fp32_t *, unsigned int, float *, float *) = NULL;
+
+ComputeStatus compute_permanova_fp64(const char *grouping_filename, unsigned int n_columns, const char* *columns,
+                                            mat_full_fp64_t * result, unsigned int permanova_perms,
+                                            double *fstats, double *pvalues) {
+   if (dl_compute_permanova_fp64==NULL) ssu_load("compute_permanova_fp64", (void **) &dl_compute_permanova_fp64);
+
+   return (*dl_compute_permanova_fp64)(grouping_filename, n_columns, columns, result, permanova_perms, fstats, pvalues);
+}
+
+ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int n_columns, const char* * columns,
+                                            mat_full_fp32_t * result, unsigned int permanova_perms,
+                                            float *fstats, float *pvalues) {
+   if (dl_compute_permanova_fp32==NULL) ssu_load("compute_permanova_fp32", (void **) &dl_compute_permanova_fp32);
+
+   return (*dl_compute_permanova_fp32)(grouping_filename, n_columns, columns, result, permanova_perms, fstats, pvalues);
+}
+
+/*********************************************************************/
+
+static IOStatus (*dl_write_mat)(const char*, mat_t*) = NULL;
+static IOStatus (*dl_write_mat_from_matrix)(const char*, mat_full_fp64_t*) = NULL;
+static IOStatus (*dl_write_vec)(const char*, r_vec*) = NULL;
+
+IOStatus write_mat(const char* filename, mat_t* result) {
+   if (dl_write_mat==NULL) ssu_load("write_mat", (void **) &dl_write_mat);
+
+   return (*dl_write_mat)(filename, result);
+}
+
+IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result) {
+   if (dl_write_mat_from_matrix==NULL) ssu_load("write_mat_from_matrix", (void **) &dl_write_mat_from_matrix);
+
+   return (*dl_write_mat_from_matrix)(filename, result);
+}
+
+IOStatus write_vec(const char* filename, r_vec* result) {
+   if (dl_write_vec==NULL) ssu_load("write_vec", (void **) &dl_write_vec);
+
+   return (*dl_write_vec)(filename, result);
+}
+
+/*********************************************************************/
+
+static IOStatus (*dl_write_mat_from_matrix_hdf5_fp64_v2)(const char*, mat_full_fp64_t*, unsigned int, int, unsigned int,
+                                                         const char* *, const char**, const double *, const double *, const unsigned int *,
+                                                         const char**, const unsigned int *) = NULL;
+static IOStatus (*dl_write_mat_from_matrix_hdf5_fp64)(const char*, mat_full_fp64_t*, unsigned int, int) = NULL;
+static IOStatus (*dl_write_mat_from_matrix_hdf5_fp32_v2)(const char*, mat_full_fp32_t*, unsigned int, int, unsigned int,
+                                                         const char**, const char**, const float *, const float *, const unsigned int *,
+                                                         const char**, const unsigned int *) = NULL;
+static IOStatus (*dl_write_mat_from_matrix_hdf5_fp32)(const char*, mat_full_fp32_t*, unsigned int, int) = NULL;
+
+IOStatus write_mat_from_matrix_hdf5_fp64_v2(const char* output_filename, mat_full_fp64_t* result,
+                                                   unsigned int pcoa_dims, int save_dist,
+                                                   unsigned int stat_n_vals,
+                                                   const char*  *stat_method_arr,     const char*        *stat_name_arr,
+                                                   const double *stat_val_arr,        const double       *stat_pval_arr, const unsigned int *stat_perm_count_arr,
+                                                   const char*  *stat_group_name_arr, const unsigned int *stat_group_count_arr) {
+   if (dl_write_mat_from_matrix_hdf5_fp64_v2==NULL) ssu_load("write_mat_from_matrix_hdf5_fp64_v2", (void **) &dl_write_mat_from_matrix_hdf5_fp64_v2);
+
+   return (*dl_write_mat_from_matrix_hdf5_fp64_v2)(output_filename, result, pcoa_dims, save_dist, stat_n_vals,
+                                            stat_method_arr, stat_name_arr, stat_val_arr, stat_pval_arr, stat_perm_count_arr,
+                                            stat_group_name_arr, stat_group_count_arr);
+}
+
+IOStatus write_mat_from_matrix_hdf5_fp64(const char* filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist) {
+   if (dl_write_mat_from_matrix_hdf5_fp64==NULL) ssu_load("write_mat_from_matrix_hdf5_fp64", (void **) &dl_write_mat_from_matrix_hdf5_fp64);
+
+   return (*dl_write_mat_from_matrix_hdf5_fp64)(filename, result, pcoa_dims, save_dist);
+}
+
+IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_full_fp32_t* result,
+                                                   unsigned int pcoa_dims, int save_dist,
+                                                   unsigned int stat_n_vals,
+                                                   const char*  *stat_method_arr,     const char*        *stat_name_arr,
+                                                   const float  *stat_val_arr,        const float        *stat_pval_arr, const unsigned int *stat_perm_count_arr,
+                                                   const char*  *stat_group_name_arr, const unsigned int *stat_group_count_arr) {
+   if (dl_write_mat_from_matrix_hdf5_fp32_v2==NULL) ssu_load("write_mat_from_matrix_hdf5_fp32_v2", (void **) &dl_write_mat_from_matrix_hdf5_fp32_v2);
+
+   return (*dl_write_mat_from_matrix_hdf5_fp32_v2)(output_filename, result, pcoa_dims, save_dist, stat_n_vals,
+                                            stat_method_arr, stat_name_arr, stat_val_arr, stat_pval_arr, stat_perm_count_arr,
+                                            stat_group_name_arr, stat_group_count_arr);
+}
+
+IOStatus write_mat_from_matrix_hdf5_fp32(const char* filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist) {
+   if (dl_write_mat_from_matrix_hdf5_fp32==NULL) ssu_load("write_mat_from_matrix_hdf5_fp32", (void **) &dl_write_mat_from_matrix_hdf5_fp32);
+
+   return (*dl_write_mat_from_matrix_hdf5_fp32)(filename, result, pcoa_dims, save_dist);
+}
+
+
