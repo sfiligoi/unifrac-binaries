@@ -649,7 +649,7 @@ void test_subsample_replacement() {
     std::string oids_org[] = {"GG_OTU_1", "GG_OTU_2","GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     std::vector<std::string> exp_org_oids = _string_array_to_vector(oids_org, exp_org_n_obs);
 
-    su::skbio_biom_subsampled table(org_table,false,5);
+    su::skbio_biom_subsampled table(org_table,true,5);
     uint32_t exp_n_samples = 2;
     uint32_t exp_n_obs = 3;
 
@@ -691,7 +691,7 @@ void test_subsample_replacement() {
       std::unordered_set<uint64_t> perm_set;
       // will pick column 1
       for (int i=0; i<1000; i++) {
-         su::skbio_biom_subsampled table2(org_table,false,5);
+         su::skbio_biom_subsampled table2(org_table,true,5);
 
          uint64_t val = 0;
          for (auto obs_id : table2.get_obs_ids()) {
@@ -702,6 +702,65 @@ void test_subsample_replacement() {
          perm_set.insert(val);
       }
       ASSERT(uint32_t(perm_set.size()) > uint32_t(5));
+    }
+
+    su::skbio_biom_subsampled table_empty(org_table,true,8);
+    uint32_t exp_empty_n_samples = 0;
+    uint32_t exp_empty_n_obs = 0;
+
+    ASSERT(table_empty.n_samples == exp_empty_n_samples);
+    ASSERT(table_empty.n_obs == exp_empty_n_obs);
+
+    SUITE_END();
+}
+
+void test_subsample_woreplacement() {
+    SUITE_START("test subsample without replacement");
+
+    su::biom org_table("test.biom");
+    uint32_t exp_org_n_samples = 6;
+    uint32_t exp_org_n_obs = 5;
+
+    std::string sids_org[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
+    std::vector<std::string> exp_org_sids = _string_array_to_vector(sids_org, exp_org_n_samples);
+
+    std::string oids_org[] = {"GG_OTU_1", "GG_OTU_2","GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
+    std::vector<std::string> exp_org_oids = _string_array_to_vector(oids_org, exp_org_n_obs);
+
+    su::skbio_biom_subsampled table(org_table,false,5);
+    uint32_t exp_n_samples = 2;
+    uint32_t exp_n_obs = 3;
+
+    std::string sids[] = {"Sample1", "Sample4"};
+    std::vector<std::string> exp_sids = _string_array_to_vector(sids, exp_n_samples);
+
+    std::string oids[] = {"GG_OTU_2","GG_OTU_3", "GG_OTU_4"};
+    std::vector<std::string> exp_oids = _string_array_to_vector(oids, exp_n_obs);
+
+    // verify it did not destroy the original table
+    ASSERTINTEQ(org_table.n_samples , exp_org_n_samples);
+    ASSERTINTEQ(org_table.n_obs , exp_org_n_obs);
+    ASSERT(org_table.get_sample_ids() == exp_org_sids);
+    ASSERT(org_table.get_obs_ids() == exp_org_oids);
+
+    // now check basic rarefaction properties
+    ASSERTINTEQ(table.n_samples , exp_n_samples);
+    ASSERTINTLE(table.n_obs , exp_n_obs);
+    ASSERT(table.get_sample_ids() == exp_sids);
+    // when with replacement
+    // all columns should add to n==5
+    {
+      double exp_data[2] = {5.0, 5.0};
+      std::vector<double> exp_vec = _double_array_to_vector(exp_data, 2);
+
+      double data_sum[2] = {0.0, 0.0};
+      for (auto obs_id : table.get_obs_ids()) {
+         double line[2];
+         table.get_obs_data(obs_id, line);
+         for (int j=0; j<2; j++) data_sum[j] += line[j];
+      }
+      std::vector<double> sum_vec = _double_array_to_vector(data_sum, 2);
+      ASSERT(sum_vec == exp_vec);
     }
 
     su::skbio_biom_subsampled table_empty(org_table,false,8);
@@ -723,6 +782,7 @@ int main(int argc, char** argv) {
     test_permanova_noties();
     test_permanova_unequal();
     test_subsample_replacement();
+    test_subsample_woreplacement();
 
     printf("\n");
     printf(" %i / %i suites failed\n", suites_failed, suites_run);

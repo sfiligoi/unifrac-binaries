@@ -11,6 +11,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <random>
+#include <vector>
+#include <algorithm>
 
 #include "biom_subsampled.hpp"
 
@@ -96,6 +98,8 @@ void linked_sparse_transposed::transposed_subsample_with_replacement(const uint3
 
         for (unsigned int j=0; j<length; j++) data_in[j] = *(data_arr[j]);
         
+        // note: We are assuming length>=n
+        //      Enforced by the caller (via filtering)
         std::discrete_distribution<uint32_t> multinomial(data_in, data_in+length);
         for (unsigned int j=0; j<length; j++) data_out[j] = 0;
         for (uint32_t j=0; j<n; j++) data_out[multinomial(generator)]++;
@@ -106,11 +110,136 @@ void linked_sparse_transposed::transposed_subsample_with_replacement(const uint3
     delete[] data_in;
 }
 
+
+// Equivalent to iterator over np.repeat
+// https://github.com/biocore/biom-format/blob/b0e71a00ecb349a6f5f1ca64a23d71f380ddc19c/biom/_subsample.pyx#LL64C24-L64C55
+class WeightedSampleIterator
+{
+public:
+    // While we do not implememnt the whole random_access_iterator interface
+    // we want the implementations to use operator- and that requires random
+    using iterator_category = std::random_access_iterator_tag;
+    using difference_type   = int64_t;
+    using value_type        = uint32_t;
+    using pointer           = const uint32_t*;
+    using reference         = const uint32_t&;
+
+    WeightedSampleIterator(uint64_t *_data_in, uint32_t _idx, uint64_t _cnt)
+    : data_in(_data_in)
+    , idx(_idx)
+    , cnt(_cnt)
+    {}
+
+    reference operator*() const { return idx; }
+    pointer operator->() const { return &idx; }
+
+    WeightedSampleIterator& operator++()
+    {  
+       cnt++;
+       if (cnt>=data_in[idx]) {
+         cnt = 0;
+         idx++;
+       }
+       return *this;
+    }
+
+    WeightedSampleIterator operator++(int) { WeightedSampleIterator tmp = *this; ++(*this); return tmp; }
+
+    friend bool operator== (const WeightedSampleIterator& a, const WeightedSampleIterator& b)
+    {
+       return (a.data_in == b.data_in) && (a.idx == b.idx) && (a.cnt==b.cnt);
+    };
+
+    friend bool operator!= (const WeightedSampleIterator& a, const WeightedSampleIterator& b)
+    {
+       return !((a.data_in == b.data_in) && (a.idx == b.idx) && (a.cnt==b.cnt));
+    };
+
+    friend int64_t operator-(const WeightedSampleIterator& b, const WeightedSampleIterator& a)
+    {
+       int64_t diff = 0;
+       //assert(a.data_in == b.data_in);
+       //assert(a.idx <= b.idx);
+       //assert((a.idx > b.idx) || (a.cnt<=b.cnt));
+
+       //printf("My diff\n");
+
+       for (uint32_t i = a.idx; i<b.idx; i++) {
+          diff += a.data_in[i];
+       }
+
+       return diff + b.cnt - a.cnt;
+    };
+
+private:
+
+    uint64_t *data_in;
+    uint32_t idx; // index of data_in
+    uint64_t cnt; // how deep in data_in[idx] are we (must be < data_in[idx])
+};
+
+class WeightedSample
+{
+public:
+    WeightedSample(uint32_t _max_count)
+    : max_count(_max_count)
+    , current_count(0)
+    , data(max_count)
+    {}
+
+    void assign(uint32_t length, double **data_arr) {
+       current_count = length;
+       for (uint32_t j=0; j<length; j++) data[j] = *(data_arr[j]);
+    }
+
+    WeightedSampleIterator begin() { return WeightedSampleIterator(data.data(),0,0); }
+    WeightedSampleIterator end()   { return WeightedSampleIterator(data.data(),current_count,0); } // current_count is out of bounds
+public:
+    uint32_t max_count;
+    uint32_t current_count;
+    // use persistent buffer to minimize allocation costs
+    std::vector<uint64_t> data;  // original values
+};
+
+
+void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+    std::mt19937 generator(random_seed);
+
+    // use common buffer to minimize allocation costs
+    WeightedSample sample_data(max_count);   // input buffer
+    std::vector<uint32_t> sample_out(n);     // random output buffer
+    uint32_t *data_out = new uint32_t[max_count]; // computed values
+
+    for (uint32_t i=0; i<n_obs; i++) {
+        unsigned int length = obs_counts_resident[i];
+        double* *data_arr = obs_data_resident[i];
+
+        for (unsigned int j=0; j<length; j++) data_out[j] = 0;
+
+        // note: We are assuming length>=n
+        //      Enforced by the caller (via filtering)
+        sample_data.assign(length,data_arr);
+        std::sample(sample_data.begin(), sample_data.end(),
+                    sample_out.begin(), n,
+                    generator);
+
+        for (uint32_t j=0; j<n; j++) data_out[sample_out[j]]++;
+
+        for (unsigned int j=0; j<length; j++) *(data_arr[j]) = data_out[j];
+    }
+    delete[] data_out;
+}
+
 // =====================  sparse_data_subsampled  ==========================
 
 void sparse_data_subsampled::subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
     linked_sparse_transposed transposed(*this);
     transposed.transposed_subsample_with_replacement(n,random_seed);
+}
+
+void sparse_data_subsampled::subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+    linked_sparse_transposed transposed(*this);
+    transposed.transposed_subsample_without_replacement(n,random_seed);
 }
 
 // =====================  biom_subsampled  ==========================
@@ -121,7 +250,11 @@ biom_subsampled::biom_subsampled(const biom_inmem &parent, const bool w_replacem
    sparse_data_subsampled tmp_obj(parent.get_resident_obj(), parent.get_sample_counts(), n);
    if ((tmp_obj.n_obs==0) || (tmp_obj.n_samples==0)) return; //already everything filtered out
 
-   tmp_obj.subsample_with_replacement(n,random_seed);
+   if (w_replacement) {
+     tmp_obj.subsample_with_replacement(n,random_seed);
+   } else {
+     tmp_obj.subsample_without_replacement(n,random_seed);
+   } 
    // Note: We could filter out the zero rows
    // But that's just an optimization and will not be worth it most of the time
    steal_nonzero(parent,tmp_obj);
