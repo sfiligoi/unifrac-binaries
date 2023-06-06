@@ -71,9 +71,10 @@ namespace su {
             /* default constructor
              *
              * @param parent biom object to subsample
+             * @param w_replacement Whether to permute or use multinomial sampling
              * @param n Number of items to subsample
              */
-            biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed);
+            biom_subsampled(const biom_inmem &parent, const bool w_replacement, const uint32_t n, const uint32_t random_seed);
 
         protected:
             void steal_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj);

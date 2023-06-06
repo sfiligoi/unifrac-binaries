@@ -115,7 +115,7 @@ void sparse_data_subsampled::subsample_with_replacement(const uint32_t n, const 
 
 // =====================  biom_subsampled  ==========================
 
-biom_subsampled::biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed) 
+biom_subsampled::biom_subsampled(const biom_inmem &parent, const bool w_replacement, const uint32_t n, const uint32_t random_seed)
   : biom_inmem(true)
 {
    sparse_data_subsampled tmp_obj(parent.get_resident_obj(), parent.get_sample_counts(), n);
