@@ -649,7 +649,7 @@ void test_subsample_replacement() {
     std::string oids_org[] = {"GG_OTU_1", "GG_OTU_2","GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
     std::vector<std::string> exp_org_oids = _string_array_to_vector(oids_org, exp_org_n_obs);
 
-    su::skbio_biom_subsampled table(org_table,5);
+    su::skbio_biom_subsampled table(org_table,false,5);
     uint32_t exp_n_samples = 2;
     uint32_t exp_n_obs = 3;
 
@@ -691,7 +691,7 @@ void test_subsample_replacement() {
       std::unordered_set<uint64_t> perm_set;
       // will pick column 1
       for (int i=0; i<1000; i++) {
-         su::skbio_biom_subsampled table2(org_table,5);
+         su::skbio_biom_subsampled table2(org_table,false,5);
 
          uint64_t val = 0;
          for (auto obs_id : table2.get_obs_ids()) {
@@ -704,7 +704,7 @@ void test_subsample_replacement() {
       ASSERT(uint32_t(perm_set.size()) > uint32_t(5));
     }
 
-    su::skbio_biom_subsampled table_empty(org_table,8);
+    su::skbio_biom_subsampled table_empty(org_table,false,8);
     uint32_t exp_empty_n_samples = 0;
     uint32_t exp_empty_n_obs = 0;
 
