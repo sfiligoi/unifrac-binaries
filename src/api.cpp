@@ -1252,11 +1252,6 @@ compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
     compute_status rc = okay;
     SETUP_TDBG("unifrac_multi_to_file")
 
-    if (!subsample_with_replacement) {
-      fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-      return table_empty;
-    }
-
     if (subsample_depth<1) {
       fprintf(stderr, "ERROR: subsampling depth cannot be 0.\n");
       return table_empty;

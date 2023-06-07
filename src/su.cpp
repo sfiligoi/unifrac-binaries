@@ -49,6 +49,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix. (default if mode==multi)" << std::endl;
     std::cout << "    --subsample-depth\tDepth of subsampling of the input BIOM before computing unifrac (required for mode==multi, optional for one-off)" << std::endl;
+    std::cout << "    --subsample-without-replacement\tUse the subsample without replacement (default is with replacement)" << std::endl;
     std::cout << "    --n-subsamples\t[OPTIONAL] if mode==multi, number of subsampled UniFracs to compute (default: 100)" << std::endl;
     std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
@@ -393,7 +394,7 @@ int mode_partial(std::string table_filename, std::string tree_filename,
 
 int mode_one_off(const std::string &table_filename, const std::string &tree_filename, 
                  const std::string &output_filename, const std::string &format_str, Format format_val, 
-                 const std::string &method_string, unsigned int subsample_depth, unsigned int pcoa_dims,
+                 const std::string &method_string, unsigned int subsample_depth, bool subsample_with_replacement, unsigned int pcoa_dims,
                  unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
                  bool vaw, double g_unifrac_alpha, bool bypass_tips,
                  unsigned int nsubsteps, const std::string &mmap_dir) {
@@ -457,7 +458,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
 
       status = unifrac_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
                                   method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
-                                  subsample_depth, true,
+                                  subsample_depth, subsample_with_replacement,
                                   pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
       if (status != okay) {
@@ -471,7 +472,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
 int mode_multi(const std::string &table_filename, const std::string &tree_filename, 
                const std::string &output_filename, const std::string &format_str, Format format_val, 
                const std::string &method_string,
-               unsigned int n_subsamples, unsigned int subsample_depth,
+               unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
                unsigned int pcoa_dims,
                unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
                bool vaw, double g_unifrac_alpha, bool bypass_tips,
@@ -529,7 +530,7 @@ int mode_multi(const std::string &table_filename, const std::string &tree_filena
 
       status = unifrac_multi_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
                                         method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
-                                        n_subsamples, subsample_depth, true,
+                                        n_subsamples, subsample_depth, subsample_with_replacement,
                                         pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
       if (status != okay) {
@@ -617,6 +618,7 @@ int main(int argc, char **argv){
     std::string seed_arg = input.getCmdOption("--seed");
     std::string subsample_depth_arg = input.getCmdOption("--subsample-depth");
     std::string n_subsamples_arg = input.getCmdOption("--n-subsamples");
+    std::string subsample_without_replacement_opt = input.getCmdOption("--subsample-without-replacement");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
     if(nsubsteps_arg.empty()) {
@@ -628,6 +630,7 @@ int main(int argc, char **argv){
     bool vaw = input.cmdOptionExists("--vaw"); 
     bool bare = input.cmdOptionExists("--report-bare"); 
     bool bypass_tips = input.cmdOptionExists("-f");
+    bool subsample_without_replacement = input.cmdOptionExists("--subsample-without-replacement"); 
     double g_unifrac_alpha;
 
     if(gunifrac_arg.empty()) {
@@ -723,7 +726,7 @@ int main(int argc, char **argv){
 
     if(mode_arg.empty() || mode_arg == "one-off")
         return mode_one_off(table_filename, tree_filename, output_filename,  format2str(format_val), format_val, method_string,
-                            subsample_depth,
+                            subsample_depth, !subsample_without_replacement,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                             vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
     else if(mode_arg == "partial") {
@@ -742,7 +745,7 @@ int main(int argc, char **argv){
         return mode_partial_report(table_filename, uint32_t(n_partials), bare);
     else if(mode_arg == "multi" || mode_arg == "multiple")
         return mode_multi(table_filename, tree_filename, output_filename, format2str(format_val), format_val, method_string,
-                            n_subsamples,subsample_depth,
+                            n_subsamples,subsample_depth, !subsample_without_replacement,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                             vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
     else 
