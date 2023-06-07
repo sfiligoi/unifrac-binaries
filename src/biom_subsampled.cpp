@@ -13,6 +13,7 @@
 #include <random>
 #include <vector>
 #include <algorithm>
+#include <omp.h>
 
 #include "biom_subsampled.hpp"
 
@@ -181,45 +182,23 @@ private:
 class WeightedSample
 {
 public:
-    WeightedSample(uint32_t _max_count)
+    WeightedSample(uint32_t _max_count, uint32_t _n, uint32_t random_seed)
     : max_count(_max_count)
+    , n(_n)
+    , generator(random_seed)
     , current_count(0)
     , data(max_count)
+    , sample_out(n)
+    , data_out(max_count)
     {}
 
-    void assign(uint32_t length, double **data_arr) {
-       current_count = length;
-       for (uint32_t j=0; j<length; j++) data[j] = *(data_arr[j]);
-    }
-
-    WeightedSampleIterator begin() { return WeightedSampleIterator(data.data(),0,0); }
-    WeightedSampleIterator end()   { return WeightedSampleIterator(data.data(),current_count,0); } // current_count is out of bounds
-public:
-    uint32_t max_count;
-    uint32_t current_count;
-    // use persistent buffer to minimize allocation costs
-    std::vector<uint64_t> data;  // original values
-};
-
-
-void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
-    std::mt19937 generator(random_seed);
-
-    // use common buffer to minimize allocation costs
-    WeightedSample sample_data(max_count);   // input buffer
-    std::vector<uint32_t> sample_out(n);     // random output buffer
-    uint32_t *data_out = new uint32_t[max_count]; // computed values
-
-    for (uint32_t i=0; i<n_obs; i++) {
-        unsigned int length = obs_counts_resident[i];
-        double* *data_arr = obs_data_resident[i];
-
+   void do_sample(unsigned int length, double* *data_arr) {
         for (unsigned int j=0; j<length; j++) data_out[j] = 0;
 
         // note: We are assuming length>=n
         //      Enforced by the caller (via filtering)
-        sample_data.assign(length,data_arr);
-        std::sample(sample_data.begin(), sample_data.end(),
+        assign(length,data_arr);
+        std::sample(begin(), end(),
                     sample_out.begin(), n,
                     generator);
 
@@ -227,7 +206,42 @@ void linked_sparse_transposed::transposed_subsample_without_replacement(const ui
 
         for (unsigned int j=0; j<length; j++) *(data_arr[j]) = data_out[j];
     }
-    delete[] data_out;
+
+private:
+    void assign(uint32_t length, double * *data_arr) {
+       current_count = length;
+       for (uint32_t j=0; j<length; j++) data[j] = *(data_arr[j]);
+    }
+
+    WeightedSampleIterator begin() { return WeightedSampleIterator(data.data(),0,0); }
+    WeightedSampleIterator end()   { return WeightedSampleIterator(data.data(),current_count,0); } // current_count is out of bounds
+
+    uint32_t max_count;
+    uint32_t n;
+    std::mt19937 generator;
+
+    uint32_t current_count;
+
+    // use persistent buffer to minimize allocation costs
+    std::vector<uint64_t> data;  // original values
+    std::vector<uint32_t> sample_out;     // random output buffer
+    std::vector<uint32_t> data_out; // computed values
+};
+
+
+void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+    const uint32_t max_threads = omp_get_max_threads();
+    std::mt19937 master_generator(random_seed);
+
+    // use common buffer to minimize allocation cost, but need one per thread
+    std::vector<WeightedSample> sample_data_arr;
+    for (uint32_t i=0; i<max_threads; i++) sample_data_arr.emplace(sample_data_arr.end(), max_count, n, master_generator());
+    
+    #pragma omp parallel for
+    for (uint32_t i=0; i<n_obs; i++) {
+        int my_thread_num = omp_get_thread_num();
+        sample_data_arr[my_thread_num].do_sample(obs_counts_resident[i], obs_data_resident[i]);
+    }
 }
 
 // =====================  sparse_data_subsampled  ==========================
