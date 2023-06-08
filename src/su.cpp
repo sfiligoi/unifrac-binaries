@@ -700,7 +700,12 @@ int main(int argc, char **argv){
     }
 
     unsigned int subsample_depth = 0;
-    if(!subsample_depth_arg.empty()) {
+    if(subsample_depth_arg.empty()) {
+        if(mode_arg == "multi" || mode_arg == "multiple") {
+           err("--subsample-depth required in multi mode.");
+           return EXIT_FAILURE;
+        }
+    } else {
         subsample_depth = atoi(subsample_depth_arg.c_str());
     }
 
