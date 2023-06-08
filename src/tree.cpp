@@ -369,16 +369,15 @@ void BPTree::structure_to_openclose() {
 }
 // trim from end
 // from http://stackoverflow.com/a/217605
-static inline std::string &rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-    return s;
+static inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
 }
-
 
 //// WEIRDNESS. THIS SOLVES IT WITH THE RTRIM. ISOLATE, MOVE TO CONSTRUCTOR.
 void BPTree::newick_to_metadata(std::string newick) {
-    newick = rtrim(newick);
+    rtrim(newick);
     
     std::string::iterator start = newick.begin();
     std::string::iterator end = newick.end();
