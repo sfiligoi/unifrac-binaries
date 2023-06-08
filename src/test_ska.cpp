@@ -669,7 +669,7 @@ void test_subsample_replacement() {
     ASSERTINTEQ(table.n_samples , exp_n_samples);
     ASSERTINTLE(table.n_obs , exp_n_obs);
     ASSERT(table.get_sample_ids() == exp_sids);
-    // when with replacement
+
     // all columns should add to n==5
     {
       double exp_data[2] = {5.0, 5.0};
@@ -685,31 +685,93 @@ void test_subsample_replacement() {
       ASSERT(sum_vec == exp_vec);
     }
 
-    // when with replacement
-    // given any column, the number of permutations should be more than n
-    {
-      std::unordered_set<uint64_t> perm_set;
-      // will pick column 1
-      for (int i=0; i<1000; i++) {
-         su::skbio_biom_subsampled table2(org_table,true,5);
-
-         uint64_t val = 0;
-         for (auto obs_id : table2.get_obs_ids()) {
-            double line[2];
-            table2.get_obs_data(obs_id, line);
-            val = val*10 + uint64_t(line[1]);
-         }
-         perm_set.insert(val);
-      }
-      ASSERT(uint32_t(perm_set.size()) > uint32_t(5));
-    }
-
     su::skbio_biom_subsampled table_empty(org_table,true,8);
     uint32_t exp_empty_n_samples = 0;
     uint32_t exp_empty_n_obs = 0;
 
     ASSERT(table_empty.n_samples == exp_empty_n_samples);
     ASSERT(table_empty.n_obs == exp_empty_n_obs);
+
+    SUITE_END();
+}
+
+void test_subsample_replacement_limit() {
+    SUITE_START("test subsample with replacement limit");
+
+    // test case when n == sum(vector) - 1
+
+    const char *t_obs_ids[] = {"OTU0","OTU1","OTU2","OTU3","OTU4",
+                               "OTU5","OTU6","OTU7","OTU8","OTU9"};
+    const char *t_samp_ids[] = {"S1"};
+    uint32_t t_index[] = {0,0,0,0,0,0,0,0,0,0};
+    uint32_t t_idxptr[] = {0,1,2,3,4,5,6,7,8,9,10}; 
+    double t_data[] = {2., 1., 2., 1., 7., 6., 3., 3., 5., 5.};
+    su::biom_inmem org_table(t_obs_ids,t_samp_ids,t_index,t_idxptr,t_data,10,1);
+
+    const uint32_t exp_org_n_samples = 1;
+    const uint32_t exp_org_n_obs = 10;
+
+    // verify we did the right thing
+    ASSERTINTEQ(org_table.n_samples , exp_org_n_samples);
+    ASSERTINTEQ(org_table.n_obs , exp_org_n_obs);
+
+    // column should add to n==35
+    {
+      double exp_data[1] = {35.0};
+      std::vector<double> exp_vec = _double_array_to_vector(exp_data, 1);
+
+      double data_sum[1] = {0.0};
+      for (auto obs_id : org_table.get_obs_ids()) {
+         double line[1];
+         org_table.get_obs_data(obs_id, line);
+         for (int j=0; j<1; j++) data_sum[j] += line[j];
+      }
+      std::vector<double> sum_vec = _double_array_to_vector(data_sum, 1);
+      ASSERT(sum_vec == exp_vec);
+    }
+
+    su::skbio_biom_subsampled table(org_table,true,34);
+    uint32_t exp_n_samples = 1;
+    uint32_t exp_n_obs = 10;
+
+    // now check basic rarefaction properties
+    ASSERTINTEQ(table.n_samples , exp_n_samples);
+    ASSERTINTLE(table.n_obs , exp_n_obs);
+
+    // column should add to n==34
+    {
+      double exp_data[1] = {34.0};
+      std::vector<double> exp_vec = _double_array_to_vector(exp_data, 1);
+
+      double data_sum[1] = {0.0};
+      for (auto obs_id : table.get_obs_ids()) {
+         double line[1];
+         table.get_obs_data(obs_id, line);
+         for (int j=0; j<1; j++) data_sum[j] += line[j];
+      }
+      std::vector<double> sum_vec = _double_array_to_vector(data_sum, 1);
+      ASSERT(sum_vec == exp_vec);
+    }
+
+    // As in scikit-bio and biom-format
+    // when with replacement
+    // the number of permutations should be more than n
+    {
+      std::unordered_set<uint64_t> perm_set;
+      // will pick column 1
+      for (int i=0; i<1000; i++) {
+         su::skbio_biom_subsampled table2(org_table,true,34);
+
+         uint64_t val = 0;
+         for (auto obs_id : table2.get_obs_ids()) {
+            double line[1];
+            table2.get_obs_data(obs_id, line);
+            val = val*8 + uint64_t(line[0]);
+         }
+         perm_set.insert(val);
+      }
+      ASSERT(uint32_t(perm_set.size()) > uint32_t(10));
+    }
 
     SUITE_END();
 }
@@ -747,7 +809,7 @@ void test_subsample_woreplacement() {
     ASSERTINTEQ(table.n_samples , exp_n_samples);
     ASSERTINTLE(table.n_obs , exp_n_obs);
     ASSERT(table.get_sample_ids() == exp_sids);
-    // when with replacement
+
     // all columns should add to n==5
     {
       double exp_data[2] = {5.0, 5.0};
@@ -773,6 +835,87 @@ void test_subsample_woreplacement() {
     SUITE_END();
 }
 
+void test_subsample_woreplacement_limit() {
+    SUITE_START("test subsample without replacement limit");
+
+    // test case when n == sum(vector) - 1
+
+    const char *t_obs_ids[] = {"OTU0","OTU1","OTU2","OTU3","OTU4",
+                               "OTU5","OTU6","OTU7","OTU8","OTU9"};
+    const char *t_samp_ids[] = {"S1"};
+    uint32_t t_index[] = {0,0,0,0,0,0,0,0,0,0};
+    uint32_t t_idxptr[] = {0,1,2,3,4,5,6,7,8,9,10}; 
+    double t_data[] = {2., 1., 2., 1., 7., 6., 3., 3., 5., 5.};
+    su::biom_inmem org_table(t_obs_ids,t_samp_ids,t_index,t_idxptr,t_data,10,1);
+
+    const uint32_t exp_org_n_samples = 1;
+    const uint32_t exp_org_n_obs = 10;
+
+    // verify we did the right thing
+    ASSERTINTEQ(org_table.n_samples , exp_org_n_samples);
+    ASSERTINTEQ(org_table.n_obs , exp_org_n_obs);
+
+    // column should add to n==35
+    {
+      double exp_data[1] = {35.0};
+      std::vector<double> exp_vec = _double_array_to_vector(exp_data, 1);
+
+      double data_sum[1] = {0.0};
+      for (auto obs_id : org_table.get_obs_ids()) {
+         double line[1];
+         org_table.get_obs_data(obs_id, line);
+         for (int j=0; j<1; j++) data_sum[j] += line[j];
+      }
+      std::vector<double> sum_vec = _double_array_to_vector(data_sum, 1);
+      ASSERT(sum_vec == exp_vec);
+    }
+
+    su::skbio_biom_subsampled table(org_table,false,34);
+    uint32_t exp_n_samples = 1;
+    uint32_t exp_n_obs = 10;
+
+    // now check basic rarefaction properties
+    ASSERTINTEQ(table.n_samples , exp_n_samples);
+    ASSERTINTLE(table.n_obs , exp_n_obs);
+
+    // column should add to n==34
+    {
+      double exp_data[1] = {34.0};
+      std::vector<double> exp_vec = _double_array_to_vector(exp_data, 1);
+
+      double data_sum[1] = {0.0};
+      for (auto obs_id : table.get_obs_ids()) {
+         double line[1];
+         table.get_obs_data(obs_id, line);
+         for (int j=0; j<1; j++) data_sum[j] += line[j];
+      }
+      std::vector<double> sum_vec = _double_array_to_vector(data_sum, 1);
+      ASSERT(sum_vec == exp_vec);
+    }
+
+    // As in scikit-bio and biom-format
+    // when without replacement
+    // the number of permutations should be exactly n
+    {
+      std::unordered_set<uint64_t> perm_set;
+      // will pick column 1
+      for (int i=0; i<1000; i++) {
+         su::skbio_biom_subsampled table2(org_table,false,34);
+
+         uint64_t val = 0;
+         for (auto obs_id : table2.get_obs_ids()) {
+            double line[1];
+            table2.get_obs_data(obs_id, line);
+            val = val*8 + uint64_t(line[0]);
+         }
+         perm_set.insert(val);
+      }
+      ASSERT(uint32_t(perm_set.size()) == uint32_t(10));
+    }
+
+    SUITE_END();
+}
+
 int main(int argc, char** argv) {
     test_center_mat();
     test_pcoa();
@@ -782,7 +925,9 @@ int main(int argc, char** argv) {
     test_permanova_noties();
     test_permanova_unequal();
     test_subsample_replacement();
+    test_subsample_replacement_limit();
     test_subsample_woreplacement();
+    test_subsample_woreplacement_limit();
 
     printf("\n");
     printf(" %i / %i suites failed\n", suites_failed, suites_run);
