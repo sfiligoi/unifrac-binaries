@@ -49,7 +49,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix. (default if mode==multi)" << std::endl;
     std::cout << "    --subsample-depth\tDepth of subsampling of the input BIOM before computing unifrac (required for mode==multi, optional for one-off)" << std::endl;
-    std::cout << "    --subsample-without-replacement\tUse the subsample without replacement (default is with replacement)" << std::endl;
+    std::cout << "    --subsample-replacement\t[OPTIONAL] Subsample qith or without replacement (default is with)" << std::endl;
     std::cout << "    --n-subsamples\t[OPTIONAL] if mode==multi, number of subsampled UniFracs to compute (default: 100)" << std::endl;
     std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
@@ -617,8 +617,8 @@ int main(int argc, char **argv){
     std::string permanova_arg = input.getCmdOption("--permanova");
     std::string seed_arg = input.getCmdOption("--seed");
     std::string subsample_depth_arg = input.getCmdOption("--subsample-depth");
+    std::string subsample_replacement_arg = input.getCmdOption("--subsample-replacement");
     std::string n_subsamples_arg = input.getCmdOption("--n-subsamples");
-    std::string subsample_without_replacement_opt = input.getCmdOption("--subsample-without-replacement");
     std::string diskbuf_arg = input.getCmdOption("--diskbuf");
 
     if(nsubsteps_arg.empty()) {
@@ -630,7 +630,6 @@ int main(int argc, char **argv){
     bool vaw = input.cmdOptionExists("--vaw"); 
     bool bare = input.cmdOptionExists("--report-bare"); 
     bool bypass_tips = input.cmdOptionExists("-f");
-    bool subsample_without_replacement = input.cmdOptionExists("--subsample-without-replacement"); 
     double g_unifrac_alpha;
 
     if(gunifrac_arg.empty()) {
@@ -701,15 +700,20 @@ int main(int argc, char **argv){
     }
 
     unsigned int subsample_depth = 0;
-    if(subsample_depth_arg.empty()) {
-        if(mode_arg == "multi" || mode_arg == "multiple") {
-           err("--subsample-depth required in multi mode.");
-           return EXIT_FAILURE;
-        } else {
-           subsample_depth = 0;
-        }
-    } else {
+    if(!subsample_depth_arg.empty()) {
         subsample_depth = atoi(subsample_depth_arg.c_str());
+    }
+
+    bool subsample_without_replacement = false;
+    if(!subsample_replacement_arg.empty()) {
+        if (subsample_replacement_arg == "with") {
+           subsample_without_replacement = false;
+        } else if (subsample_replacement_arg == "without") {
+           subsample_without_replacement = true;
+        } else {
+           err("Invalid --subsample-replacement argument, must be 'with' or 'without'.");
+           return EXIT_FAILURE;
+        }
     }
 
     unsigned int n_subsamples = 0;
