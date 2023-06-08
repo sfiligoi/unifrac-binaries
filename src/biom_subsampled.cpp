@@ -163,8 +163,6 @@ public:
        //assert(a.idx <= b.idx);
        //assert((a.idx > b.idx) || (a.cnt<=b.cnt));
 
-       //printf("My diff\n");
-
        for (uint32_t i = a.idx; i<b.idx; i++) {
           diff += a.data_in[i];
        }
