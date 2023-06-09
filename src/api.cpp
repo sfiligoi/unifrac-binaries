@@ -609,12 +609,7 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
-        // We do not implement subsampling without replacement yet
-        if (!subsample_with_replacement) {
-          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-          return table_empty;
-        }
-        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
         if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
            return table_empty;
         }
@@ -636,12 +631,7 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     if (subsample_depth>0) {
-        // We do not implement subsampling without replacement yet
-        if (!subsample_with_replacement) {
-          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-          return table_empty;
-        }
-        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
         TDBG_STEP("subsample")
        return one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
     } else {
@@ -698,12 +688,7 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
                     tree_data->n_parens);
 
     if (subsample_depth>0) {
-       // We do not implement subsampling without replacement yet
-       if (!subsample_with_replacement) {
-          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-          return table_empty;
-       }
-       su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+       su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
        TDBG_STEP("subsample")
        return one_off_matrix_T<double,mat_full_fp64_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
     } else {
@@ -751,12 +736,7 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
                     tree_data->n_parens);
 
     if (subsample_depth>0) {
-       // We do not implement subsampling without replacement yet
-       if (!subsample_with_replacement) {
-          fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-          return table_empty;
-       }
-       su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+       su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
        TDBG_STEP("subsample")
        return one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
     } else {
@@ -1272,11 +1252,6 @@ compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
     compute_status rc = okay;
     SETUP_TDBG("unifrac_multi_to_file")
 
-    if (!subsample_with_replacement) {
-      fprintf(stderr, "ERROR: subsampling without replacement not implemented yet.\n");
-      return table_empty;
-    }
-
     if (subsample_depth<1) {
       fprintf(stderr, "ERROR: subsampling depth cannot be 0.\n");
       return table_empty;
@@ -1317,7 +1292,7 @@ compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
       su::WriteHDF5Multi<TReal,TMat> h5obj(real_id, out_filename,pcoa_dims);
 
       for (unsigned int i=0; i<n_subsamples; i++) {
-        su::skbio_biom_subsampled table_subsampled(table, subsample_depth);
+        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
         if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
            rc = table_empty;
            break;

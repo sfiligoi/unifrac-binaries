@@ -29,6 +29,9 @@ namespace su {
 
             /* perform subsampling with replacement, no filtering */
             void transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed);
+
+            /* perform subsampling without replacement, no filtering */
+            void transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed);
         public:  // keep it open for ease of access
             uint32_t n_obs;     // row dimension
             uint32_t n_samples; // column dimension
@@ -64,6 +67,9 @@ namespace su {
 
             /* perform subsampling with replacement, no filtering */
             void subsample_with_replacement(const uint32_t n, const uint32_t random_seed);
+
+            /* perform subsampling without replacement, no filtering */
+            void subsample_without_replacement(const uint32_t n, const uint32_t random_seed);
     };
 
     class biom_subsampled : public biom_inmem {
@@ -71,9 +77,10 @@ namespace su {
             /* default constructor
              *
              * @param parent biom object to subsample
+             * @param w_replacement Whether to permute or use multinomial sampling
              * @param n Number of items to subsample
              */
-            biom_subsampled(const biom_inmem &parent, const uint32_t n, const uint32_t random_seed);
+            biom_subsampled(const biom_inmem &parent, const bool w_replacement, const uint32_t n, const uint32_t random_seed);
 
         protected:
             void steal_nonzero(const biom_inmem &parent, sparse_data& subsampled_obj);
