@@ -112,11 +112,12 @@ void linked_sparse_transposed::transposed_subsample_with_replacement(const uint3
 }
 
 
-// Equivalent to iterator over np.repeat
-// https://github.com/biocore/biom-format/blob/b0e71a00ecb349a6f5f1ca64a23d71f380ddc19c/biom/_subsample.pyx#LL64C24-L64C55
-class WeightedSampleIterator
-{
-public:
+namespace su {
+  // Equivalent to iterator over np.repeat
+  // https://github.com/biocore/biom-format/blob/b0e71a00ecb349a6f5f1ca64a23d71f380ddc19c/biom/_subsample.pyx#LL64C24-L64C55
+  class WeightedSampleIterator
+  {
+  public:
     // While we do not implememnt the whole random_access_iterator interface
     // we want the implementations to use operator- and that requires random
     using iterator_category = std::random_access_iterator_tag;
@@ -170,16 +171,16 @@ public:
        return diff + b.cnt - a.cnt;
     };
 
-private:
+  private:
 
     uint64_t *data_in;
     uint32_t idx; // index of data_in
     uint64_t cnt; // how deep in data_in[idx] are we (must be < data_in[idx])
-};
+  };
 
-class WeightedSample
-{
-public:
+  class WeightedSample
+  {
+  public:
     WeightedSample(uint32_t _max_count, uint32_t _n, uint32_t random_seed)
     : max_count(_max_count)
     , n(_n)
@@ -224,7 +225,8 @@ private:
     std::vector<uint64_t> data;  // original values
     std::vector<uint32_t> sample_out;     // random output buffer
     std::vector<uint32_t> data_out; // computed values
-};
+  };
+} // end namespace su
 
 
 void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
