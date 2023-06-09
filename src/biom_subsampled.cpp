@@ -245,12 +245,13 @@ private:
 } // end namespace su
 
 
-void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+template<class TWork>
+inline void linked_sparse_transposed::transposed_subsample(const uint32_t n, const uint32_t random_seed) {
     const uint32_t max_threads = omp_get_max_threads();
     std::mt19937 master_generator(random_seed);
 
     // use common buffer to minimize allocation cost, but need one per thread
-    std::vector<WeightedSample> sample_data_arr;
+    std::vector<TWork> sample_data_arr;
     for (uint32_t i=0; i<max_threads; i++) sample_data_arr.emplace(sample_data_arr.end(), max_count, n, master_generator());
     
     #pragma omp parallel for
@@ -260,19 +261,12 @@ void linked_sparse_transposed::transposed_subsample_without_replacement(const ui
     }
 }
 
-void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
-    const uint32_t max_threads = omp_get_max_threads();
-    std::mt19937 master_generator(random_seed);
+void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+    transposed_subsample<WeightedSample>(n, random_seed);
+}
 
-    // use common buffer to minimize allocation cost, but need one per thread
-    std::vector<WeightedSampleWithReplacement> sample_data_arr;
-    for (uint32_t i=0; i<max_threads; i++) sample_data_arr.emplace(sample_data_arr.end(), max_count, n, master_generator());
-    
-    #pragma omp parallel for
-    for (uint32_t i=0; i<n_obs; i++) {
-        int my_thread_num = omp_get_thread_num();
-        sample_data_arr[my_thread_num].do_sample(obs_counts_resident[i], obs_data_resident[i]);
-    }
+void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
+    transposed_subsample<WeightedSampleWithReplacement>(n, random_seed);
 }
 
 

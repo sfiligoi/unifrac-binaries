@@ -32,6 +32,9 @@ namespace su {
 
             /* perform subsampling without replacement, no filtering */
             void transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed);
+        private:
+            // actual implementaiton, templated
+            template<class TWork> void transposed_subsample(const uint32_t n, const uint32_t random_seed);
         public:  // keep it open for ease of access
             uint32_t n_obs;     // row dimension
             uint32_t n_samples; // column dimension
