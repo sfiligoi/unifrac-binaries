@@ -86,37 +86,12 @@ linked_sparse_transposed::~linked_sparse_transposed() {
     }
 }
 
-void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
-    std::mt19937 generator(random_seed);
-
-    // use common buffer to minimize allocation costs
-    double *data_in = new double[max_count];  // original values
-    uint32_t *data_out = new uint32_t[max_count]; // computed values
-
-    for (uint32_t i=0; i<n_obs; i++) {
-        unsigned int length = obs_counts_resident[i];
-        double* *data_arr = obs_data_resident[i];
-
-        for (unsigned int j=0; j<length; j++) data_in[j] = *(data_arr[j]);
-        
-        // note: We are assuming length>=n
-        //      Enforced by the caller (via filtering)
-        std::discrete_distribution<uint32_t> multinomial(data_in, data_in+length);
-        for (unsigned int j=0; j<length; j++) data_out[j] = 0;
-        for (uint32_t j=0; j<n; j++) data_out[multinomial(generator)]++;
-
-        for (unsigned int j=0; j<length; j++) *(data_arr[j]) = data_out[j];
-    }
-    delete[] data_out;
-    delete[] data_in;
-}
-
-
-// Equivalent to iterator over np.repeat
-// https://github.com/biocore/biom-format/blob/b0e71a00ecb349a6f5f1ca64a23d71f380ddc19c/biom/_subsample.pyx#LL64C24-L64C55
-class WeightedSampleIterator
-{
-public:
+namespace su {
+  // Equivalent to iterator over np.repeat
+  // https://github.com/biocore/biom-format/blob/b0e71a00ecb349a6f5f1ca64a23d71f380ddc19c/biom/_subsample.pyx#LL64C24-L64C55
+  class WeightedSampleIterator
+  {
+  public:
     // While we do not implememnt the whole random_access_iterator interface
     // we want the implementations to use operator- and that requires random
     using iterator_category = std::random_access_iterator_tag;
@@ -170,16 +145,16 @@ public:
        return diff + b.cnt - a.cnt;
     };
 
-private:
+  private:
 
     uint64_t *data_in;
     uint32_t idx; // index of data_in
     uint64_t cnt; // how deep in data_in[idx] are we (must be < data_in[idx])
-};
+  };
 
-class WeightedSample
-{
-public:
+  class WeightedSample
+  {
+  public:
     WeightedSample(uint32_t _max_count, uint32_t _n, uint32_t random_seed)
     : max_count(_max_count)
     , n(_n)
@@ -224,15 +199,59 @@ private:
     std::vector<uint64_t> data;  // original values
     std::vector<uint32_t> sample_out;     // random output buffer
     std::vector<uint32_t> data_out; // computed values
-};
+  };
+
+  class WeightedSampleWithReplacement
+  {
+  public:
+    WeightedSampleWithReplacement(uint32_t _max_count, uint32_t _n, uint32_t random_seed)
+    : max_count(_max_count)
+    , n(_n)
+    , generator(random_seed)
+    , current_count(0)
+    , data(max_count)
+    , data_out(max_count)
+    {}
+
+   void do_sample(unsigned int length, double* *data_arr) {
+        assign(length,data_arr);
+
+        // note: We are assuming length>=n
+        //      Enforced by the caller (via filtering)
+        double *data_in = data.data();
+        std::discrete_distribution<uint32_t> multinomial(data_in, data_in+length);
+        for (unsigned int j=0; j<length; j++) data_out[j] = 0;
+        for (uint32_t j=0; j<n; j++) data_out[multinomial(generator)]++;
+
+        for (unsigned int j=0; j<length; j++) *(data_arr[j]) = data_out[j];
+    }
+
+private:
+    void assign(uint32_t length, double * *data_arr) {
+       current_count = length;
+       for (uint32_t j=0; j<length; j++) data[j] = *(data_arr[j]);
+    }
+
+    uint32_t max_count;
+    uint32_t n;
+    std::mt19937 generator;
+
+    uint32_t current_count;
+
+    // use persistent buffer to minimize allocation costs
+    std::vector<double> data;  // original values
+    std::vector<uint32_t> data_out; // computed values
+  };
+} // end namespace su
 
 
-void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+template<class TWork>
+inline void linked_sparse_transposed::transposed_subsample(const uint32_t n, const uint32_t random_seed) {
     const uint32_t max_threads = omp_get_max_threads();
     std::mt19937 master_generator(random_seed);
 
     // use common buffer to minimize allocation cost, but need one per thread
-    std::vector<WeightedSample> sample_data_arr;
+    std::vector<TWork> sample_data_arr;
     for (uint32_t i=0; i<max_threads; i++) sample_data_arr.emplace(sample_data_arr.end(), max_count, n, master_generator());
     
     #pragma omp parallel for
@@ -241,6 +260,15 @@ void linked_sparse_transposed::transposed_subsample_without_replacement(const ui
         sample_data_arr[my_thread_num].do_sample(obs_counts_resident[i], obs_data_resident[i]);
     }
 }
+
+void linked_sparse_transposed::transposed_subsample_without_replacement(const uint32_t n, const uint32_t random_seed) {
+    transposed_subsample<WeightedSample>(n, random_seed);
+}
+
+void linked_sparse_transposed::transposed_subsample_with_replacement(const uint32_t n, const uint32_t random_seed) {
+    transposed_subsample<WeightedSampleWithReplacement>(n, random_seed);
+}
+
 
 // =====================  sparse_data_subsampled  ==========================
 
