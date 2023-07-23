@@ -11,6 +11,7 @@
 #ifndef _UNIFRAC_BIOM_INMEM_H
 #define _UNIFRAC_BIOM_INMEM_H
 
+#include <cstdint>
 #include <vector>
 #include <unordered_map>
 

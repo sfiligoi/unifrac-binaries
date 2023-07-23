@@ -10,6 +10,7 @@
 #ifndef __UNIFRAC_TREE_H
 #define __UNIFRAC_TREE_H 1
 
+#include <cstdint>
 #include <string>
 #include <sstream>
 #include <iostream>
