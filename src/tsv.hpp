@@ -11,6 +11,7 @@
 #ifndef _UNIFRAC_TSV_H
 #define _UNIFRAC_TSV_H
 
+#include <cstdint>
 #include <vector>
 #include <map>
 #include <string>
