@@ -4,7 +4,7 @@
 UniFrac is the *de facto* repository for high-performance phylogenetic diversity calculations. The methods in this repository are based on an implementation of the [Strided State UniFrac](https://www.nature.com/articles/s41592-018-0187-8) algorithm which is faster, and uses less memory than [Fast UniFrac](http://www.nature.com/ismej/journal/v4/n1/full/ismej200997a.html). Strided State UniFrac supports [Unweighted UniFrac](http://aem.asm.org/content/71/12/8228.abstract), [Weighted UniFrac](http://aem.asm.org/content/73/5/1576), [Generalized UniFrac](https://academic.oup.com/bioinformatics/article/28/16/2106/324465/Associating-microbiome-composition-with), [Variance Adjusted UniFrac](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-12-118) and [meta UniFrac](http://www.pnas.org/content/105/39/15076.short), in both double and single precision (fp32).
 This repository also includes Stacked Faith (manuscript in preparation), a method for calculating Faith's PD that is faster and uses less memory than the Fast UniFrac-based [reference implementation](http://scikit-bio.org/).
 
-This repository produces standalone exutables and a C API exposed via a shared library which can be linked against by any programming language. 
+This repository produces standalone executables and a C API exposed via a shared library which can be linked against by any programming language. 
 
 # Citation
 
@@ -43,7 +43,7 @@ An example of installing UniFrac, and using it with CPUs as well as GPUs, can be
 
 ## Install (bioconda)
 
-This binaries can be installed via a combination of `conda-forge` and `bioconda`:
+The binaries can be installed via a combination of `conda-forge` and `bioconda`:
 
 ```
 conda create --name unifrac -c conda-forge -c bioconda unifrac-binaries
@@ -65,7 +65,7 @@ make install
 ```
 
 
-**Note**: if you are using `conda` we recommend installing HDF5 and relate compiler using the
+**Note**: if you are using `conda` we recommend installing HDF5 and related compiler using the
 `conda-forge` channel, for example:
 
 ```
@@ -74,7 +74,7 @@ conda activate unifrac
 ```
 
 For GPU-enabled code, you will need the [NVIDIA HPC SDK](https://developer.nvidia.com/hpc-sdk) compiler.
-A helper script will download it, install it and setup the necessary environment:
+This helper script will download it, install it and setup the necessary environment:
 ```
 scripts/install_hpc_sdk.sh 
 source setup_nv_h5.sh
