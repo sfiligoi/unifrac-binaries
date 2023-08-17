@@ -13,7 +13,7 @@ test: capi_test
 test_binaries: capi_test
 
 capi_test: capi_test.c
-	$(CC) -std=c99 -O0 -g capi_test.c -I../src -lssu -L${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib -o capi_test
+	$(CC) $(CFLAGS) -std=c99 -O0 -g capi_test.c -I../src -lssu -L${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib $(LDFLAGS) -o capi_test
 
 clean:
 	-rm -f *.o capi_test
