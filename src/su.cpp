@@ -49,7 +49,7 @@ void usage() {
     std::cout << "    \t\t    hdf5_fp64 : HFD5 format, using fp64 precision." << std::endl;
     std::cout << "    \t\t    hdf5_nodist : HFD5 format, no distance matrix. (default if mode==multi)" << std::endl;
     std::cout << "    --subsample-depth\tDepth of subsampling of the input BIOM before computing unifrac (required for mode==multi, optional for one-off)" << std::endl;
-    std::cout << "    --subsample-replacement\t[OPTIONAL] Subsample qith or without replacement (default is with)" << std::endl;
+    std::cout << "    --subsample-replacement\t[OPTIONAL] Subsample with or without replacement (default is with)" << std::endl;
     std::cout << "    --n-subsamples\t[OPTIONAL] if mode==multi, number of subsampled UniFracs to compute (default: 100)" << std::endl;
     std::cout << "    --permanova\t[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)" << std::endl;
     std::cout << "    --pcoa\t[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)" << std::endl;
