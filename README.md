@@ -173,7 +173,7 @@ The methods can be used directly through the command line after install:
                                  hdf5_fp32 : HFD5 format, using fp32 precision.
                                  hdf5_fp64 : HFD5 format, using fp64 precision.
         --subsample-depth   Depth of subsampling of the input BIOM before computing unifrac (required for mode==multi, optional for one-off)
-        --subsample-replacement	[OPTIONAL] Subsample qith or without replacement (default is with)
+        --subsample-replacement	[OPTIONAL] Subsample with or without replacement (default is with)
         --n-subsamples	[OPTIONAL] if mode==multi, number of subsampled UniFracs to compute (default: 100)
         --permanova	[OPTIONAL] Number of PERMANOVA permutations to compute (default: 999 with -g, do not compute if 0)
         --pcoa	[OPTIONAL] Number of PCoA dimensions to compute (default: 10, do not compute if 0)
