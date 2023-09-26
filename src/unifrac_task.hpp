@@ -19,23 +19,31 @@
 #ifndef __UNIFRAC_TASKS
 #define __UNIFRAC_TASKS 1
 
-#ifdef _OPENACC
+#if defined(OMPGPU)
+
+#define SUCMP_NM su_ompgpu
+
+#elif defined(_OPENACC)
 
 #define SUCMP_NM su_acc
-
-  #ifndef SMALLGPU
-  // defaultt on larger alignment, which improves performance on GPUs like V100
-#define UNIFRAC_BLOCK 64
-  #else
-  // smaller GPUs prefer smaller allignment 
-#define UNIFRAC_BLOCK 32
-  #endif
 
 #else
 
 #define SUCMP_NM su_cpu
 
+#endif
 
+#if defined(_OPENACC) || defined(OMPGPU)
+
+#ifndef SMALLGPU
+  // defaultt on larger alignment, which improves performance on GPUs like V100
+#define UNIFRAC_BLOCK 64
+#else
+  // smaller GPUs prefer smaller allignment 
+#define UNIFRAC_BLOCK 32
+#endif
+
+#else
 // CPUs don't need such a big alignment
 #define UNIFRAC_BLOCK 16
 #endif
@@ -66,7 +74,7 @@ namespace SUCMP_NM {
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bufels = n_samples_r * (stop_idx-start_idx);
 #endif
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
@@ -81,7 +89,9 @@ namespace SUCMP_NM {
                 buf_stripe[j] = 0.0;
              }
            }
-#ifdef _OPENACC
+#if defined(OMPGPU)
+#pragma omp target enter data map(to:ibuf[:bufels])
+#elif defined(_OPENACC)
 #pragma acc enter data copyin(ibuf[:bufels])
 #endif    
         }
@@ -98,9 +108,14 @@ namespace SUCMP_NM {
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bufels = n_samples_r * (stop_idx-start_idx); 
+#if defined(OMPGPU)
+#pragma omp target exit data map(from:ibuf[:bufels])
+#else
 #pragma acc exit data copyout(ibuf[:bufels])
+#endif
+
 #endif    
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
@@ -131,7 +146,7 @@ namespace SUCMP_NM {
 
         const unsigned int max_embs;
         TEmb * embedded_proportions;
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
        protected:
         // alternate buffer only needed in async environments, like openacc
         TEmb * embedded_proportions_alt; // used as temp
@@ -142,7 +157,7 @@ namespace SUCMP_NM {
         : dm_stripes(_dm_stripes,_task_p), dm_stripes_total(_dm_stripes_total,_task_p), task_p(_task_p)
         , max_embs(_max_embs)
         , embedded_proportions(initialize_embedded(dm_stripes.n_samples_r,_max_embs))
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
         , embedded_proportions_alt(initialize_embedded(dm_stripes.n_samples_r,_max_embs)) 
 #endif
         {}
@@ -158,10 +173,16 @@ namespace SUCMP_NM {
 
         virtual ~UnifracTaskBase()
         {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bsize = get_embedded_bsize(dm_stripes.n_samples_r,max_embs);
+#if defined(OMPGPU)
+#pragma omp target exit data map(release:embedded_proportions_alt[:bsize])
+#pragma omp target exit data map(release:embedded_proportions[:bsize])
+#else
 #pragma acc exit data delete(embedded_proportions_alt[:bsize])
 #pragma acc exit data delete(embedded_proportions[:bsize])
+#endif
+
           free(embedded_proportions_alt);
 #endif
           free(embedded_proportions);
@@ -169,10 +190,15 @@ namespace SUCMP_NM {
 
         void sync_embedded_proportions(unsigned int filled_embs)
         {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t  n_samples_r = dm_stripes.n_samples_r;
           const uint64_t bsize = n_samples_r * get_emb_els(filled_embs);
+#if defined(OMPGPU)
+#pragma omp target update to(embedded_proportions[:bsize])
+#else
 #pragma acc update device(embedded_proportions[:bsize])
+#endif
+
 #endif
         }
 
@@ -193,7 +219,11 @@ namespace SUCMP_NM {
                     sizeof(TEmb) * bsize, err, __FILE__, __LINE__);
              exit(EXIT_FAILURE);
           }
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:buf[:bsize])
+#elif defined(_OPENACC)
 #pragma acc enter data create(buf[:bsize])
+#endif
           return buf;
         }
 
@@ -309,7 +339,7 @@ namespace SUCMP_NM {
         // Use a moderate sized step, a few cache lines
         static const unsigned int step_size = 64*4/sizeof(TFloat);
 
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
         // Use as big vector size as we can, to maximize cache line reuse
         static const unsigned int acc_vector_size = 2048;
 #endif
@@ -354,7 +384,11 @@ namespace SUCMP_NM {
           sums = NULL;
           posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
           posix_memalign((void **)&sums  , 4096, sizeof(TFloat) * n_samples);
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:zcheck[:n_samples],sums[:n_samples])
+#elif defined(_OPENACC)
 #pragma acc enter data create(zcheck[:n_samples],sums[:n_samples])
+#endif
         }
 
         UnifracUnnormalizedWeightedTask<TFloat>(const UnifracUnnormalizedWeightedTask<TFloat>& ) = delete;
@@ -362,9 +396,14 @@ namespace SUCMP_NM {
 
         virtual ~UnifracUnnormalizedWeightedTask()
         {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
+#if defined(OMPGPU)
+#pragma omp target exit data map(release:sums[:n_samples],zcheck[:n_samples])
+#else
 #pragma acc exit data delete(sums[:n_samples],zcheck[:n_samples])
+#endif
+
 #endif
           free(sums);
           free(zcheck);
@@ -392,7 +431,11 @@ namespace SUCMP_NM {
           sums = NULL;
           posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
           posix_memalign((void **)&sums  , 4096, sizeof(TFloat) * n_samples);
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:zcheck[:n_samples],sums[:n_samples])
+#elif defined(_OPENACC)
 #pragma acc enter data create(zcheck[:n_samples],sums[:n_samples])
+#endif
         }
 
         UnifracNormalizedWeightedTask<TFloat>(const UnifracNormalizedWeightedTask<TFloat>& ) = delete;
@@ -400,9 +443,14 @@ namespace SUCMP_NM {
 
         virtual ~UnifracNormalizedWeightedTask()
         {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
+#if defined(OMPGPU)
+#pragma omp target exit data map(release:sums[:n_samples],zcheck[:n_samples])
+#else
 #pragma acc exit data delete(sums[:n_samples],zcheck[:n_samples])
+#endif
+
 #endif
           free(sums);
           free(zcheck);
@@ -435,7 +483,11 @@ namespace SUCMP_NM {
           posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
           posix_memalign((void **)&stripe_sums, 4096, sizeof(TFloat) *  n_samples);
           posix_memalign((void **)&sums, 4096, sizeof(TFloat) * bsize);
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:zcheck[:n_samples],stripe_sums[:n_samples],sums[:bsize])
+#elif defined(_OPENACC)
 #pragma acc enter data create(zcheck[:n_samples],stripe_sums[:n_samples],sums[:bsize])
+#endif
         }
 
         UnifracUnweightedTask<TFloat>(const UnifracUnweightedTask<TFloat>& ) = delete;
@@ -443,10 +495,15 @@ namespace SUCMP_NM {
 
         virtual ~UnifracUnweightedTask()
         {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
+#if defined(OMPGPU)
+#pragma omp target exit data map(release:sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
+#else
 #pragma acc exit data delete(sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
+#endif
+
 #endif
           free(sums);
           free(stripe_sums);
@@ -501,7 +558,7 @@ namespace SUCMP_NM {
     template<class TFloat, class TEmb>
     class UnifracVawTask : public UnifracTaskBase<TFloat,TEmb> {
       protected:
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
         // The parallel nature of GPUs needs a largish step
   #ifndef SMALLGPU
         // default to larger step, which makes a big difference for bigger GPUs like V100
@@ -544,19 +601,29 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bsize = UnifracTaskBase<TFloat,TFloat>::get_embedded_bsize(this->dm_stripes.n_samples_r,this->max_embs);
+#if defined(OMPGPU)
+#pragma omp target exit data map(release:embedded_counts[:bsize])
+#else
 #pragma acc exit data delete(embedded_counts[:bsize])
+#endif
+
 #endif
           free(embedded_counts);
        }
 
        void sync_embedded_counts(unsigned int filled_embs)
        {
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t  n_samples_r = this->dm_stripes.n_samples_r;
           const uint64_t bsize = n_samples_r * filled_embs;
+#if defined(OMPGPU)
+#pragma omp target update to(embedded_counts[:bsize])
+#else
 #pragma acc update device(embedded_counts[:bsize])
+#endif
+
 #endif
        }
 
