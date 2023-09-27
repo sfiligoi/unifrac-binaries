@@ -63,6 +63,10 @@ jobs:
       shell: bash -l {0}
       run: |
         conda activate unifrac
+        if [[ "$(uname -s)" == "Linux" ]];
+        then
+           lscpu
+        fi
         # keep it low for runs in containers
         # and a weird number to potentially catch potential bugs
         export OMP_NUM_THREADS=3
