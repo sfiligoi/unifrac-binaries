@@ -59,22 +59,6 @@ jobs:
         # all == build (shlib,bins,tests) and install
         make all
         df -h .
-        pushd src
-        if [[ "$(uname -s)" == "Linux" ]]; 
-        then
-          rm -f ~/.R/Makevars
-          conda install -q --yes  --strict-channel-priority -c conda-forge r-base
-          unset CXXFLAGS
-          unset CFLAGS
-          unset DEBUG_CXXFLAGS
-          unset DEBUG_CFLAGS
-          # the r-base package has a broken dependency
-          ln -s $CONDA_PREFIX/lib/libreadline.so $CONDA_PREFIX/lib/libreadline.so.6
-          R -e 'install.packages("Rcpp", repos="http://lib.stat.cmu.edu/R/CRAN/")'
-          make rapi_test
-        fi
-        popd
-            
     - name: Tests
       shell: bash -l {0}
       run: |
@@ -216,6 +200,23 @@ jobs:
         python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.6
         ls -l t1.h5
         rm -f t1.h5
+        popd
+        # finally, test rapi, too
+        pushd src
+        if [[ "$(uname -s)" == "Linux" ]]; 
+        then
+          make clean
+          rm -f ~/.R/Makevars
+          conda install -q --yes  --strict-channel-priority -c conda-forge r-base
+          unset CXXFLAGS
+          unset CFLAGS
+          unset DEBUG_CXXFLAGS
+          unset DEBUG_CFLAGS
+          # the r-base package has a broken dependency
+          ln -s $CONDA_PREFIX/lib/libreadline.so $CONDA_PREFIX/lib/libreadline.so.6
+          R -e 'install.packages("Rcpp", repos="http://lib.stat.cmu.edu/R/CRAN/")'
+          make rapi_test
+        fi
         popd
     - name: Sanity checks
       shell: bash -l {0}
