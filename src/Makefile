@@ -61,6 +61,22 @@ CPPFLAGS += $(MPFLAG)
 UNIFRAC_FILES = unifrac_internal.o unifrac_cmp_cpu.o
 
 ifndef NOGPU
+   ifeq ($(BUILD_OFFLOAD),ompgpu)
+	ifneq (,$(findstring pgi,$(COMPILER)))
+		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
+                UNIFRAC_FILES += unifrac_cmp_ompgpu.o
+		OMPGPUCPPFLAGS += -mp=gpu
+	        ifeq ($(PERFORMING_CONDA_BUILD),True)
+	            OMPGPUCPPFLAGS += -ta=tesla:ccall
+		else
+	            OMPGPUCPPFLAGS += -ta=tesla
+		    # optional info
+		    OMPGPUCPPFLAGS += -Minfo=accel
+                endif
+	        LDDFLAGS += -shlib -mp=gpu -Bstatic_pgi
+	        EXEFLAGS += -mp=gpu -Bstatic_pgi
+	endif
+   else 
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_ACC=1
                 UNIFRAC_FILES += unifrac_cmp_acc.o
@@ -75,6 +91,7 @@ ifndef NOGPU
 	        LDDFLAGS += -shlib -acc -Bstatic_pgi
 	        EXEFLAGS += -acc -Bstatic_pgi
 	endif
+   endif
 endif
 
 ifneq ($(BUILD_FULL_OPTIMIZATION),False)
@@ -152,6 +169,8 @@ unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.
 
 unifrac_cmp_acc.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.cpp unifrac_task.hpp biom_interface.hpp tree.hpp
 	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -c $< -o $@
+unifrac_cmp_ompgpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.cpp unifrac_task.hpp biom_interface.hpp tree.hpp
+	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -c $< -o $@
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CPPFLAGS) -c $< -o $@

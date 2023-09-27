@@ -14,6 +14,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, linux-gpu-cuda]
+        offload: [acc, ompgpu]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -53,6 +54,7 @@ jobs:
         fi
         df -h .
         export PERFORMING_CONDA_BUILD=True
+        export BUILD_OFFLOAD=${{ matrix.offload }}
         echo "======= begin env ====="
         env
         echo "=======  end env  ====="
