@@ -30,7 +30,7 @@ using namespace SUCMP_NM;
 #include <omp.h>
 
 bool SUCMP_NM::found_gpu() {
-  return omp_get_num_devices() > 0
+  return omp_get_num_devices() > 0;
 }
 
 #elif defined(_OPENACC)
@@ -104,7 +104,7 @@ inline void unifracTT(const su::biom_interface &table,
         exit(EXIT_FAILURE);
     }
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:lengths[:filled_emb])
+#pragma omp target enter data map(alloc:lengths[:max_emb])
 #elif defined(_OPENACC)
 #pragma acc enter data create(lengths[:max_emb])
 #endif
