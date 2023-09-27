@@ -65,11 +65,11 @@ ifndef NOGPU
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
                 UNIFRAC_FILES += unifrac_cmp_ompgpu.o
-		OMPGPUCPPFLAGS += -mp=gpu
+		OMPGPUCPPFLAGS += -mp=gpu -DOMPGPU=1 -noacc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
-	            OMPGPUCPPFLAGS += -ta=tesla:ccall
+	            OMPGPUCPPFLAGS += -gpu=ccall
 		else
-	            OMPGPUCPPFLAGS += -ta=tesla
+	            OMPGPUCPPFLAGS += -gpu=ccnative
 		    # optional info
 		    OMPGPUCPPFLAGS += -Minfo=accel
                 endif
