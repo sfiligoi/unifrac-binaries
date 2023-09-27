@@ -66,9 +66,9 @@ ifndef NOGPU
                 UNIFRAC_FILES += unifrac_cmp_acc.o
 		ACCCPPFLAGS += -acc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
-	            ACCCPPFLAGS += -ta=tesla:ccall
+	            ACCCPPFLAGS += -gpu=ccall
 		else
-	            ACCCPPFLAGS += -ta=tesla
+	            ACCCPPFLAGS += -gpu=ccnative
 		    # optional info
 		    ACCCPPFLAGS += -Minfo=accel
                 endif
