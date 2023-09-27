@@ -33,6 +33,14 @@
 #undef SUCMP_NM
 #endif
 
+#ifdef UNIFRAC_ENABLE_OMPGPU
+#define OMPGPU
+#define SUCMP_NM  su_ompgpu
+#include "unifrac_cmp.hpp"
+#undef SUCMP_NM
+#undef OMPGPU
+#endif
+
 using namespace su;
 
 std::string su::test_table_ids_are_subset_of_tree(su::biom_interface &table, su::BPTree &tree) {
@@ -378,6 +386,47 @@ void su::faith_pd(biom_interface &table,
 }
 
 
+#ifdef UNIFRAC_ENABLE_OMPGPU
+
+// test only once, then use persistent value
+static int proc_use_ompgpu = -1;
+
+inline bool use_ompgpu() {
+ if (proc_use_ompgpu!=-1) return (proc_use_ompgpu!=0);
+
+ bool print_info = false;
+
+ if (const char* env_p = std::getenv("UNIFRAC_GPU_INFO")) {
+   print_info = true;
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     print_info = false;
+   }
+ }
+
+ if (!su_ompgpu::found_gpu()) {
+   if (print_info) printf("INFO (unifrac): GPU not found, using CPU\n");
+   proc_use_ompgpu=0;
+   return false;
+ }
+
+ if (const char* env_p = std::getenv("UNIFRAC_USE_GPU")) {
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     if (print_info) printf("INFO (unifrac): Use of GPU explicitly disabled, using CPU\n");
+     proc_use_ompgpu=0;
+     return false;
+   }
+ }
+
+ if (print_info) printf("INFO (unifrac): Using GPU\n");
+ proc_use_ompgpu=1;
+ return true;
+}
+#endif
+
 #ifdef UNIFRAC_ENABLE_ACC
 
 // test only once, then use persistent value
@@ -433,7 +482,12 @@ void su::unifrac(biom_interface &table,
                  std::vector<double*> &dm_stripes,
                  std::vector<double*> &dm_stripes_total,
                  const su::task_parameters* task_p) {
-#ifdef UNIFRAC_ENABLE_ACC
+#if defined(UNIFRAC_ENABLE_OMPGPU)
+  if (use_ompgpu()) {
+    su_ompgpu::unifrac(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
+  } else {
+#elif defined(UNIFRAC_ENABLE_ACC)
+  // TODO: Should we support both OMPGPU and ACC at the same time?
   if (use_acc()) {
     su_acc::unifrac(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
   } else {
@@ -451,7 +505,12 @@ void su::unifrac_vaw(biom_interface &table,
                      std::vector<double*> &dm_stripes,
                      std::vector<double*> &dm_stripes_total,
                      const su::task_parameters* task_p) {
-#ifdef UNIFRAC_ENABLE_ACC
+#if defined(UNIFRAC_ENABLE_OMPGPU)
+  if (use_ompgpu()) {
+   su_ompgpu::unifrac_vaw(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
+  } else {
+#elif defined(UNIFRAC_ENABLE_ACC)
+  // TODO: Should we support both OMPGPU and ACC at the same time?
   if (use_acc()) {
    su_acc::unifrac_vaw(table, tree, unifrac_method, dm_stripes, dm_stripes_total, task_p);
   } else {
