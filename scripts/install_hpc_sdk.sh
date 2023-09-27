@@ -122,7 +122,7 @@ for f in ${NVHPC_INSTALL_DIR}/*/202*/compilers/bin/localrc; do
 done
 
 cat > setup_nv_h5.sh  << EOF
-source $PWD/setup_scripts/setup_nv_hpc_bins.sh
+. $PWD/setup_scripts/setup_nv_hpc_bins.sh
 
 PATH=${PWD}/conda_h5:\$PATH
 EOF
