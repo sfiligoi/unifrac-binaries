@@ -227,6 +227,8 @@ jobs:
       shell: bash -l {0}
       run: |
         conda activate unifrac
+        # keep it low for runs in containers
+        export OMP_NUM_THREADS=2
         pushd ci
         ./crawford_test.sh
         popd
