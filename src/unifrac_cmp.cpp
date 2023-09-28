@@ -386,7 +386,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 #if defined(OMPGPU)
 #pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
 #elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
+#pragma acc parallel loop collapse(2) present(dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
 #endif
         for(uint64_t i = start_idx; i < stop_idx; i++)
             for(uint64_t j = 0; j < n_samples; j++) {
