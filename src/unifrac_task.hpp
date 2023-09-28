@@ -212,13 +212,7 @@ namespace SUCMP_NM {
         static TEmb *initialize_embedded(const uint64_t  n_samples_r, unsigned int max_embs) {
           const uint64_t bsize = get_embedded_bsize(n_samples_r, max_embs);
 
-          TEmb* buf = NULL;
-          int err = posix_memalign((void **)&buf, 4096, sizeof(TEmb) * bsize);
-          if(buf == NULL || err != 0) {
-            fprintf(stderr, "Failed to allocate %zd bytes, err %d; [%s]:%d\n",
-                    sizeof(TEmb) * bsize, err, __FILE__, __LINE__);
-             exit(EXIT_FAILURE);
-          }
+          TEmb* buf = (TEmb*) malloc(sizeof(TEmb) * bsize);
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:buf[:bsize])
 #elif defined(_OPENACC)
@@ -380,10 +374,8 @@ namespace SUCMP_NM {
         {
           const unsigned int n_samples = this->task_p->n_samples;
 
-          zcheck = NULL;
-          sums = NULL;
-          posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
-          posix_memalign((void **)&sums  , 4096, sizeof(TFloat) * n_samples);
+          zcheck = (bool*) malloc(sizeof(bool) * n_samples);
+          sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:zcheck[:n_samples],sums[:n_samples])
 #elif defined(_OPENACC)
@@ -427,10 +419,8 @@ namespace SUCMP_NM {
         {
           const unsigned int n_samples = this->task_p->n_samples;
 
-          zcheck = NULL;
-          sums = NULL;
-          posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
-          posix_memalign((void **)&sums  , 4096, sizeof(TFloat) * n_samples);
+          zcheck = (bool*) malloc(sizeof(bool) * n_samples);
+          sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:zcheck[:n_samples],sums[:n_samples])
 #elif defined(_OPENACC)
@@ -477,12 +467,9 @@ namespace SUCMP_NM {
         {
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = _max_embs*(0x400/32);
-          zcheck = NULL;
-          stripe_sums = NULL;
-          sums = NULL;
-          posix_memalign((void **)&zcheck, 4096, sizeof(bool) * n_samples);
-          posix_memalign((void **)&stripe_sums, 4096, sizeof(TFloat) *  n_samples);
-          posix_memalign((void **)&sums, 4096, sizeof(TFloat) * bsize);
+          zcheck = (bool*) malloc(sizeof(bool) * n_samples);
+          stripe_sums = (TFloat*) malloc(sizeof(TFloat) *  n_samples);
+          sums = (TFloat*) malloc(sizeof(TFloat) * bsize);
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:zcheck[:n_samples],stripe_sums[:n_samples],sums[:bsize])
 #elif defined(_OPENACC)
