@@ -207,11 +207,12 @@ inline void unifracTT(const su::biom_interface &table,
 
         TFloat * const dm_stripes_buf = taskObj.dm_stripes.buf;
         const TFloat * const dm_stripes_total_buf = taskObj.dm_stripes_total.buf;
+        const uint64_t bufels = taskObj.dm_stripes.bufels;
 
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd collapse(2) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
 #elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(dm_stripes_buf,dm_stripes_total_buf)
+#pragma acc parallel loop collapse(2) present(dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
 #endif
         for(uint64_t i = start_idx; i < stop_idx; i++)
             for(uint64_t j = 0; j < n_samples; j++) {
@@ -380,11 +381,12 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
         TFloat * const dm_stripes_buf = taskObj.dm_stripes.buf;
         const TFloat * const dm_stripes_total_buf = taskObj.dm_stripes_total.buf;
+        const uint64_t bufels = taskObj.dm_stripes.bufels;
 
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd collapse(2) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
 #elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(dm_stripes_buf,dm_stripes_total_buf)
+#pragma acc parallel loop collapse(2) present(map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
 #endif
         for(uint64_t i = start_idx; i < stop_idx; i++)
             for(uint64_t j = 0; j < n_samples; j++) {

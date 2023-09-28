@@ -64,19 +64,18 @@ namespace SUCMP_NM {
       const unsigned int stop_idx;
       const unsigned int n_samples;
       const uint64_t  n_samples_r;
+      const uint64_t  bufels;
       TFloat* const buf;
 
       UnifracTaskVector(std::vector<double*> &_dm_stripes, const su::task_parameters* _task_p)
       : dm_stripes(_dm_stripes), task_p(_task_p)
       , start_idx(task_p->start), stop_idx(task_p->stop), n_samples(task_p->n_samples)
       , n_samples_r(((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK) // round up
-      , buf((dm_stripes[start_idx]==NULL) ? NULL : new TFloat[n_samples_r*(stop_idx-start_idx)]) // dm_stripes could be null, in which case keep it null
+      , bufels(n_samples_r * (stop_idx-start_idx))
+      , buf((dm_stripes[start_idx]==NULL) ? NULL : (TFloat*) malloc(sizeof(TFloat) * bufels)) // dm_stripes could be null, in which case keep it null
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t bufels = n_samples_r * (stop_idx-start_idx);
-#endif
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
              TFloat * buf_stripe = ibuf+buf_idx(stripe);
@@ -108,15 +107,11 @@ namespace SUCMP_NM {
       {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t bufels = n_samples_r * (stop_idx-start_idx); 
 #if defined(OMPGPU)
 #pragma omp target exit data map(from:ibuf[:bufels])
-#else
+#elif defined(_OPENACC)
 #pragma acc exit data copyout(ibuf[:bufels])
 #endif
-
-#endif    
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
              TFloat * buf_stripe = ibuf+buf_idx(stripe);
@@ -124,7 +119,7 @@ namespace SUCMP_NM {
               dm_stripe[j] = buf_stripe[j];
              }
           }
-          delete [] buf;
+          free(buf);
         }
       }
 
