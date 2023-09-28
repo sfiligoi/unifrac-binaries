@@ -1589,7 +1589,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     // We will use a 8-bit map, to keep it small enough to keep in L1 cache
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute collapse(2) default(shared)
+#pragma omp target teams distribute parallel for collapse(2) default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop collapse(2) gang present(lengths,sums) async
 #else 
@@ -1602,7 +1602,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
           const TFloat * __restrict__ pl   = &(lengths[emb8*8]);
 
 #if defined(OMPGPU)
-#pragma omp parallel for simd
+#pragma omp simd
 #elif defined(_OPENACC)
 #pragma acc loop vector
 #endif
@@ -1625,7 +1625,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     if (filled_embs_rem>0) { // add also the overflow elements
        const uint64_t emb_el=filled_embs_els;
 #if defined(OMPGPU)
-#pragma omp target teams distribute default(shared)
+#pragma omp target teams distribute parallel for default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop gang present(lengths,sums) async
 #else
@@ -1637,7 +1637,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
           TFloat * __restrict__ psum = &(sums[emb8<<8]);
 
 #if defined(OMPGPU)
-#pragma omp parallel for simd
+#pragma omp simd
 #elif defined(_OPENACC)
 #pragma acc loop vector
 #endif
