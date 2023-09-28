@@ -71,7 +71,6 @@ inline void unifracTT(const su::biom_interface &table,
                       std::vector<double*> &dm_stripes,
                       std::vector<double*> &dm_stripes_total,
                       const su::task_parameters* task_p) {
-    int err;
     // no processor affinity whenusing openacc or openmp
 
     if(table.n_samples != task_p->n_samples) {
@@ -277,7 +276,6 @@ inline void unifrac_vawTT(const su::biom_interface &table,
                           std::vector<double*> &dm_stripes,
                           std::vector<double*> &dm_stripes_total,
                           const su::task_parameters* task_p) {
-    int err;
     // no processor affinity whenusing openacc or openmp
 
     if(table.n_samples != task_p->n_samples) {
