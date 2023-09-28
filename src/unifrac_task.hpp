@@ -171,8 +171,8 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bsize = get_embedded_bsize(dm_stripes.n_samples_r,max_embs);
 #if defined(OMPGPU)
-#pragma omp target exit data map(release:embedded_proportions_alt[:bsize])
-#pragma omp target exit data map(release:embedded_proportions[:bsize])
+#pragma omp target exit data map(delete:embedded_proportions_alt[:bsize])
+#pragma omp target exit data map(delete:embedded_proportions[:bsize])
 #else
 #pragma acc exit data delete(embedded_proportions_alt[:bsize])
 #pragma acc exit data delete(embedded_proportions[:bsize])
@@ -386,7 +386,7 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
 #if defined(OMPGPU)
-#pragma omp target exit data map(release:sums[:n_samples],zcheck[:n_samples])
+#pragma omp target exit data map(delete:sums[:n_samples],zcheck[:n_samples])
 #else
 #pragma acc exit data delete(sums[:n_samples],zcheck[:n_samples])
 #endif
@@ -431,7 +431,7 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
 #if defined(OMPGPU)
-#pragma omp target exit data map(release:sums[:n_samples],zcheck[:n_samples])
+#pragma omp target exit data map(delete:sums[:n_samples],zcheck[:n_samples])
 #else
 #pragma acc exit data delete(sums[:n_samples],zcheck[:n_samples])
 #endif
@@ -481,7 +481,7 @@ namespace SUCMP_NM {
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
 #if defined(OMPGPU)
-#pragma omp target exit data map(release:sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
+#pragma omp target exit data map(delete:sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
 #else
 #pragma acc exit data delete(sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
 #endif
@@ -586,7 +586,7 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bsize = UnifracTaskBase<TFloat,TFloat>::get_embedded_bsize(this->dm_stripes.n_samples_r,this->max_embs);
 #if defined(OMPGPU)
-#pragma omp target exit data map(release:embedded_counts[:bsize])
+#pragma omp target exit data map(delete:embedded_counts[:bsize])
 #else
 #pragma acc exit data delete(embedded_counts[:bsize])
 #endif
