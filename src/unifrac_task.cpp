@@ -2,7 +2,9 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
-#ifndef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
+// will not use popcnt for accelerated compute
+#else
 // popcnt returns number of bits set to 1, if supported by fast HW compute
 // else return 0 when v is 0 and max-bits else
 // Note: The user of popcnt in this file must be able to use this modified semantics
@@ -17,6 +19,7 @@ static inline int64_t popcnt_u64(uint64_t v) {return (v==0) ? 0 : 64;}
 // For future non-x86 ports, see https://barakmich.dev/posts/popcnt-arm64-go-asm/
 // and https://stackoverflow.com/questions/38113284/whats-the-difference-between-builtin-popcountll-and-mm-popcnt-u64
 #endif
+
 #endif
 
 // check for zero values and pre-compute single column sums
@@ -29,7 +32,9 @@ static inline void WeightedZerosAndSums(
                       const unsigned int filled_embs,
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
-#ifdef _OPENACC
+#if defined(OMPGPU)
+#pragma omp target teams distribute parallel for simd default(shared)
+#elif defined(_OPENACC)
 #pragma acc parallel loop gang vector present(embedded_proportions,lengths,zcheck,sums)
 #else
 #pragma omp parallel for default(shared)
@@ -38,7 +43,9 @@ static inline void WeightedZerosAndSums(
             bool all_zeros=true;
             TFloat my_sum = 0.0;
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
             for (uint64_t emb=0; emb<filled_embs; emb++) {
                 const uint64_t offset = n_samples_r * emb;
 
@@ -77,7 +84,7 @@ static inline TFloat WeightedVal1(
             return my_stripe;
 }
 
-#ifndef _OPENACC
+#if !(defined(_OPENACC) || defined(OMPGPU))
 template<class TFloat>
 static inline void WeightedVal4(
                       TFloat * const __restrict__ stripes,
@@ -248,7 +255,7 @@ static inline void UnnormalizedWeighted1(
        }
 }
 
-#ifndef _OPENACC
+#if !(defined(_OPENACC) || defined(OMPGPU))
 // Vectorized step in computing UnnormalizedWeighted Unifrac
 template<class TFloat>
 static inline void UnnormalizedWeighted4(
@@ -410,14 +417,15 @@ static inline void UnnormalizedWeighted8(
 #endif
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
 
     bool * const __restrict__ zcheck = this->zcheck;
@@ -432,9 +440,15 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
                          filled_embs, n_samples, n_samples_r);
 
     // now do the real compute
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
+#endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
       // SIMT-based GPU work great one at a time (HW will deal with parallelism)
@@ -510,21 +524,20 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
     } // for ss
 #endif
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -533,9 +546,16 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,lengths) async
+#endif
+
 #else
 #pragma omp parallel for default(shared) schedule(dynamic,1)
 #endif
@@ -555,7 +575,9 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 
             TFloat my_stripe = dm_stripe[k];
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
             for (uint64_t emb=0; emb<filled_embs; emb++) {
                 const uint64_t offset = n_samples_r*emb;
 
@@ -578,10 +600,8 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
       }
     }
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 // Single step in computing NormalizedWeighted Unifrac
@@ -635,7 +655,7 @@ static inline void NormalizedWeighted1(
        }
 }
 
-#ifndef _OPENACC
+#if !(defined(_OPENACC) || defined(OMPGPU))
 // Vectorized step in computing NormalizedWeighted Unifrac
 template<class TFloat>
 static inline void NormalizedWeighted4(
@@ -855,14 +875,15 @@ static inline void NormalizedWeighted8(
 #endif
 
 template<class TFloat>
-void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
@@ -878,9 +899,15 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
                          filled_embs, n_samples, n_samples_r);
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
+#endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
       // SIMT-based GPU work great one at a time (HW will deal with parallelism)
@@ -956,21 +983,20 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
     } // for ss
 #endif
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -980,9 +1006,16 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#endif
+
 #else
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
@@ -1005,7 +1038,9 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
             TFloat my_stripe = dm_stripe[k];
             TFloat my_stripe_total = dm_stripe_total[k];
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
             for (uint64_t emb=0; emb<filled_embs; emb++) {
                 const uint64_t offset = n_samples_r * emb;
 
@@ -1031,21 +1066,20 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
       }
     }
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
@@ -1055,9 +1089,16 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs, co
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracGeneralizedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#endif
+
 #else
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
@@ -1078,7 +1119,9 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs, co
             TFloat my_stripe = dm_stripe[k];
             TFloat my_stripe_total = dm_stripe_total[k];
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
             for (uint64_t emb=0; emb<filled_embs; emb++) {
                 const uint64_t offset = n_samples_r * emb;
 
@@ -1104,14 +1147,12 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs, co
       }
     }
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
@@ -1120,7 +1161,8 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
     const TFloat g_unifrac_alpha = this->task_p->g_unifrac_alpha;
 
     // openacc only works well with local variables
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -1131,9 +1173,16 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
     // quick hack, to be finished
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#endif
+
 #else
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
@@ -1156,7 +1205,9 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
             TFloat my_stripe = dm_stripe[k];
             TFloat my_stripe_total = dm_stripe_total[k];
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
             for (uint64_t emb=0; emb<filled_embs; emb++) {
                 const uint64_t offset = n_samples_r * emb;
 
@@ -1184,10 +1235,8 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
       }
     }
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 // Single step in computing Unweighted Unifrac
@@ -1214,7 +1263,7 @@ static inline void UnweightedOneSide(
                     // nothing to do
                 } else {
                  all_zeros = false;
-#ifndef _OPENACC
+#if !(defined(_OPENACC) || defined(OMPGPU))
                  // CPU/SIMD faster if we check for partial compute
                  if (((uint32_t)o1)==0) {
                     // only high part relevant
@@ -1277,7 +1326,7 @@ static inline void UnweightedOneSide(
 
 }
 
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
 
 template<class TFloat>
 static inline void Unweighted1(
@@ -1490,7 +1539,9 @@ static inline void UnweightedZerosAndSums(
                       const unsigned int filled_embs_els_round,
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
-#ifdef _OPENACC
+#if defined(OMPGPU)
+#pragma omp target teams distribute parallel for simd default(shared)
+#elif defined(_OPENACC)
 #pragma acc parallel loop gang vector present(embedded_proportions,zcheck,el_sums,stripe_sums)
 #else
 #pragma omp parallel for default(shared)
@@ -1505,14 +1556,15 @@ static inline void UnweightedZerosAndSums(
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const uint64_t * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const uint64_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
@@ -1530,7 +1582,10 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 
     // pre-compute sums of length elements, since they are likely to be accessed many times
     // We will use a 8-bit map, to keep it small enough to keep in L1 cache
-#ifdef _OPENACC
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for collapse(2) default(shared)
+#elif defined(_OPENACC)
 #pragma acc parallel loop collapse(2) gang present(lengths,sums) async
 #else 
 #pragma omp parallel for default(shared)
@@ -1541,7 +1596,11 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
           TFloat * __restrict__ psum = &(sums[emb8<<8]);
           const TFloat * __restrict__ pl   = &(lengths[emb8*8]);
 
+#if defined(OMPGPU)
+#pragma omp simd
+#elif defined(_OPENACC)
 #pragma acc loop vector
+#endif
           // compute all the combinations for this block (8-bits total)
           // psum[0] = 0.0   // +0*pl[0]+0*pl[1]+0*pl[2]+...
           // psum[1] = pl[0] // +0*pl[1]+0*pl[2]+...
@@ -1560,7 +1619,9 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     }
     if (filled_embs_rem>0) { // add also the overflow elements
        const uint64_t emb_el=filled_embs_els;
-#ifdef _OPENACC
+#if defined(OMPGPU)
+#pragma omp target teams distribute parallel for default(shared)
+#elif defined(_OPENACC)
 #pragma acc parallel loop gang present(lengths,sums) async
 #else
        // no advantage of OMP, too small
@@ -1570,7 +1631,11 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
           const uint64_t emb8 = emb_el*8+sub8;
           TFloat * __restrict__ psum = &(sums[emb8<<8]);
 
+#if defined(OMPGPU)
+#pragma omp simd
+#elif defined(_OPENACC)
 #pragma acc loop vector
+#endif
           // compute all the combinations for this block, set to 0 any past the limit
           // as above
           for (uint64_t b8_i=0; b8_i<0x100; b8_i++) {
@@ -1583,16 +1648,24 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
         }
     }
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc wait
+#endif
     // check for zero values and compute stripe sums
     UnweightedZerosAndSums(zcheck, stripe_sums,
                            sums, embedded_proportions,
                            filled_embs_els_round, n_samples, n_samples_r);
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums,zcheck,stripe_sums) async
+#endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
       for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
         for(uint64_t ik = 0; ik < step_size ; ik++) {
@@ -1646,21 +1719,20 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
     } // for ss
 #endif
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
-    const uint32_t * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ lengths = this->lengths;
+    const uint32_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat  * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat  * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -1672,9 +1744,16 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs, 
     const uint64_t filled_embs_els = (filled_embs+31)/32; // round up
 
     // point of thread
-#ifdef _OPENACC
+#if defined(_OPENACC) || defined(OMPGPU)
     const unsigned int acc_vector_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::acc_vector_size;
+
+#if defined(OMPGPU)
+    // TODO: Explore async omp target
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#endif
+
 #else
 #pragma omp parallel for schedule(dynamic,1) default(shared)
 #endif
@@ -1697,7 +1776,9 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs, 
 
             const TFloat m = sample_total_counts[k] + sample_total_counts[l1];
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
             for (uint64_t emb_el=0; emb_el<filled_embs_els; emb_el++) {
                 const uint64_t offset_p = n_samples_r * emb_el;
                 uint32_t u1 = embedded_proportions[offset_p + k];
@@ -1707,7 +1788,9 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs, 
 
                 // embedded_proporions is packed
 
+#if !defined(OMPGPU) && defined(_OPENACC)
 #pragma acc loop seq
+#endif
                 for (uint64_t ei=0; ei<32; ei++) {
                    uint64_t emb=emb_el*32+ei;
                    if (emb<filled_embs) {
@@ -1736,9 +1819,7 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs, 
       }
     }
 
-#ifdef _OPENACC
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
