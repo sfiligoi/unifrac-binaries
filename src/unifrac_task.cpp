@@ -983,6 +983,8 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
     } // for ss
 #endif
 
+   // next iteration will use the alternative space
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
