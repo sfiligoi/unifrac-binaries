@@ -143,10 +143,10 @@ namespace SUCMP_NM {
         const uint64_t embsize;
         TFloat * lengths;
        private:
-        TEmb * embedded_proportions;
+        TEmb * my_embedded_proportions;
 #if defined(_OPENACC) || defined(OMPGPU)
         // alternate buffer only needed in async environments, like openacc
-        TEmb * embedded_proportions_alt; // used as temp
+        TEmb * my_embedded_proportions_alt; // used as temp
         bool use_alt_emb;
 #endif
        public:
@@ -156,20 +156,20 @@ namespace SUCMP_NM {
         , max_embs(_max_embs)
         , embsize(get_embedded_bsize(dm_stripes.n_samples_r,_max_embs))
         , lengths( (TFloat *) malloc(sizeof(TFloat) * _max_embs))
-        , embedded_proportions((TEmb *) malloc(sizeof(TEmb)*embsize))
+        , my_embedded_proportions((TEmb *) malloc(sizeof(TEmb)*embsize))
 #if defined(_OPENACC) || defined(OMPGPU)
-        , embedded_proportions_alt((TEmb *) malloc(sizeof(TEmb)*embsize))
+        , my_embedded_proportions_alt((TEmb *) malloc(sizeof(TEmb)*embsize))
         , use_alt_emb(false)
 #endif
         {
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:lengths[0:_max_embs])
-#pragma omp target enter data map(alloc:embedded_proportions[0:embsize])
-#pragma omp target enter data map(alloc:embedded_proportions_alt[0:embsize])
+#pragma omp target enter data map(alloc:my_embedded_proportions[0:embsize])
+#pragma omp target enter data map(alloc:my_embedded_proportions_alt[0:embsize])
 #elif defined(_OPENACC)
 #pragma acc enter data create(lengths[0:_max_embs])
-#pragma acc enter data create(embedded_proportions[0:embsize])
-#pragma acc enter data create(embedded_proportions_alt[0:embsize])
+#pragma acc enter data create(my_embedded_proportions[0:embsize])
+#pragma acc enter data create(my_embedded_proportions_alt[0:embsize])
 #endif    
         }
 
@@ -181,26 +181,26 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
 
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_proportions_alt[0:embsize])
-#pragma omp target exit data map(delete:embedded_proportions[0:embsize])
+#pragma omp target exit data map(delete:my_embedded_proportions_alt[0:embsize])
+#pragma omp target exit data map(delete:my_embedded_proportions[0:embsize])
 #pragma omp target exit data map(delete:lengths[0:max_embs])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(embedded_proportions_alt[0:embsize])
-#pragma acc exit data delete(embedded_proportions[0:embsize])
+#pragma acc exit data delete(my_embedded_proportions_alt[0:embsize])
+#pragma acc exit data delete(my_embedded_proportions[0:embsize])
 #pragma acc exit data delete(lengths[0:max_embs])
 #endif
 
-          free(embedded_proportions_alt);
+          free(my_embedded_proportions_alt);
 #endif
-          free(embedded_proportions);
+          free(my_embedded_proportions);
           free(lengths);
         }
 
 #if defined(_OPENACC) || defined(OMPGPU)
-        TEmb * get_embedded_proportions() {return use_alt_emb ? embedded_proportions_alt : embedded_proportions;}
+        TEmb * get_embedded_proportions() {return use_alt_emb ? my_embedded_proportions_alt : my_embedded_proportions;}
         void  set_alt_embedded_proportions() {use_alt_emb = !use_alt_emb;}
 #else
-        TEmb * get_embedded_proportions() {return embedded_proportions;}
+        TEmb * get_embedded_proportions() {return my_embedded_proportions;}
         void  set_alt_embedded_proportions() {}
 #endif
 
