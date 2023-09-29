@@ -140,36 +140,38 @@ namespace SUCMP_NM {
         const su::task_parameters* task_p;
 
         const unsigned int max_embs;
+        const uint64_t embsize;
         TFloat * lengths;
+       private:
         TEmb * embedded_proportions;
 #if defined(_OPENACC) || defined(OMPGPU)
-       protected:
         // alternate buffer only needed in async environments, like openacc
         TEmb * embedded_proportions_alt; // used as temp
-       public:
+        bool use_alt_emb;
 #endif
+       public:
 
         UnifracTaskBase(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : dm_stripes(_dm_stripes,_task_p), dm_stripes_total(_dm_stripes_total,_task_p), task_p(_task_p)
         , max_embs(_max_embs)
+        , embsize(get_embedded_bsize(dm_stripes.n_samples_r,_max_embs))
         , lengths( (TFloat *) malloc(sizeof(TFloat) * _max_embs))
-        , embedded_proportions(initialize_embedded(dm_stripes.n_samples_r,_max_embs))
+        , embedded_proportions((TEmb *) malloc(sizeof(TEmb)*embsize))
 #if defined(_OPENACC) || defined(OMPGPU)
-        , embedded_proportions_alt(initialize_embedded(dm_stripes.n_samples_r,_max_embs)) 
+        , embedded_proportions_alt((TEmb *) malloc(sizeof(TEmb)*embsize))
+        , use_alt_emb(false)
 #endif
         {
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:lengths[0:_max_embs])
+#pragma omp target enter data map(alloc:embedded_proportions[0:embsize])
+#pragma omp target enter data map(alloc:embedded_proportions_alt[0:embsize])
 #elif defined(_OPENACC)
 #pragma acc enter data create(lengths[0:_max_embs])
+#pragma acc enter data create(embedded_proportions[0:embsize])
+#pragma acc enter data create(embedded_proportions_alt[0:embsize])
 #endif    
         }
-
-        /* remove
-        // Note: not const, since they share a mutable state
-        UnifracTaskBase(UnifracTaskBase &baseObj)
-        : dm_stripes(baseObj.dm_stripes), dm_stripes_total(baseObj.dm_stripes_total), task_p(baseObj.task_p) {}
-        */
 
         UnifracTaskBase<TFloat,TEmb>(const UnifracTaskBase<TFloat,TEmb>& ) = delete;
         UnifracTaskBase<TFloat,TEmb>& operator= (const UnifracTaskBase<TFloat,TEmb>&) = delete;
@@ -177,14 +179,14 @@ namespace SUCMP_NM {
         virtual ~UnifracTaskBase()
         {
 #if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t bsize = get_embedded_bsize(dm_stripes.n_samples_r,max_embs);
+
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_proportions_alt[0:bsize])
-#pragma omp target exit data map(delete:embedded_proportions[0:bsize])
+#pragma omp target exit data map(delete:embedded_proportions_alt[0:embsize])
+#pragma omp target exit data map(delete:embedded_proportions[0:embsize])
 #pragma omp target exit data map(delete:lengths[0:max_embs])
-#else
-#pragma acc exit data delete(embedded_proportions_alt[0:bsize])
-#pragma acc exit data delete(embedded_proportions0[0:bsize])
+#elif defined(_OPENACC)
+#pragma acc exit data delete(embedded_proportions_alt[0:embsize])
+#pragma acc exit data delete(embedded_proportions[0:embsize])
 #pragma acc exit data delete(lengths[0:max_embs])
 #endif
 
@@ -194,15 +196,24 @@ namespace SUCMP_NM {
           free(lengths);
         }
 
+#if defined(_OPENACC) || defined(OMPGPU)
+        TEmb * get_embedded_proportions() {return use_alt_emb ? embedded_proportions_alt : embedded_proportions;}
+        void  set_alt_embedded_proportions() {use_alt_emb = !use_alt_emb;}
+#else
+        TEmb * get_embedded_proportions() {return embedded_proportions;}
+        void  set_alt_embedded_proportions() {}
+#endif
+
         void sync_embedded_proportions(unsigned int filled_embs)
         {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t  n_samples_r = dm_stripes.n_samples_r;
           const uint64_t bsize = n_samples_r * get_emb_els(filled_embs);
+          TEmb * iembedded_proportions = this->get_embedded_proportions();
 #if defined(OMPGPU)
-#pragma omp target update to(embedded_proportions[0:bsize])
+#pragma omp target update to(iembedded_proportions[0:bsize])
 #else
-#pragma acc update device(embedded_proportions[0:bsize])
+#pragma acc update device(iembedded_proportions[0:bsize])
 #endif
 
 #endif
@@ -215,22 +226,30 @@ namespace SUCMP_NM {
           return bsize;
         }
 
-        static TEmb *initialize_embedded(const uint64_t  n_samples_r, unsigned int max_embs) {
-          const uint64_t bsize = get_embedded_bsize(n_samples_r, max_embs);
-
-          TEmb* buf = (TEmb*) malloc(sizeof(TEmb) * bsize);
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:buf[0:bsize])
-#elif defined(_OPENACC)
-#pragma acc enter data create(buf[0:bsize])
-#endif
-          return buf;
-        }
-
         void embed_proportions_range(const TFloat* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb);
         void embed_proportions(const TFloat* __restrict__ in, unsigned int emb) {embed_proportions_range(in,0,dm_stripes.n_samples,emb);}
 
+        void compute_totals() {         
+                TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
+          const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
+          const uint64_t bufels = this->dm_stripes.bufels;
+
+#if defined(OMPGPU)
+#pragma omp target teams distribute parallel for simd default(shared)
+#elif defined(_OPENACC)
+#pragma acc parallel loop gang vector present(dm_stripes_buf,dm_stripes_total_buf)
+#endif
+          for(uint64_t idx=0; idx< bufels; idx++)
+              dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
+
+          /* Original code:
+          for(uint64_t i = start_idx; i < stop_idx; i++)
+            for(uint64_t j = 0; j < n_samples; j++) {
+                dm_stripes[i][j] = dm_stripes[i][j] / dm_stripes_total[i][j];
+            }
+          */
         
+       }
 
         //
         // ===== Internal, do not use directly =======
@@ -299,21 +318,21 @@ namespace SUCMP_NM {
     };
 
     // straight embeded_proportions
-    template<> inline void UnifracTaskBase<double,double>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(embedded_proportions,in,start,end,emb);}
-    template<> inline void UnifracTaskBase<double,float>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(embedded_proportions,in,start,end,emb);}
-    template<> inline void UnifracTaskBase<float,float>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(embedded_proportions,in,start,end,emb);}
+    template<> inline void UnifracTaskBase<double,double>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(get_embedded_proportions(),in,start,end,emb);}
+    template<> inline void UnifracTaskBase<double,float>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(get_embedded_proportions(),in,start,end,emb);}
+    template<> inline void UnifracTaskBase<float,float>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(get_embedded_proportions(),in,start,end,emb);}
     template<> inline  unsigned int UnifracTaskBase<double,double>::get_emb_els(unsigned int max_embs) {return max_embs;}
     template<> inline  unsigned int UnifracTaskBase<double,float>::get_emb_els(unsigned int max_embs) {return max_embs;}
     template<> inline  unsigned int UnifracTaskBase<float,float>::get_emb_els(unsigned int max_embs) {return max_embs;}
 
     //packed bool embeded_proportions
-    template<> inline void UnifracTaskBase<double,uint32_t>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(embedded_proportions,in,start,end,emb);}
-    template<> inline void UnifracTaskBase<float,uint32_t>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(embedded_proportions,in,start,end,emb);}
+    template<> inline void UnifracTaskBase<double,uint32_t>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(get_embedded_proportions(),in,start,end,emb);}
+    template<> inline void UnifracTaskBase<float,uint32_t>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(get_embedded_proportions(),in,start,end,emb);}
     template<> inline  unsigned int UnifracTaskBase<double,uint32_t>::get_emb_els(unsigned int max_embs) {return (max_embs+31)/32;}
     template<> inline  unsigned int UnifracTaskBase<float,uint32_t>::get_emb_els(unsigned int max_embs) {return (max_embs+31)/32;}
 
-    template<> inline void UnifracTaskBase<double,uint64_t>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(embedded_proportions,in,start,end,emb);}
-    template<> inline void UnifracTaskBase<float,uint64_t>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(embedded_proportions,in,start,end,emb);}
+    template<> inline void UnifracTaskBase<double,uint64_t>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(get_embedded_proportions(),in,start,end,emb);}
+    template<> inline void UnifracTaskBase<float,uint64_t>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_bool(get_embedded_proportions(),in,start,end,emb);}
     template<> inline  unsigned int UnifracTaskBase<double,uint64_t>::get_emb_els(unsigned int max_embs) {return (max_embs+63)/64;}
     template<> inline  unsigned int UnifracTaskBase<float,uint64_t>::get_emb_els(unsigned int max_embs) {return (max_embs+63)/64;}
 
@@ -349,12 +368,6 @@ namespace SUCMP_NM {
         UnifracTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTaskBase<TFloat,TEmb>(_dm_stripes, _dm_stripes_total, _max_embs, _task_p) {}
 
-        /* delete
-        UnifracTask(UnifracTaskBase<TFloat> &baseObj, const TEmb * _embedded_proportions, unsigned int _max_embs)
-        : UnifracTaskBase<TFloat>(baseObj)
-        , embedded_proportions(_embedded_proportions), max_embs(_max_embs) {}
-        */
-      
        UnifracTask<TFloat,TEmb>(const UnifracTask<TFloat,TEmb>& ) = delete;
        UnifracTask<TFloat,TEmb>& operator= (const UnifracTask<TFloat,TEmb>&) = delete;
 
@@ -579,30 +592,27 @@ namespace SUCMP_NM {
                     const TFloat * _sample_total_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTaskBase<TFloat,TEmb>(_dm_stripes, _dm_stripes_total, _max_embs, _task_p)
-        , embedded_counts(UnifracTaskBase<TFloat,TFloat>::initialize_embedded(this->dm_stripes.n_samples_r,_max_embs)), sample_total_counts(_sample_total_counts) {}
-
-
-        /* delete
-        UnifracVawTask(UnifracTaskBase<TFloat> &baseObj, 
-                    const TEmb * _embedded_proportions, const TFloat * _sample_total_counts, unsigned int _max_embs)
-        : UnifracTaskBase<TFloat>(baseObj)
-        , embedded_proportions(_embedded_proportions), embedded_counts(initialize_embedded<TFloat>()), sample_total_counts(_sample_total_counts), max_embs(_max_embs) {}
-        */
+        , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize))
+        , sample_total_counts(_sample_total_counts)
+        {
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:embedded_counts[0:this->embsize])
+#elif defined(_OPENACC)
+#pragma acc enter data create(embedded_counts[0:this->embsize])
+#endif    
+        }
 
        UnifracVawTask<TFloat,TEmb>(const UnifracVawTask<TFloat,TEmb>& ) = delete;
        UnifracVawTask<TFloat,TEmb>& operator= (const UnifracVawTask<TFloat,TEmb>&) = delete;
 
        virtual ~UnifracVawTask() 
        {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t bsize = UnifracTaskBase<TFloat,TFloat>::get_embedded_bsize(this->dm_stripes.n_samples_r,this->max_embs);
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_counts[0:bsize])
-#else
-#pragma acc exit data delete(embedded_counts[0:bsize])
+#pragma omp target exit data map(delete:embedded_counts[0:embsize])
+#elif defined(_OPENACC)
+#pragma acc exit data delete(embedded_counts[0:embsize])
 #endif
 
-#endif
           free(embedded_counts);
        }
 

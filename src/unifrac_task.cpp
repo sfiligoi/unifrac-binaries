@@ -425,7 +425,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
 
     bool * const __restrict__ zcheck = this->zcheck;
@@ -524,10 +524,8 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
     } // for ss
 #endif
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
@@ -539,7 +537,7 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -602,10 +600,8 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
       }
     }
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 // Single step in computing NormalizedWeighted Unifrac
@@ -887,7 +883,7 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
@@ -987,10 +983,6 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
     } // for ss
 #endif
 
-#if defined(_OPENACC) || defined(OMPGPU)
-   // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
 }
 
 template<class TFloat>
@@ -1002,7 +994,7 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -1072,10 +1064,8 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
       }
     }
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
@@ -1087,7 +1077,7 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
@@ -1155,10 +1145,8 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
       }
     }
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
@@ -1172,7 +1160,7 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs)
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -1245,10 +1233,8 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs)
       }
     }
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 // Single step in computing Unweighted Unifrac
@@ -1576,7 +1562,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const uint64_t * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const uint64_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
@@ -1731,10 +1717,8 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
     } // for ss
 #endif
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
@@ -1746,7 +1730,7 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) 
 
     // openacc only works well with local variables
     const TFloat * const __restrict__ lengths = this->lengths;
-    const uint32_t * const __restrict__ embedded_proportions = this->embedded_proportions;
+    const uint32_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
     const TFloat  * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat  * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
@@ -1833,9 +1817,7 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) 
       }
     }
 
-#if defined(_OPENACC) || defined(OMPGPU)
    // next iteration will use the alternative space
-   std::swap(this->embedded_proportions,this->embedded_proportions_alt);
-#endif
+   this->set_alt_embedded_proportions();
 }
 

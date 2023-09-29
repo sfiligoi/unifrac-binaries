@@ -197,25 +197,7 @@ inline void unifracTT(const su::biom_interface &table,
 #endif
 
     if(want_total) {
-        const uint64_t start_idx = task_p->start;
-        const uint64_t stop_idx = task_p->stop;
-
-        TFloat * const dm_stripes_buf = taskObj.dm_stripes.buf;
-        const TFloat * const dm_stripes_total_buf = taskObj.dm_stripes_total.buf;
-        const uint64_t bufels = taskObj.dm_stripes.bufels;
-
-#if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
-#elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
-#endif
-        for(uint64_t i = start_idx; i < stop_idx; i++)
-            for(uint64_t j = 0; j < n_samples; j++) {
-                uint64_t idx = (i-start_idx)*n_samples_r+j;
-                dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
-                // taskObj.dm_stripes[i][j] = taskObj.dm_stripes[i][j] / taskObj.dm_stripes_total[i][j];
-            }
-        
+        taskObj.compute_totals();
     }
 
 }
@@ -360,25 +342,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 #endif
 
     if(want_total) {
-        const uint64_t start_idx = task_p->start;
-        const uint64_t stop_idx = task_p->stop;
-
-        TFloat * const dm_stripes_buf = taskObj.dm_stripes.buf;
-        const TFloat * const dm_stripes_total_buf = taskObj.dm_stripes_total.buf;
-        const uint64_t bufels = taskObj.dm_stripes.bufels;
-
-#if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
-#elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
-#endif
-        for(uint64_t i = start_idx; i < stop_idx; i++)
-            for(uint64_t j = 0; j < n_samples; j++) {
-                uint64_t idx = (i-start_idx)*n_samples_r+j;
-                dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
-                // taskObj.dm_stripes[i][j] = taskObj.dm_stripes[i][j] / taskObj.dm_stripes_total[i][j];
-            }
-
+        taskObj.compute_totals();
     }
 
 
