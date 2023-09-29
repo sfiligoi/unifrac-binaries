@@ -140,6 +140,7 @@ namespace SUCMP_NM {
         const su::task_parameters* task_p;
 
         const unsigned int max_embs;
+        TFloat * lengths;
         TEmb * embedded_proportions;
 #if defined(_OPENACC) || defined(OMPGPU)
        protected:
@@ -151,11 +152,18 @@ namespace SUCMP_NM {
         UnifracTaskBase(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : dm_stripes(_dm_stripes,_task_p), dm_stripes_total(_dm_stripes_total,_task_p), task_p(_task_p)
         , max_embs(_max_embs)
+        , lengths( (TFloat *) malloc(sizeof(TFloat) * _max_embs))
         , embedded_proportions(initialize_embedded(dm_stripes.n_samples_r,_max_embs))
 #if defined(_OPENACC) || defined(OMPGPU)
         , embedded_proportions_alt(initialize_embedded(dm_stripes.n_samples_r,_max_embs)) 
 #endif
-        {}
+        {
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:lengths[0:_max_embs])
+#elif defined(_OPENACC)
+#pragma acc enter data create(lengths[0:_max_embs])
+#endif    
+        }
 
         /* remove
         // Note: not const, since they share a mutable state
@@ -173,14 +181,17 @@ namespace SUCMP_NM {
 #if defined(OMPGPU)
 #pragma omp target exit data map(delete:embedded_proportions_alt[0:bsize])
 #pragma omp target exit data map(delete:embedded_proportions[0:bsize])
+#pragma omp target exit data map(delete:lengths[0:max_embs])
 #else
 #pragma acc exit data delete(embedded_proportions_alt[0:bsize])
 #pragma acc exit data delete(embedded_proportions0[0:bsize])
+#pragma acc exit data delete(lengths[0:max_embs])
 #endif
 
           free(embedded_proportions_alt);
 #endif
           free(embedded_proportions);
+          free(lengths);
         }
 
         void sync_embedded_proportions(unsigned int filled_embs)
@@ -349,7 +360,7 @@ namespace SUCMP_NM {
 
        virtual ~UnifracTask() {}
 
-       virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) = 0;
+       virtual void run(unsigned int filled_embs) = 0;
 
       protected:
        static const unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 128-16; // a little less to leave a bit of space of maxed-out L1
@@ -396,9 +407,9 @@ namespace SUCMP_NM {
           free(zcheck);
         }
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
       protected:
         // temp buffers
         bool     *zcheck;
@@ -441,9 +452,9 @@ namespace SUCMP_NM {
           free(zcheck);
         }
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
       protected:
         // temp buffers
         bool     *zcheck;
@@ -492,9 +503,9 @@ namespace SUCMP_NM {
           free(zcheck);
         }
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
       private:
         // temp buffers
         TFloat *sums;
@@ -512,9 +523,9 @@ namespace SUCMP_NM {
         UnifracGeneralizedTask<TFloat>(const UnifracGeneralizedTask<TFloat>& ) = delete;
         UnifracGeneralizedTask<TFloat>& operator= (const UnifracGeneralizedTask<TFloat>&) = delete;
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
     };
 
     /* void unifrac_vaw tasks
@@ -617,7 +628,7 @@ namespace SUCMP_NM {
         }
         void embed(const TFloat* __restrict__ in_proportions, const double* __restrict__ in_counts, unsigned int emb) { embed_range(in_proportions,in_counts,0,this->dm_stripes.n_samples,emb);}
 
-       virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) = 0;
+       virtual void run(unsigned int filled_embs) = 0;
     };
 
     template<class TFloat>
@@ -631,9 +642,9 @@ namespace SUCMP_NM {
         UnifracVawUnnormalizedWeightedTask<TFloat>(const UnifracVawUnnormalizedWeightedTask<TFloat>& ) = delete;
         UnifracVawUnnormalizedWeightedTask<TFloat>& operator= (const UnifracVawUnnormalizedWeightedTask<TFloat>&) = delete;
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
     };
     template<class TFloat>
     class UnifracVawNormalizedWeightedTask : public UnifracVawTask<TFloat,TFloat> {
@@ -646,9 +657,9 @@ namespace SUCMP_NM {
         UnifracVawNormalizedWeightedTask<TFloat>(const UnifracVawNormalizedWeightedTask<TFloat>& ) = delete;
         UnifracVawNormalizedWeightedTask<TFloat>& operator= (const UnifracVawNormalizedWeightedTask<TFloat>&) = delete;
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
     };
     template<class TFloat>
     class UnifracVawUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {
@@ -661,9 +672,9 @@ namespace SUCMP_NM {
         UnifracVawUnweightedTask<TFloat>(const UnifracVawUnweightedTask<TFloat>& ) = delete;
         UnifracVawUnweightedTask<TFloat>& operator= (const UnifracVawUnweightedTask<TFloat>&) = delete;
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
     };
     template<class TFloat>
     class UnifracVawGeneralizedTask : public UnifracVawTask<TFloat,TFloat> {
@@ -676,9 +687,9 @@ namespace SUCMP_NM {
         UnifracVawGeneralizedTask<TFloat>(const UnifracVawGeneralizedTask<TFloat>& ) = delete;
         UnifracVawGeneralizedTask<TFloat>& operator= (const UnifracVawGeneralizedTask<TFloat>&) = delete;
 
-        virtual void run(unsigned int filled_embs, const TFloat * __restrict__ length) {_run(filled_embs, length);}
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs, const TFloat * __restrict__ length);
+        void _run(unsigned int filled_embs);
     };
 
 }

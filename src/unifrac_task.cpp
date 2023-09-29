@@ -417,13 +417,14 @@ static inline void UnnormalizedWeighted8(
 #endif
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
 
@@ -530,13 +531,14 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
@@ -877,13 +879,14 @@ static inline void NormalizedWeighted8(
 #endif
 
 template<class TFloat>
-void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
@@ -991,13 +994,14 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
@@ -1075,13 +1079,14 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
@@ -1157,7 +1162,7 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs, co
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
@@ -1166,6 +1171,7 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs,
     const TFloat g_unifrac_alpha = this->task_p->g_unifrac_alpha;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const TFloat * const __restrict__ embedded_proportions = this->embedded_proportions;
     const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
@@ -1562,13 +1568,14 @@ static inline void UnweightedZerosAndSums(
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const uint64_t * const __restrict__ embedded_proportions = this->embedded_proportions;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
@@ -1731,13 +1738,14 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs, con
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs, const TFloat * __restrict__ lengths) {
+void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
     const uint64_t start_idx = this->task_p->start;
     const uint64_t stop_idx = this->task_p->stop;
     const uint64_t n_samples = this->task_p->n_samples;
     const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
     // openacc only works well with local variables
+    const TFloat * const __restrict__ lengths = this->lengths;
     const uint32_t * const __restrict__ embedded_proportions = this->embedded_proportions;
     const TFloat  * const __restrict__ embedded_counts = this->embedded_counts;
     const TFloat  * const __restrict__ sample_total_counts = this->sample_total_counts;

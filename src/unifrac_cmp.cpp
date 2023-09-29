@@ -89,12 +89,7 @@ inline void unifracTT(const su::biom_interface &table,
 
     TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total),max_emb,task_p);
 
-    TFloat *lengths = (TFloat*) malloc(sizeof(TFloat) * max_emb);
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:lengths[0:max_emb])
-#elif defined(_OPENACC)
-#pragma acc enter data create(lengths[0:max_emb])
-#endif
+    TFloat *lengths = taskObj.lengths;
 
         /*
          * The values in the example vectors correspond to index positions of an
@@ -189,7 +184,7 @@ inline void unifracTT(const su::biom_interface &table,
 #pragma acc wait
 #pragma acc update device(lengths[0:filled_emb])
 #endif
-          taskObj._run(filled_emb,lengths);
+          taskObj._run(filled_emb);
           filled_emb=0;
 
           su::try_report(task_p, k, max_k);
@@ -223,12 +218,6 @@ inline void unifracTT(const su::biom_interface &table,
         
     }
 
-#if defined(OMPGPU)
-#pragma target exit data map(delete:lengths[0:max_emb])
-#elif defined(_OPENACC)
-#pragma acc exit data delete(lengths[0:max_emb])
-#endif
-    free(lengths);
 }
 
 void SUCMP_NM::unifrac(const su::biom_interface &table,
@@ -303,12 +292,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
     TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total), sample_total_counts, max_emb, task_p);
 
-    TFloat *lengths = (TFloat *) malloc(sizeof(TFloat) * max_emb);
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:lengths[0:max_emb])
-#elif defined(_OPENACC)
-#pragma acc enter data create(lengths[0:max_emb])
-#endif
+    TFloat *lengths = taskObj.lengths;
 
     unsigned int k = 0; // index in tree
     const unsigned int max_k = (tree.nparens / 2) - 1;
@@ -363,7 +347,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 #endif
 
           taskObj.sync_embedded(filled_emb);
-          taskObj._run(filled_emb,lengths);
+          taskObj._run(filled_emb);
           filled_emb = 0;
 
           su::try_report(task_p, k, max_k);
@@ -399,13 +383,10 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
 
 #if defined(OMPGPU)
-#pragma target exit data map(delete:lengths[0:max_emb])
 #pragma target exit data map(delete:sample_total_counts[0:n_samples_r])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(lengths[0:max_emb])
 #pragma acc exit data delete(sample_total_counts[0:n_samples_r])
 #endif
-    free(lengths);
     free(sample_total_counts);
 }
 
