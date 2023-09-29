@@ -89,9 +89,9 @@ namespace SUCMP_NM {
              }
            }
 #if defined(OMPGPU)
-#pragma omp target enter data map(to:ibuf[:bufels])
+#pragma omp target enter data map(to:ibuf[0:bufels])
 #elif defined(_OPENACC)
-#pragma acc enter data copyin(ibuf[:bufels])
+#pragma acc enter data copyin(ibuf[0:bufels])
 #endif    
         }
       }
@@ -108,9 +108,9 @@ namespace SUCMP_NM {
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
 #if defined(OMPGPU)
-#pragma omp target exit data map(from:ibuf[:bufels])
+#pragma omp target exit data map(from:ibuf[0:bufels])
 #elif defined(_OPENACC)
-#pragma acc exit data copyout(ibuf[:bufels])
+#pragma acc exit data copyout(ibuf[0:bufels])
 #endif
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
@@ -171,11 +171,11 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bsize = get_embedded_bsize(dm_stripes.n_samples_r,max_embs);
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_proportions_alt[:bsize])
-#pragma omp target exit data map(delete:embedded_proportions[:bsize])
+#pragma omp target exit data map(delete:embedded_proportions_alt[0:bsize])
+#pragma omp target exit data map(delete:embedded_proportions[0:bsize])
 #else
-#pragma acc exit data delete(embedded_proportions_alt[:bsize])
-#pragma acc exit data delete(embedded_proportions[:bsize])
+#pragma acc exit data delete(embedded_proportions_alt[0:bsize])
+#pragma acc exit data delete(embedded_proportions0[0:bsize])
 #endif
 
           free(embedded_proportions_alt);
@@ -189,9 +189,9 @@ namespace SUCMP_NM {
           const uint64_t  n_samples_r = dm_stripes.n_samples_r;
           const uint64_t bsize = n_samples_r * get_emb_els(filled_embs);
 #if defined(OMPGPU)
-#pragma omp target update to(embedded_proportions[:bsize])
+#pragma omp target update to(embedded_proportions[0:bsize])
 #else
-#pragma acc update device(embedded_proportions[:bsize])
+#pragma acc update device(embedded_proportions[0:bsize])
 #endif
 
 #endif
@@ -209,9 +209,9 @@ namespace SUCMP_NM {
 
           TEmb* buf = (TEmb*) malloc(sizeof(TEmb) * bsize);
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:buf[:bsize])
+#pragma omp target enter data map(alloc:buf[0:bsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(buf[:bsize])
+#pragma acc enter data create(buf[0:bsize])
 #endif
           return buf;
         }
@@ -372,9 +372,9 @@ namespace SUCMP_NM {
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:zcheck[:n_samples],sums[:n_samples])
+#pragma omp target enter data map(alloc:zcheck[0:n_samples],sums[0:n_samples])
 #elif defined(_OPENACC)
-#pragma acc enter data create(zcheck[:n_samples],sums[:n_samples])
+#pragma acc enter data create(zcheck[0:n_samples],sums[0:n_samples])
 #endif
         }
 
@@ -386,9 +386,9 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:sums[:n_samples],zcheck[:n_samples])
+#pragma omp target exit data map(delete:sums[0:n_samples],zcheck[0:n_samples])
 #else
-#pragma acc exit data delete(sums[:n_samples],zcheck[:n_samples])
+#pragma acc exit data delete(sums[0:n_samples],zcheck[0:n_samples])
 #endif
 
 #endif
@@ -417,9 +417,9 @@ namespace SUCMP_NM {
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:zcheck[:n_samples],sums[:n_samples])
+#pragma omp target enter data map(alloc:zcheck[0:n_samples],sums[0:n_samples])
 #elif defined(_OPENACC)
-#pragma acc enter data create(zcheck[:n_samples],sums[:n_samples])
+#pragma acc enter data create(zcheck[0:n_samples],sums[0:n_samples])
 #endif
         }
 
@@ -431,9 +431,9 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:sums[:n_samples],zcheck[:n_samples])
+#pragma omp target exit data map(delete:sums[0:n_samples],zcheck[0:n_samples])
 #else
-#pragma acc exit data delete(sums[:n_samples],zcheck[:n_samples])
+#pragma acc exit data delete(sums[0:n_samples],zcheck[0:n_samples])
 #endif
 
 #endif
@@ -466,9 +466,9 @@ namespace SUCMP_NM {
           stripe_sums = (TFloat*) malloc(sizeof(TFloat) *  n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * bsize);
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:zcheck[:n_samples],stripe_sums[:n_samples],sums[:bsize])
+#pragma omp target enter data map(alloc:zcheck[0:n_samples],stripe_sums[0:n_samples],sums[0:bsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(zcheck[:n_samples],stripe_sums[:n_samples],sums[:bsize])
+#pragma acc enter data create(zcheck[0:n_samples],stripe_sums[0:n_samples],sums[0:bsize])
 #endif
         }
 
@@ -481,9 +481,9 @@ namespace SUCMP_NM {
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
+#pragma omp target exit data map(delete:sums[0:bsize],stripe_sums[0:n_samples],zcheck[0:n_samples])
 #else
-#pragma acc exit data delete(sums[:bsize],stripe_sums[:n_samples],zcheck[:n_samples])
+#pragma acc exit data delete(sums[0:bsize],stripe_sums[0:n_samples],zcheck[0:n_samples])
 #endif
 
 #endif
@@ -586,9 +586,9 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t bsize = UnifracTaskBase<TFloat,TFloat>::get_embedded_bsize(this->dm_stripes.n_samples_r,this->max_embs);
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_counts[:bsize])
+#pragma omp target exit data map(delete:embedded_counts[0:bsize])
 #else
-#pragma acc exit data delete(embedded_counts[:bsize])
+#pragma acc exit data delete(embedded_counts[0:bsize])
 #endif
 
 #endif
@@ -601,9 +601,9 @@ namespace SUCMP_NM {
           const uint64_t  n_samples_r = this->dm_stripes.n_samples_r;
           const uint64_t bsize = n_samples_r * filled_embs;
 #if defined(OMPGPU)
-#pragma omp target update to(embedded_counts[:bsize])
+#pragma omp target update to(embedded_counts[0:bsize])
 #else
-#pragma acc update device(embedded_counts[:bsize])
+#pragma acc update device(embedded_counts[0:bsize])
 #endif
 
 #endif

@@ -91,9 +91,9 @@ inline void unifracTT(const su::biom_interface &table,
 
     TFloat *lengths = (TFloat*) malloc(sizeof(TFloat) * max_emb);
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:lengths[:max_emb])
+#pragma omp target enter data map(alloc:lengths[0:max_emb])
 #elif defined(_OPENACC)
-#pragma acc enter data create(lengths[:max_emb])
+#pragma acc enter data create(lengths[0:max_emb])
 #endif
 
         /*
@@ -183,11 +183,11 @@ inline void unifracTT(const su::biom_interface &table,
           taskObj.sync_embedded_proportions(filled_emb);
 #if defined(OMPGPU)
           // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[:filled_emb])
+#pragma omp target update to(lengths[0:filled_emb])
 #elif defined(_OPENACC)
           // lengths may be still in use in async mode, wait
 #pragma acc wait
-#pragma acc update device(lengths[:filled_emb])
+#pragma acc update device(lengths[0:filled_emb])
 #endif
           taskObj._run(filled_emb,lengths);
           filled_emb=0;
@@ -210,9 +210,9 @@ inline void unifracTT(const su::biom_interface &table,
         const uint64_t bufels = taskObj.dm_stripes.bufels;
 
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
+#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
 #elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
+#pragma acc parallel loop collapse(2) present(dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
 #endif
         for(uint64_t i = start_idx; i < stop_idx; i++)
             for(uint64_t j = 0; j < n_samples; j++) {
@@ -224,9 +224,9 @@ inline void unifracTT(const su::biom_interface &table,
     }
 
 #if defined(OMPGPU)
-#pragma target exit data map(delete:lengths[:max_emb])
+#pragma target exit data map(delete:lengths[0:max_emb])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(lengths[:max_emb])
+#pragma acc exit data delete(lengths[0:max_emb])
 #endif
     free(lengths);
 }
@@ -295,9 +295,9 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
     initialize_sample_counts(sample_total_counts, task_p, table);
 #if defined(OMPGPU)
-#pragma omp target enter data map(to:sample_total_counts[:n_samples_r])
+#pragma omp target enter data map(to:sample_total_counts[0:n_samples_r])
 #elif defined(_OPENACC)
-#pragma acc enter data copyin(sample_total_counts[:n_samples_r])
+#pragma acc enter data copyin(sample_total_counts[0:n_samples_r])
 #endif
     su::initialize_stripes(std::ref(dm_stripes), std::ref(dm_stripes_total), want_total, task_p);
 
@@ -305,9 +305,9 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
     TFloat *lengths = (TFloat *) malloc(sizeof(TFloat) * max_emb);
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:lengths[:max_emb])
+#pragma omp target enter data map(alloc:lengths[0:max_emb])
 #elif defined(_OPENACC)
-#pragma acc enter data create(lengths[:max_emb])
+#pragma acc enter data create(lengths[0:max_emb])
 #endif
 
     unsigned int k = 0; // index in tree
@@ -355,11 +355,11 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
 #if defined(OMPGPU)
           // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[:filled_emb])
+#pragma omp target update to(lengths[0:filled_emb])
 #elif defined(_OPENACC)
           // lengths may be still in use in async mode, wait
 #pragma acc wait
-#pragma acc update device(lengths[:filled_emb])
+#pragma acc update device(lengths[0:filled_emb])
 #endif
 
           taskObj.sync_embedded(filled_emb);
@@ -384,9 +384,9 @@ inline void unifrac_vawTT(const su::biom_interface &table,
         const uint64_t bufels = taskObj.dm_stripes.bufels;
 
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
+#pragma omp target teams distribute parallel for simd collapse(2) map(tofrom:dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
 #elif defined(_OPENACC)
-#pragma acc parallel loop collapse(2) present(dm_stripes_buf[:bufels],dm_stripes_total_buf[:bufels])
+#pragma acc parallel loop collapse(2) present(dm_stripes_buf[0:bufels],dm_stripes_total_buf[0:bufels])
 #endif
         for(uint64_t i = start_idx; i < stop_idx; i++)
             for(uint64_t j = 0; j < n_samples; j++) {
@@ -399,11 +399,11 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
 
 #if defined(OMPGPU)
-#pragma target exit data map(delete:lengths[:max_emb])
-#pragma target exit data map(delete:sample_total_counts[:n_samples_r])
+#pragma target exit data map(delete:lengths[0:max_emb])
+#pragma target exit data map(delete:sample_total_counts[0:n_samples_r])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(lengths[:max_emb])
-#pragma acc exit data delete(sample_total_counts[:n_samples_r])
+#pragma acc exit data delete(lengths[0:max_emb])
+#pragma acc exit data delete(sample_total_counts[0:n_samples_r])
 #endif
     free(lengths);
     free(sample_total_counts);
