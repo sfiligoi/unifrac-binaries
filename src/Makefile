@@ -76,6 +76,11 @@ ifndef NOGPU
 	        LDDFLAGS += -shlib -mp=gpu -Bstatic_pgi
 	        EXEFLAGS += -mp=gpu -Bstatic_pgi
 	endif
+	ifneq (,$(findstring roc,$(COMPILER)))
+		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
+                UNIFRAC_FILES += unifrac_cmp_ompgpu.o
+		OMPGPUCPPFLAGS += -DOMPGPU=1
+	endif
    else 
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_ACC=1
@@ -133,7 +138,6 @@ ifeq (,$(findstring pgi,$(COMPILER)))
 	CPPFLAGS += -Wextra -Wno-unused-parameter
     endif
 endif
-
 
 CPPFLAGS += -Wall  -std=c++17 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
