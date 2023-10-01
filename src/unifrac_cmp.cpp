@@ -347,7 +347,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
 
 #if defined(OMPGPU)
-#pragma target exit data map(delete:sample_total_counts[0:n_samples_r])
+#pragma omp target exit data map(delete:sample_total_counts[0:n_samples_r])
 #elif defined(_OPENACC)
 #pragma acc exit data delete(sample_total_counts[0:n_samples_r])
 #endif
