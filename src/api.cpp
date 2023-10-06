@@ -516,7 +516,7 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     // Filter out any elements with zero counts
     su::biom_inmem table_nz(table,1.0);
     if ((table_nz.n_samples==0) || (table_nz.n_obs==0)) {
-      fprintf(stderr, "WARNING: All samples had zero counts. Forcing zero result\n");
+      fprintf(stderr, "WARNING: All samples had zero counts. Forcing zero result.\n");
       SYNC_TREE_TABLE(tree, table)
 
       TDBG_STEP("sync_tree_table")
@@ -524,6 +524,9 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
       // nothing else to do... results already initialized to 0
       TDBG_STEP("faith_pd")
     } else {
+      if ((table_nz.n_samples!=table.n_samples) || (table_nz.n_obs!=table.n_obs)) {
+        fprintf(stderr, "WARNING: Some samples had zero counts and were filtered out.\n");
+      }
       SYNC_TREE_TABLE(tree, table_nz)
 
       TDBG_STEP("sync_tree_table")
