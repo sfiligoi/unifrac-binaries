@@ -369,7 +369,8 @@ void su::faith_pd(biom_interface &table,
     double length;
 
     // for node in postorderselect
-    for(unsigned int k = 0; k < (tree.nparens / 2) - 1; k++) {
+    const unsigned int max_k = (tree.nparens>1) ? ((tree.nparens / 2) - 1) : 0;
+    for(unsigned int k = 0; k < max_k; k++) {
         node = tree.postorderselect(k);
         // get branch length
         length = tree.lengths[node];
