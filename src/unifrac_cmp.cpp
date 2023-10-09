@@ -137,7 +137,7 @@ inline void unifracTT(const su::biom_interface &table,
          */
 
     unsigned int k = 0; // index in tree
-    const unsigned int max_k = (tree.nparens / 2) - 1;
+    const unsigned int max_k = (tree.nparens>1) ? ((tree.nparens / 2) - 1) : 0;
 
     const unsigned int num_prop_chunks = propstack_multi.get_num_stacks();
     while (k<max_k) {
@@ -277,7 +277,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
     TFloat *lengths = taskObj.lengths;
 
     unsigned int k = 0; // index in tree
-    const unsigned int max_k = (tree.nparens / 2) - 1;
+    const unsigned int max_k = (tree.nparens>1) ? ((tree.nparens / 2) - 1) : 0;
 
     const unsigned int num_prop_chunks = propstack_multi.get_num_stacks();
     while (k<max_k) {

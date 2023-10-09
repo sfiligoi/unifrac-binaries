@@ -510,14 +510,33 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     SETUP_TDBG("faith_pd_one_off")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
-    PARSE_SYNC_TREE_TABLE(tree_filename, table_filename)
-
+    PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
-    initialize_results_vec(*result, table);
 
-    // compute faithpd
-    su::faith_pd(table, tree_sheared, std::ref((*result)->values));
-    TDBG_STEP("faith_pd")
+    // Filter out any elements with zero counts
+    su::biom_inmem table_nz(table,1.0);
+    if ((table_nz.n_samples==0) || (table_nz.n_obs==0)) {
+      fprintf(stderr, "WARNING: All samples had zero counts. Forcing zero result.\n");
+      SYNC_TREE_TABLE(tree, table)
+
+      TDBG_STEP("sync_tree_table")
+      initialize_results_vec(*result, table);
+      // nothing else to do... results already initialized to 0
+      TDBG_STEP("faith_pd")
+    } else {
+      if ((table_nz.n_samples!=table.n_samples) || (table_nz.n_obs!=table.n_obs)) {
+        fprintf(stderr, "WARNING: Some samples had zero counts and were filtered out.\n");
+      }
+      SYNC_TREE_TABLE(tree, table_nz)
+
+      TDBG_STEP("sync_tree_table")
+    
+      initialize_results_vec(*result, table_nz);
+
+      // compute faithpd
+      su::faith_pd(table_nz, tree_sheared, std::ref((*result)->values));
+      TDBG_STEP("faith_pd")
+    }
 
     return okay;
 }

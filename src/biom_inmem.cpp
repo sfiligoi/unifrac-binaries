@@ -257,8 +257,9 @@ biom_inmem::biom_inmem(const biom_inmem &other, const double min_sample_counts)
   , sample_ids()
   , obs_ids()
 {
-    #pragma omp parallel for schedule(static)
-    for(int i = 0; i < 2; i++) {
+    if ((resident_obj.n_obs>0) && (resident_obj.n_samples>0)) {
+     #pragma omp parallel for schedule(static)
+     for(int i = 0; i < 2; i++) {
         if (i==0) {
           // filter out zero obs
           uint32_t obs_cnt = 0;
@@ -293,7 +294,14 @@ biom_inmem::biom_inmem(const biom_inmem &other, const double min_sample_counts)
            }
            create_id_index(sample_ids, sample_id_index);
         }
-    }
+     }
+   } //((resident_obj.n_obs>0) && (resident_obj.n_samples>0))
+   else
+   {
+     // degenerate case, just set to 0
+     n_samples = 0;
+     n_obs = 0;
+   }
 }
 
 

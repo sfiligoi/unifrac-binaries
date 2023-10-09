@@ -91,7 +91,7 @@ jobs:
         fi
         popd
         pushd src/testdata
-        conda install --yes -c conda-forge h5py
+        conda install --yes -c conda-forge h5py python=3.10
         # weighted_unnormalized
         time ssu -m weighted_unnormalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
         ./compare_unifrac_matrix.py test500.weighted_unnormalized_fp32.h5 t1.h5 1.e-5
