@@ -81,18 +81,20 @@
                                                                              table.get_obs_ids().end());            \
                                      su::BPTree tree_sheared = tree.shear(to_keep).collapse();
 
-#define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
-                                                        std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
-                                                                                          std::istreambuf_iterator<char>());     \
-                                                        su::BPTree tree(content);                                                \
-                                                        su::biom table(biom_filename);                                           \
-                                                        if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
+#define VALIDATE_TREE_TABLE(tree, table)                if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
                                                             return table_empty;                                                  \
                                                         }                                                                        \
                                                         std::string bad_id = su::test_table_ids_are_subset_of_tree(table, tree); \
                                                         if(bad_id != "") {                                                       \
                                                             return table_and_tree_do_not_overlap;                                \
                                                         }   
+
+#define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
+                                                        std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
+                                                                                          std::istreambuf_iterator<char>());     \
+                                                        su::BPTree tree(content);                                                \
+                                                        su::biom table(biom_filename);                                           \
+							VALIDATE_TREE_TABLE(tree, table)
 
 #define PARSE_SYNC_TREE_TABLE(tree_filename, table_filename) PARSE_TREE_TABLE(tree_filename, table_filename) \
                                                              SYNC_TREE_TABLE(tree, table)
@@ -693,6 +695,10 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
         return rc;
     }
 
+    if(table_data->n_samples <= 0 | table_data->n_obs <= 0) {
+	return table_empty;
+    }
+
     su::biom_inmem table(table_data->obs_ids, 
                          table_data->sample_ids, 
                          table_data->indices,
@@ -705,6 +711,8 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
                     tree_data->lengths,
                     tree_data->names,
                     tree_data->n_parens);
+
+    VALIDATE_TREE_TABLE(tree,table)
 
     if (subsample_depth>0) {
        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
@@ -741,6 +749,10 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
         return rc;
     }
 
+    if(table_data->n_samples <= 0 | table_data->n_obs <= 0) {
+	return table_empty;
+    }
+
     su::biom_inmem table(table_data->obs_ids, 
                          table_data->sample_ids, 
                          table_data->indices,
@@ -753,6 +765,8 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
                     tree_data->lengths,
                     tree_data->names,
                     tree_data->n_parens);
+
+    VALIDATE_TREE_TABLE(tree,table)
 
     if (subsample_depth>0) {
        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
