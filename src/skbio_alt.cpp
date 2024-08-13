@@ -10,8 +10,13 @@
 #include <algorithm>
 
 // Not using anything mkl specific, but this is what we get from Conda
+#ifndef USE_OPENBLAS
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
+#else
+#include <cblas.h>
+#include <lapacke.h>
+#endif
 
 static std::mt19937 myRandomGenerator;
 

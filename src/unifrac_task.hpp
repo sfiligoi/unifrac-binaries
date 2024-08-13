@@ -162,14 +162,15 @@ namespace SUCMP_NM {
         , use_alt_emb(false)
 #endif
         {
+	  const uint64_t iembsize = embsize;
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:lengths[0:_max_embs])
-#pragma omp target enter data map(alloc:my_embedded_proportions[0:embsize])
-#pragma omp target enter data map(alloc:my_embedded_proportions_alt[0:embsize])
+#pragma omp target enter data map(alloc:my_embedded_proportions[0:iembsize])
+#pragma omp target enter data map(alloc:my_embedded_proportions_alt[0:iembsize])
 #elif defined(_OPENACC)
 #pragma acc enter data create(lengths[0:_max_embs])
-#pragma acc enter data create(my_embedded_proportions[0:embsize])
-#pragma acc enter data create(my_embedded_proportions_alt[0:embsize])
+#pragma acc enter data create(my_embedded_proportions[0:iembsize])
+#pragma acc enter data create(my_embedded_proportions_alt[0:iembsize])
 #endif    
         }
 
@@ -179,14 +180,15 @@ namespace SUCMP_NM {
         virtual ~UnifracTaskBase()
         {
 #if defined(_OPENACC) || defined(OMPGPU)
+	  const uint64_t iembsize = embsize;
 
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:my_embedded_proportions_alt[0:embsize])
-#pragma omp target exit data map(delete:my_embedded_proportions[0:embsize])
+#pragma omp target exit data map(delete:my_embedded_proportions_alt[0:iembsize])
+#pragma omp target exit data map(delete:my_embedded_proportions[0:iembsize])
 #pragma omp target exit data map(delete:lengths[0:max_embs])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(my_embedded_proportions_alt[0:embsize])
-#pragma acc exit data delete(my_embedded_proportions[0:embsize])
+#pragma acc exit data delete(my_embedded_proportions_alt[0:iembsize])
+#pragma acc exit data delete(my_embedded_proportions[0:iembsize])
 #pragma acc exit data delete(lengths[0:max_embs])
 #endif
 
@@ -235,7 +237,7 @@ namespace SUCMP_NM {
           const uint64_t bufels = this->dm_stripes.bufels;
 
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd default(shared)
+#pragma omp target teams distribute parallel for default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop gang vector present(dm_stripes_buf,dm_stripes_total_buf)
 #endif
@@ -595,10 +597,11 @@ namespace SUCMP_NM {
         , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize))
         , sample_total_counts(_sample_total_counts)
         {
+	  const uint64_t iembsize = this->embsize;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:embedded_counts[0:this->embsize])
+#pragma omp target enter data map(alloc:embedded_counts[0:iembsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(embedded_counts[0:this->embsize])
+#pragma acc enter data create(embedded_counts[0:iembsize])
 #endif    
         }
 
@@ -607,10 +610,12 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
+	  const uint64_t iembsize = this->embsize;
+
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_counts[0:embsize])
+#pragma omp target exit data map(delete:embedded_counts[0:iembsize])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(embedded_counts[0:embsize])
+#pragma acc exit data delete(embedded_counts[0:iembsize])
 #endif
 
           free(embedded_counts);

@@ -33,7 +33,7 @@ static inline void WeightedZerosAndSums(
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd default(shared)
+#pragma omp target teams distribute parallel for default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop gang vector present(embedded_proportions,lengths,zcheck,sums)
 #else
@@ -445,7 +445,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
 #endif
@@ -551,7 +551,7 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,lengths) async
 #endif
@@ -904,7 +904,7 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
 #endif
@@ -1011,7 +1011,7 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
@@ -1094,7 +1094,7 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
@@ -1178,7 +1178,7 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs)
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
@@ -1540,7 +1540,7 @@ static inline void UnweightedZerosAndSums(
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
 #if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd default(shared)
+#pragma omp target teams distribute parallel for default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop gang vector present(embedded_proportions,zcheck,el_sums,stripe_sums)
 #else
@@ -1597,7 +1597,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
           const TFloat * __restrict__ pl   = &(lengths[emb8*8]);
 
 #if defined(OMPGPU)
-#pragma omp simd
+// pragma omp simd
 #elif defined(_OPENACC)
 #pragma acc loop vector
 #endif
@@ -1632,7 +1632,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
           TFloat * __restrict__ psum = &(sums[emb8<<8]);
 
 #if defined(OMPGPU)
-#pragma omp simd
+//pragma omp simd
 #elif defined(_OPENACC)
 #pragma acc loop vector
 #endif
@@ -1662,7 +1662,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums,zcheck,stripe_sums) async
 #endif
@@ -1749,7 +1749,7 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) 
 
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for collapse(3) default(shared)
 #else
 #pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif

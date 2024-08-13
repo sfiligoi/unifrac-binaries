@@ -36,7 +36,8 @@ ifeq ($(PREFIX),)
 	PREFIX := $(CONDA_PREFIX)
 endif
 
-BLASLIB=-llapacke -lcblas
+#BLASLIB=-llapacke -lopenblas
+BLASLIB=-lopenblas
 
 ifeq ($(PLATFORM),Darwin)
 	AVX2 := $(shell sysctl -a | grep -c AVX2)
@@ -75,6 +76,20 @@ ifndef NOGPU
                 endif
 	        LDDFLAGS += -shlib -mp=gpu -Bstatic_pgi
 	        EXEFLAGS += -mp=gpu -Bstatic_pgi
+	endif
+	ifneq (,$(findstring roc,$(COMPILER)))
+		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1 -DUSE_OPENBLAS
+                UNIFRAC_FILES += unifrac_cmp_ompgpu.o
+		OMPGPUCPPFLAGS += -DOMPGPU=1
+	        #ifeq ($(PERFORMING_CONDA_BUILD),True)
+	        #    OMPGPUCPPFLAGS += -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx90a
+		#else
+	        #    OMPGPUCPPFLAGS += -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx90a
+                #endif
+	        #LDDFLAGS += -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx90a
+	        #EXEFLAGS += -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx90a
+		LDDFLAGS += -L${OLCF_LZ4_ROOT}/lib -L${OLCF_OPENBLAS_ROOT}/lib
+		EXEFLAGS += -L${OLCF_LZ4_ROOT}/lib -L${OLCF_OPENBLAS_ROOT}/lib
 	endif
    else 
 	ifneq (,$(findstring pgi,$(COMPILER)))
@@ -133,7 +148,6 @@ ifeq (,$(findstring pgi,$(COMPILER)))
 	CPPFLAGS += -Wextra -Wno-unused-parameter
     endif
 endif
-
 
 CPPFLAGS += -Wall  -std=c++17 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
