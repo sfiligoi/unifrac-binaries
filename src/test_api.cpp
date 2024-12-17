@@ -673,6 +673,7 @@ void test_to_file() {
 
     test_to_file_one("unweighted");
     test_to_file_one("unweighted_fp32");
+    test_to_file_one("unweighted_unnormalized_fp32");
     test_to_file_one("weighted_normalized");
     test_to_file_one("weighted_normalized_fp32");
     test_to_file_one("weighted_unnormalized");

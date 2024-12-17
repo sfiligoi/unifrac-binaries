@@ -55,6 +55,8 @@
                                               method = weighted_normalized_fp32;                                    \
                                           else if(std::strcmp(requested_method, "weighted_unnormalized") == 0)      \
                                               method = weighted_unnormalized_fp32;                                  \
+                                          else if(std::strcmp(requested_method, "unweighted_unnormalized") == 0)    \
+                                              method = unweighted_unnormalized_fp32;                                \
                                           else if(std::strcmp(requested_method, "generalized") == 0)                \
                                               method = generalized_fp32;                                            \
                                           else if(std::strcmp(requested_method, "unweighted_fp64") == 0)            \
@@ -63,6 +65,8 @@
                                               method = weighted_normalized;                                         \
                                           else if(std::strcmp(requested_method, "weighted_unnormalized_fp64") == 0) \
                                               method = weighted_unnormalized;                                       \
+                                          else if(std::strcmp(requested_method, "unweighted_unnormalized_fp64") == 0) \
+                                              method = unweighted_unnormalized;                                     \
                                           else if(std::strcmp(requested_method, "generalized_fp64") == 0)           \
                                               method = generalized;                                                 \
                                           else if(std::strcmp(requested_method, "unweighted_fp32") == 0)            \
@@ -71,6 +75,8 @@
                                               method = weighted_normalized_fp32;                                    \
                                           else if(std::strcmp(requested_method, "weighted_unnormalized_fp32") == 0) \
                                               method = weighted_unnormalized_fp32;                                  \
+                                          else if(std::strcmp(requested_method, "unweighted_unnormalized_fp32") == 0) \
+                                              method = unweighted_unnormalized_fp32;                                \
                                           else if(std::strcmp(requested_method, "generalized_fp32") == 0)           \
                                               method = generalized_fp32;                                            \
                                           else {                                                               \
@@ -187,11 +193,11 @@ void initialize_mat_no_biom(mat_t* &result, char** sample_ids, unsigned int n_sa
 }
 
 inline compute_status is_fp64_method(const std::string &method_string, bool &fp64) {
-    if ((method_string=="unweighted") || (method_string=="weighted_normalized") || (method_string=="weighted_unnormalized") || (method_string=="generalized")) {
+    if ((method_string=="unweighted") || (method_string=="weighted_normalized") || (method_string=="weighted_unnormalized") || (method_string=="unweighted_unnormalized") || (method_string=="generalized")) {
         fp64 = false;
-    } else if ((method_string=="unweighted_fp64") || (method_string=="weighted_normalized_fp64") || (method_string=="weighted_unnormalized_fp64") || (method_string=="generalized_fp64")) {
+    } else if ((method_string=="unweighted_fp64") || (method_string=="weighted_normalized_fp64") || (method_string=="weighted_unnormalized_fp64") || (method_string=="unweighted_unnormalized_fp64") || (method_string=="generalized_fp64")) {
        fp64 = true;
-    } else if ((method_string=="unweighted_fp32") || (method_string=="weighted_normalized_fp32") || (method_string=="weighted_unnormalized_fp32") || (method_string=="generalized_fp32")) {
+    } else if ((method_string=="unweighted_fp32") || (method_string=="weighted_normalized_fp32") || (method_string=="weighted_unnormalized_fp32") || (method_string=="unweighted_unnormalized_fp32") || (method_string=="generalized_fp32")) {
        fp64 = false;
     } else {
         return unknown_method;

@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2016-2021, UniFrac development team.
+ * Copyright (c) 2016-2025, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
@@ -19,7 +19,7 @@
 #include "biom_interface.hpp"
 
     namespace su {
-        enum Method {unweighted, weighted_normalized, weighted_unnormalized, generalized, unweighted_fp32, weighted_normalized_fp32, weighted_unnormalized_fp32, generalized_fp32};
+        enum Method {unweighted, weighted_normalized, weighted_unnormalized, generalized, unweighted_fp32, weighted_normalized_fp32, weighted_unnormalized_fp32, generalized_fp32, unweighted_unnormalized, unweighted_unnormalized_fp32};
 
         void faith_pd(biom_interface &table, BPTree &tree, double* result);
 
