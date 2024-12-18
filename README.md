@@ -66,11 +66,11 @@ make install
 
 
 **Note**: if you are using `conda` we recommend installing HDF5 and related compiler using the
-`conda-forge` channel, for example:
+`conda-forge` channel, for example (on Linux):
 
 ```
-conda create --name unifrac -c conda-forge gxx_linux-64 hdf5 mkl-include lz4 hdf5-static libcblas liblapacke make
-conda activate unifrac
+conda create --strict-channel-priority -n unifrac-binaries -c conda-forge -c bioconda gxx_linux-64 gfortran_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
+conda activate unifrac-binaries
 ```
 
 For GPU-enabled code, you will need the [NVIDIA HPC SDK](https://developer.nvidia.com/hpc-sdk) compiler.
