@@ -120,6 +120,10 @@ jobs:
         ./compare_unifrac_matrix.py test500.weighted_normalized_fp32.f.h5 t1.h5 1.e-5
         ./compare_unifrac_pcoa.py test500.weighted_normalized_fp32.f.h5 t1.h5 3 0.1
         rm -f t1.h5
+        # unweighted_unnormalized
+        time ssu -f -m unweighted_unnormalized -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
+        ./compare_unifrac_matrix.py test500.unweighted_unnormalized_fp32.f.h5 t1.h5 1.e-9
+        rm -f t1.h5
         # unweighted
         time ssu -f -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32 -o t1.h5
         ./compare_unifrac_matrix.py test500.unweighted_fp32.f.h5 t1.h5 1.e-5
