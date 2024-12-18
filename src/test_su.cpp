@@ -1553,6 +1553,45 @@ void test_unweighted_unifrac_fast() {
     SUITE_END();
 }
 
+void test_unnormalized_unweighted_unifrac() {
+    SUITE_START("test unnormalized unweighted unifrac");
+    std::vector<std::thread> threads(1);
+    su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
+    su::biom table("test.biom");
+
+    std::vector<double*> exp;
+    double stride1[] = {1,3,5,1,3,1};
+    double stride2[] = {4,4,6,2,2,2};
+    double stride3[] = {3,3,3,3,3,3};
+    exp.push_back(stride1);
+    exp.push_back(stride2);
+    exp.push_back(stride3);
+    std::vector<double*> strides = su::make_strides(6);
+    std::vector<double*> strides_total = su::make_strides(6);
+
+    su::task_parameters task_p;
+    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false;
+
+    std::vector<su::task_parameters> tasks;
+    tasks.push_back(task_p);
+    su::process_stripes(std::ref(table), 
+                        std::ref(tree),
+                        su::unweighted_unnormalized,
+                        false,
+                        std::ref(strides),
+                        std::ref(strides_total),
+                        std::ref(threads),
+                        std::ref(tasks));
+
+    for(unsigned int i = 0; i < 3; i++) {
+        for(unsigned int j = 0; j < 6; j++) {
+            ASSERT(fabs(strides[i][j] - exp[i][j]) < 0.000001);
+        }
+        free(strides[i]);
+    }
+    SUITE_END();
+}
+
 void test_normalized_weighted_unifrac() {
     SUITE_START("test normalized weighted unifrac");
     std::vector<std::thread> threads(1);
@@ -1935,6 +1974,7 @@ int main(int argc, char** argv) {
     test_unifrac_stripes_to_matrix_odd2();
     test_unweighted_unifrac();
     test_unweighted_unifrac_fast();
+    test_unnormalized_unweighted_unifrac();
     test_unnormalized_weighted_unifrac();
     test_normalized_weighted_unifrac();
     test_generalized_unifrac();

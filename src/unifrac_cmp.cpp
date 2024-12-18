@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2016-2021, UniFrac development team.
+ * Copyright (c) 2016-2025, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
@@ -212,6 +212,9 @@ void SUCMP_NM::unifrac(const su::biom_interface &table,
         case su::unweighted:
             unifracTT<SUCMP_NM::UnifracUnweightedTask<double>,double>(           table, tree, true,  dm_stripes,dm_stripes_total,task_p);
             break;
+        case su::unweighted_unnormalized:
+            unifracTT<SUCMP_NM::UnifracUnnormalizedUnweightedTask<double>,double>(table,tree, false, dm_stripes,dm_stripes_total,task_p);
+            break;
         case su::weighted_normalized:
             unifracTT<SUCMP_NM::UnifracNormalizedWeightedTask<double>,double>(   table, tree, true,  dm_stripes,dm_stripes_total,task_p);
             break;
@@ -223,6 +226,9 @@ void SUCMP_NM::unifrac(const su::biom_interface &table,
             break;
         case su::unweighted_fp32:
             unifracTT<SUCMP_NM::UnifracUnweightedTask<float >,float>(            table, tree, true,  dm_stripes,dm_stripes_total,task_p);
+            break;
+        case su::unweighted_unnormalized_fp32:
+            unifracTT<SUCMP_NM::UnifracUnnormalizedUnweightedTask<float >,float>(table, tree, false, dm_stripes,dm_stripes_total,task_p);
             break;
         case su::weighted_normalized_fp32:
             unifracTT<SUCMP_NM::UnifracNormalizedWeightedTask<float >,float>(    table, tree, true,  dm_stripes,dm_stripes_total,task_p);
@@ -364,6 +370,9 @@ void SUCMP_NM::unifrac_vaw(const su::biom_interface &table,
         case su::unweighted:
             unifrac_vawTT<SUCMP_NM::UnifracVawUnweightedTask<double>,double>(           table, tree, true,  dm_stripes,dm_stripes_total,task_p);
             break;
+        case su::unweighted_unnormalized:
+            unifrac_vawTT<SUCMP_NM::UnifracVawUnnormalizedUnweightedTask<double>,double>(table,tree, false, dm_stripes,dm_stripes_total,task_p);
+            break;
         case su::weighted_normalized:
             unifrac_vawTT<SUCMP_NM::UnifracVawNormalizedWeightedTask<double>,double>(   table, tree, true,  dm_stripes,dm_stripes_total,task_p);
             break;
@@ -375,6 +384,9 @@ void SUCMP_NM::unifrac_vaw(const su::biom_interface &table,
             break;
         case su::unweighted_fp32:
             unifrac_vawTT<SUCMP_NM::UnifracVawUnweightedTask<float >,float >(           table, tree, true,  dm_stripes,dm_stripes_total,task_p);
+            break;
+        case su::unweighted_unnormalized_fp32:
+            unifrac_vawTT<SUCMP_NM::UnifracVawUnnormalizedUnweightedTask<float >,float >(table,tree, false, dm_stripes,dm_stripes_total,task_p);
             break;
         case su::weighted_normalized_fp32:
             unifrac_vawTT<SUCMP_NM::UnifracVawNormalizedWeightedTask<float >,float >(   table, tree, true,  dm_stripes,dm_stripes_total,task_p);

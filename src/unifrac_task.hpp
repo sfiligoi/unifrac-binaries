@@ -1,7 +1,7 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2016-2021, UniFrac development team.
+ * Copyright (c) 2016-2025, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
@@ -96,7 +96,7 @@ namespace SUCMP_NM {
         }
       }
 
-      UnifracTaskVector<TFloat>(const UnifracTaskVector<TFloat>& ) = delete;
+      UnifracTaskVector(const UnifracTaskVector<TFloat>& ) = delete;
       UnifracTaskVector<TFloat>& operator= (const UnifracTaskVector<TFloat>&) = delete;
 
       TFloat * operator[](unsigned int idx) { return buf+buf_idx(idx);}
@@ -173,7 +173,7 @@ namespace SUCMP_NM {
 #endif    
         }
 
-        UnifracTaskBase<TFloat,TEmb>(const UnifracTaskBase<TFloat,TEmb>& ) = delete;
+        UnifracTaskBase(const UnifracTaskBase<TFloat,TEmb>& ) = delete;
         UnifracTaskBase<TFloat,TEmb>& operator= (const UnifracTaskBase<TFloat,TEmb>&) = delete;
 
         virtual ~UnifracTaskBase()
@@ -356,11 +356,11 @@ namespace SUCMP_NM {
     class UnifracTask : public UnifracTaskBase<TFloat,TEmb> {
       protected:
         // Use a moderate sized step, a few cache lines
-        static const unsigned int step_size = 64*4/sizeof(TFloat);
+        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
 
 #if defined(_OPENACC) || defined(OMPGPU)
         // Use as big vector size as we can, to maximize cache line reuse
-        static const unsigned int acc_vector_size = 2048;
+        static constexpr unsigned int acc_vector_size = 2048;
 #endif
 
       public:
@@ -368,7 +368,7 @@ namespace SUCMP_NM {
         UnifracTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTaskBase<TFloat,TEmb>(_dm_stripes, _dm_stripes_total, _max_embs, _task_p) {}
 
-       UnifracTask<TFloat,TEmb>(const UnifracTask<TFloat,TEmb>& ) = delete;
+       UnifracTask(const UnifracTask<TFloat,TEmb>& ) = delete;
        UnifracTask<TFloat,TEmb>& operator= (const UnifracTask<TFloat,TEmb>&) = delete;
 
        virtual ~UnifracTask() {}
@@ -376,9 +376,9 @@ namespace SUCMP_NM {
        virtual void run(unsigned int filled_embs) = 0;
 
       protected:
-       static const unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 128-16; // a little less to leave a bit of space of maxed-out L1
+       static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 128-16; // a little less to leave a bit of space of maxed-out L1
        // packed uses 32x less memory,so this should be 32x larger than straight... but there are additional structures, so use half of that
-       static const unsigned int RECOMMENDED_MAX_EMBS_BOOL = 64*32;
+       static constexpr unsigned int RECOMMENDED_MAX_EMBS_BOOL = 64*32;
 
     };
 
@@ -386,7 +386,7 @@ namespace SUCMP_NM {
     template<class TFloat>
     class UnifracUnnormalizedWeightedTask : public UnifracTask<TFloat,TFloat> {
       public:
-        static const unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,TFloat>::RECOMMENDED_MAX_EMBS_STRAIGHT;
+        static constexpr unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,TFloat>::RECOMMENDED_MAX_EMBS_STRAIGHT;
 
         UnifracUnnormalizedWeightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p)
@@ -402,7 +402,7 @@ namespace SUCMP_NM {
 #endif
         }
 
-        UnifracUnnormalizedWeightedTask<TFloat>(const UnifracUnnormalizedWeightedTask<TFloat>& ) = delete;
+        UnifracUnnormalizedWeightedTask(const UnifracUnnormalizedWeightedTask<TFloat>& ) = delete;
         UnifracUnnormalizedWeightedTask<TFloat>& operator= (const UnifracUnnormalizedWeightedTask<TFloat>&) = delete;
 
         virtual ~UnifracUnnormalizedWeightedTask()
@@ -431,7 +431,7 @@ namespace SUCMP_NM {
     template<class TFloat>
     class UnifracNormalizedWeightedTask : public UnifracTask<TFloat,TFloat> {
       public:
-        static const unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,TFloat>::RECOMMENDED_MAX_EMBS_STRAIGHT;
+        static constexpr unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,TFloat>::RECOMMENDED_MAX_EMBS_STRAIGHT;
 
         UnifracNormalizedWeightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p)
@@ -447,7 +447,7 @@ namespace SUCMP_NM {
 #endif
         }
 
-        UnifracNormalizedWeightedTask<TFloat>(const UnifracNormalizedWeightedTask<TFloat>& ) = delete;
+        UnifracNormalizedWeightedTask(const UnifracNormalizedWeightedTask<TFloat>& ) = delete;
         UnifracNormalizedWeightedTask<TFloat>& operator= (const UnifracNormalizedWeightedTask<TFloat>&) = delete;
 
         virtual ~UnifracNormalizedWeightedTask()
@@ -474,14 +474,14 @@ namespace SUCMP_NM {
         TFloat   *sums;
     };
     template<class TFloat>
-    class UnifracUnweightedTask : public UnifracTask<TFloat,uint64_t> {
+    class UnifracCommonUnweightedTask : public UnifracTask<TFloat,uint64_t> {
       public:
-        static const unsigned int step_size = 64*4/sizeof(TFloat);
+        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
 
-        static const unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,uint64_t>::RECOMMENDED_MAX_EMBS_BOOL;
+        static constexpr unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,uint64_t>::RECOMMENDED_MAX_EMBS_BOOL;
 
         // Note: _max_emb MUST be multiple of 64
-        UnifracUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
+        UnifracCommonUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTask<TFloat, uint64_t>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p) 
         {
           const unsigned int n_samples = this->task_p->n_samples;
@@ -496,10 +496,7 @@ namespace SUCMP_NM {
 #endif
         }
 
-        UnifracUnweightedTask<TFloat>(const UnifracUnweightedTask<TFloat>& ) = delete;
-        UnifracUnweightedTask<TFloat>& operator= (const UnifracUnweightedTask<TFloat>&) = delete;
-
-        virtual ~UnifracUnweightedTask()
+        virtual ~UnifracCommonUnweightedTask()
         {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
@@ -516,24 +513,52 @@ namespace SUCMP_NM {
           free(zcheck);
         }
 
-        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
-
-        void _run(unsigned int filled_embs);
-      private:
+      protected:
         // temp buffers
         TFloat *sums;
         bool     *zcheck;
         TFloat   *stripe_sums;
     };
     template<class TFloat>
+    class UnifracUnweightedTask : public UnifracCommonUnweightedTask<TFloat> {
+      public:
+
+        // Note: _max_emb MUST be multiple of 64
+        UnifracUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
+        : UnifracCommonUnweightedTask<TFloat>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p) {}
+
+        UnifracUnweightedTask(const UnifracUnweightedTask<TFloat>& ) = delete;
+        UnifracUnweightedTask<TFloat>& operator= (const UnifracUnweightedTask<TFloat>&) = delete;
+
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
+
+        void _run(unsigned int filled_embs);
+    };
+    template<class TFloat>
+    class UnifracUnnormalizedUnweightedTask : public UnifracCommonUnweightedTask<TFloat> {
+      public:
+
+        // Note: _max_emb MUST be multiple of 64
+        UnifracUnnormalizedUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
+        : UnifracCommonUnweightedTask<TFloat>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p) {}
+
+        UnifracUnnormalizedUnweightedTask(const UnifracUnnormalizedUnweightedTask<TFloat>& ) = delete;
+        UnifracUnnormalizedUnweightedTask<TFloat>& operator= (const UnifracUnnormalizedUnweightedTask<TFloat>&) = delete;
+
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
+
+        void _run(unsigned int filled_embs);
+    };
+
+    template<class TFloat>
     class UnifracGeneralizedTask : public UnifracTask<TFloat,TFloat> {
       public:
-        static const unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,TFloat>::RECOMMENDED_MAX_EMBS_STRAIGHT;
+        static constexpr unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,TFloat>::RECOMMENDED_MAX_EMBS_STRAIGHT;
 
         UnifracGeneralizedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_max_embs,_task_p) {}
 
-        UnifracGeneralizedTask<TFloat>(const UnifracGeneralizedTask<TFloat>& ) = delete;
+        UnifracGeneralizedTask(const UnifracGeneralizedTask<TFloat>& ) = delete;
         UnifracGeneralizedTask<TFloat>& operator= (const UnifracGeneralizedTask<TFloat>&) = delete;
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
@@ -568,25 +593,25 @@ namespace SUCMP_NM {
         // The parallel nature of GPUs needs a largish step
   #ifndef SMALLGPU
         // default to larger step, which makes a big difference for bigger GPUs like V100
-        static const unsigned int step_size = 32;
+        static constexpr unsigned int step_size = 32;
         // keep the vector size just big enough to keep the used emb array inside the 32k buffer
-        static const unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
+        static constexpr unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
   #else
         // smaller GPUs prefer a slightly smaller step
-        static const unsigned int step_size = 16;
+        static constexpr unsigned int step_size = 16;
         // keep the vector size just big enough to keep the used emb array inside the 32k buffer
-        static const unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
+        static constexpr unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
   #endif
 #else
         // The serial nature of CPU cores prefers a small step
-        static const unsigned int step_size = 4;
+        static constexpr unsigned int step_size = 4;
 #endif
 
       public:
         TFloat * const embedded_counts;
         const TFloat * const sample_total_counts;
 
-        static const unsigned int RECOMMENDED_MAX_EMBS = 128;
+        static constexpr unsigned int RECOMMENDED_MAX_EMBS = 128;
 
         UnifracVawTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
                     const TFloat * _sample_total_counts,
@@ -602,7 +627,7 @@ namespace SUCMP_NM {
 #endif    
         }
 
-       UnifracVawTask<TFloat,TEmb>(const UnifracVawTask<TFloat,TEmb>& ) = delete;
+       UnifracVawTask(const UnifracVawTask<TFloat,TEmb>& ) = delete;
        UnifracVawTask<TFloat,TEmb>& operator= (const UnifracVawTask<TFloat,TEmb>&) = delete;
 
        virtual ~UnifracVawTask() 
@@ -649,7 +674,7 @@ namespace SUCMP_NM {
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
 
-        UnifracVawUnnormalizedWeightedTask<TFloat>(const UnifracVawUnnormalizedWeightedTask<TFloat>& ) = delete;
+        UnifracVawUnnormalizedWeightedTask(const UnifracVawUnnormalizedWeightedTask<TFloat>& ) = delete;
         UnifracVawUnnormalizedWeightedTask<TFloat>& operator= (const UnifracVawUnnormalizedWeightedTask<TFloat>&) = delete;
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
@@ -664,7 +689,7 @@ namespace SUCMP_NM {
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
 
-        UnifracVawNormalizedWeightedTask<TFloat>(const UnifracVawNormalizedWeightedTask<TFloat>& ) = delete;
+        UnifracVawNormalizedWeightedTask(const UnifracVawNormalizedWeightedTask<TFloat>& ) = delete;
         UnifracVawNormalizedWeightedTask<TFloat>& operator= (const UnifracVawNormalizedWeightedTask<TFloat>&) = delete;
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
@@ -679,8 +704,23 @@ namespace SUCMP_NM {
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracVawTask<TFloat,uint32_t>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
 
-        UnifracVawUnweightedTask<TFloat>(const UnifracVawUnweightedTask<TFloat>& ) = delete;
+        UnifracVawUnweightedTask(const UnifracVawUnweightedTask<TFloat>& ) = delete;
         UnifracVawUnweightedTask<TFloat>& operator= (const UnifracVawUnweightedTask<TFloat>&) = delete;
+
+        virtual void run(unsigned int filled_embs) {_run(filled_embs);}
+
+        void _run(unsigned int filled_embs);
+    };
+    template<class TFloat>
+    class UnifracVawUnnormalizedUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {
+      public:
+        UnifracVawUnnormalizedUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
+                    const TFloat * _sample_total_counts, 
+                    unsigned int _max_embs, const su::task_parameters* _task_p)
+        : UnifracVawTask<TFloat,uint32_t>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
+
+        UnifracVawUnnormalizedUnweightedTask(const UnifracVawUnweightedTask<TFloat>& ) = delete;
+        UnifracVawUnnormalizedUnweightedTask<TFloat>& operator= (const UnifracVawUnweightedTask<TFloat>&) = delete;
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
@@ -694,7 +734,7 @@ namespace SUCMP_NM {
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
 
-        UnifracVawGeneralizedTask<TFloat>(const UnifracVawGeneralizedTask<TFloat>& ) = delete;
+        UnifracVawGeneralizedTask(const UnifracVawGeneralizedTask<TFloat>& ) = delete;
         UnifracVawGeneralizedTask<TFloat>& operator= (const UnifracVawGeneralizedTask<TFloat>&) = delete;
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}

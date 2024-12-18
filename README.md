@@ -145,9 +145,11 @@ The methods can be used directly through the command line after install:
 
         -i		The input BIOM table.
         -t		The input phylogeny in newick.
-        -m		The method, [unweighted | weighted_normalized | weighted_unnormalized | generalized | 
-                                 unweighted_fp64 | weighted_normalized_fp64 | weighted_unnormalized_fp64 | generalized_fp64 |
-                                 unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 | generalized_fp32].
+        -m		The method, [unweighted | weighted_normalized | weighted_unnormalized | unweighted_unnormalized | generalized |
+                           unweighted_fp64 | weighted_normalized_fp64 | weighted_unnormalized_fp64 |
+                           unweighted_unnormalized_fp64 | generalized_fp64 |
+                           unweighted_fp32 | weighted_normalized_fp32 | weighted_unnormalized_fp32 |
+                           unweighted_unnormalized_fp32 | generalized_fp32].
         -o		The output distance matrix.
         -g		[OPTIONAL] The input grouping in TSV.
         -c		[OPTIONAL] The columns(s) to use for grouping, multiple values comma separated.
