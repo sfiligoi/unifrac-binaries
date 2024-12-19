@@ -43,7 +43,8 @@ An example of installing UniFrac, and using it with CPUs as well as GPUs, can be
 
 ## Install (bioconda)
 
-The binaries can be installed via a combination of `conda-forge` and `bioconda`:
+The binaries can be installed through [conda](https://docs.anaconda.com/miniconda/)
+via a combination of `conda-forge` and `bioconda` repositories:
 
 ```
 conda create --name unifrac -c conda-forge -c bioconda unifrac-binaries
@@ -52,20 +53,18 @@ conda activate unifrac
 
 ## Install (native)
 
-To install, first the binary needs to be compiled. This assumes that the HDF5 
-toolchain and libraries are available. More information about how to setup the
-stack can be found [here](https://support.hdfgroup.org/HDF5/Tutor/compile.html). 
+To install, first the binary needs to be compiled. This assumes that the HDF5 toolchain and libraries are available.
 
 Assuming `h5c++` is in your path, the following should work:
 
 ```
-make api && make main 
+make clean && make api && make main 
 #optionally
 make install
 ```
 
 
-**Note**: if you are using `conda` we recommend installing HDF5 and related compiler using the
+**Note**: if you are using [conda](https://docs.anaconda.com/miniconda/) we recommend installing HDF5 and related compiler using the
 `conda-forge` channel, for example (on Linux):
 
 ```
@@ -79,6 +78,10 @@ This helper script will download it, install it and setup the necessary environm
 scripts/install_hpc_sdk.sh 
 source setup_nv_h5.sh
 ```
+
+If you prefer to build your HDF5 toolchain yourself,
+more information about how to setup the 
+stack can be found [here](https://support.hdfgroup.org/HDF5/Tutor/compile.html).
 
 # Environment considerations
 
