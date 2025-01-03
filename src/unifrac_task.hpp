@@ -74,6 +74,8 @@ namespace SUCMP_NM {
       , bufels(n_samples_r * (stop_idx-start_idx))
       , buf((dm_stripes[start_idx]==NULL) ? NULL : (TFloat*) malloc(sizeof(TFloat) * bufels)) // dm_stripes could be null, in which case keep it null
       {
+        // keep local copies to avoid the need for *this in the GPU
+        const uint64_t  ibufels = bufels;
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
@@ -89,9 +91,9 @@ namespace SUCMP_NM {
              }
            }
 #if defined(OMPGPU)
-#pragma omp target enter data map(to:ibuf[0:bufels])
+#pragma omp target enter data map(to:ibuf[0:ibufels])
 #elif defined(_OPENACC)
-#pragma acc enter data copyin(ibuf[0:bufels])
+#pragma acc enter data copyin(ibuf[0:ibufels])
 #endif    
         }
       }
@@ -105,12 +107,14 @@ namespace SUCMP_NM {
 
       ~UnifracTaskVector()
       {
+        // keep local copies to avoid the need for *this in the GPU
+        const uint64_t  ibufels = bufels;
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
 #if defined(OMPGPU)
-#pragma omp target exit data map(from:ibuf[0:bufels])
+#pragma omp target exit data map(from:ibuf[0:ibufels])
 #elif defined(_OPENACC)
-#pragma acc exit data copyout(ibuf[0:bufels])
+#pragma acc exit data copyout(ibuf[0:ibufels])
 #endif
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
@@ -162,15 +166,24 @@ namespace SUCMP_NM {
         , use_alt_emb(false)
 #endif
         {
+#if defined(_OPENACC) || defined(OMPGPU)
+		// keep local copies to avoid the need for *this in the GPU
+		TFloat * l_lengths = lengths;
+		TEmb * l_my_embedded_proportions = my_embedded_proportions;
+		TEmb * l_my_embedded_proportions_alt = my_embedded_proportions_alt;
+		const unsigned int l_max_embs = max_embs;
+		const uint64_t l_embsize = embsize;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:lengths[0:_max_embs])
-#pragma omp target enter data map(alloc:my_embedded_proportions[0:embsize])
-#pragma omp target enter data map(alloc:my_embedded_proportions_alt[0:embsize])
+#pragma omp target enter data map(alloc:l_lengths[0:l_max_embs])
+#pragma omp target enter data map(alloc:l_my_embedded_proportions[0:l_embsize])
+#pragma omp target enter data map(alloc:l_my_embedded_proportions_alt[0:l_embsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(lengths[0:_max_embs])
-#pragma acc enter data create(my_embedded_proportions[0:embsize])
-#pragma acc enter data create(my_embedded_proportions_alt[0:embsize])
-#endif    
+#pragma acc enter data create(l_lengths[0:l_max_embs])
+#pragma acc enter data create(l_my_embedded_proportions[0:l_embsize])
+#pragma acc enter data create(l_my_embedded_proportions_alt[0:l_embsize])
+#endif
+
+#endif
         }
 
         UnifracTaskBase<TFloat,TEmb>(const UnifracTaskBase<TFloat,TEmb>& ) = delete;
@@ -179,15 +192,21 @@ namespace SUCMP_NM {
         virtual ~UnifracTaskBase()
         {
 #if defined(_OPENACC) || defined(OMPGPU)
+		TFloat * l_lengths = lengths;
+		// keep local copies to avoid the need for *this in the GPU
+		TEmb * l_my_embedded_proportions = my_embedded_proportions;
+		TEmb * l_my_embedded_proportions_alt = my_embedded_proportions_alt;
+		const unsigned int l_max_embs = max_embs;
+		const uint64_t l_embsize = embsize;
 
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:my_embedded_proportions_alt[0:embsize])
-#pragma omp target exit data map(delete:my_embedded_proportions[0:embsize])
-#pragma omp target exit data map(delete:lengths[0:max_embs])
+#pragma omp target exit data map(delete:l_my_embedded_proportions_alt[0:l_embsize])
+#pragma omp target exit data map(delete:l_my_embedded_proportions[0:l_embsize])
+#pragma omp target exit data map(delete:l_lengths[0:l_max_embs])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(my_embedded_proportions_alt[0:embsize])
-#pragma acc exit data delete(my_embedded_proportions[0:embsize])
-#pragma acc exit data delete(lengths[0:max_embs])
+#pragma acc exit data delete(l_my_embedded_proportions_alt[0:l_embsize])
+#pragma acc exit data delete(l_my_embedded_proportions[0:l_embsize])
+#pragma acc exit data delete(l_lengths[0:l_max_embs])
 #endif
 
           free(my_embedded_proportions_alt);
@@ -208,12 +227,13 @@ namespace SUCMP_NM {
         {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t  n_samples_r = dm_stripes.n_samples_r;
+		// keep local copies to avoid the need for *this in the GPU
           const uint64_t bsize = n_samples_r * get_emb_els(filled_embs);
-          TEmb * iembedded_proportions = this->get_embedded_proportions();
+          TEmb * l_embedded_proportions = this->get_embedded_proportions();
 #if defined(OMPGPU)
-#pragma omp target update to(iembedded_proportions[0:bsize])
+#pragma omp target update to(l_embedded_proportions[0:bsize])
 #else
-#pragma acc update device(iembedded_proportions[0:bsize])
+#pragma acc update device(l_embedded_proportions[0:bsize])
 #endif
 
 #endif
@@ -595,10 +615,11 @@ namespace SUCMP_NM {
         , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize))
         , sample_total_counts(_sample_total_counts)
         {
+		const uint64_t l_embsize = this->embsize;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:embedded_counts[0:this->embsize])
+#pragma omp target enter data map(alloc:embedded_counts[0:l_embsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(embedded_counts[0:this->embsize])
+#pragma acc enter data create(embedded_counts[0:l_embsize])
 #endif    
         }
 
@@ -607,10 +628,11 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
+		const uint64_t l_embsize = this->embsize;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_counts[0:embsize])
+#pragma omp target exit data map(delete:embedded_counts[0:l_embsize])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(embedded_counts[0:embsize])
+#pragma acc exit data delete(embedded_counts[0:l_embsize])
 #endif
 
           free(embedded_counts);
