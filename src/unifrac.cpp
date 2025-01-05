@@ -43,7 +43,7 @@
 
 using namespace su;
 
-std::string su::test_table_ids_are_subset_of_tree(su::biom_interface &table, su::BPTree &tree) {
+std::string su::test_table_ids_are_subset_of_tree(const su::biom_interface &table, const su::BPTree &tree) {
     std::unordered_set<std::string> tip_names = tree.get_tip_names();
     std::unordered_set<std::string>::const_iterator hit;
     std::string a_missing_name = "";
