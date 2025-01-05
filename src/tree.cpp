@@ -82,7 +82,7 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, const c
     index_and_cache();
 }
 
-BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) {
+BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) const {
     
     std::vector<bool> new_structure = std::vector<bool>();
     std::vector<double> new_lengths = std::vector<double>();
@@ -114,7 +114,7 @@ BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_leng
     return BPTree(new_structure, new_lengths, new_names);
 }
 
-std::unordered_set<std::string> BPTree::get_tip_names() {
+std::unordered_set<std::string> BPTree::get_tip_names() const {
     std::unordered_set<std::string> observed;
 	
     for(unsigned int i = 0; i < this->nparens; i++) {
@@ -126,7 +126,7 @@ std::unordered_set<std::string> BPTree::get_tip_names() {
     return observed;
 }
 
-BPTree BPTree::shear(std::unordered_set<std::string> to_keep) {
+BPTree BPTree::shear(std::unordered_set<std::string> to_keep) const {
     std::vector<bool> shearmask = std::vector<bool>(this->nparens);
     int32_t p;
 
@@ -146,7 +146,7 @@ BPTree BPTree::shear(std::unordered_set<std::string> to_keep) {
     return this->mask(shearmask, this->lengths);
 }
 
-BPTree BPTree::collapse() {
+BPTree BPTree::collapse() const {
     std::vector<bool> collapsemask = std::vector<bool>(this->nparens);
     std::vector<double> new_lengths = std::vector<double>(this->lengths);
 

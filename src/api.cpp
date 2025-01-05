@@ -89,11 +89,8 @@
                                                             return table_and_tree_do_not_overlap;                                \
                                                         }   
 
-#define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
-                                                        std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
-                                                                                          std::istreambuf_iterator<char>());     \
-                                                        su::BPTree tree(content);                                                \
-                                                        su::biom table(biom_filename);                                           \
+#define PARSE_TREE_TABLE(tree_filename, table_filename) su::BPTree tree(get_tree_content(tree_filename)); \
+                                                        su::biom table(biom_filename);                    \
 							VALIDATE_TREE_TABLE(tree, table)
 
 #define PARSE_SYNC_TREE_TABLE(tree_filename, table_filename) PARSE_TREE_TABLE(tree_filename, table_filename) \
@@ -110,6 +107,32 @@ void ssu_set_random_seed(unsigned int new_seed) {
 bool is_file_exists(const char *fileName) {
     std::ifstream infile(fileName);
         return infile.good();
+}
+
+inline std::string get_tree_content(const char* tree_filename) {
+    std::ifstream ifs(tree_filename);
+    std::string content = std::string(std::istreambuf_iterator<char>(ifs),
+                                      std::istreambuf_iterator<char>());
+    return content;
+}
+
+IOStatus load_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data) {
+    SETUP_TDBG("load_bptree_opaque")
+    if(tree_data==NULL) return unexpected_end;
+    CHECK_FILE(tree_filename, open_error)
+    tree_data->opaque = (void*) new su::BPTree(get_tree_content(tree_filename));
+    TDBG_STEP("load_bptree_opaque")
+    return read_okay;
+}
+
+void destroy_bptree_opaque(opaque_bptree_t* tree_data) {
+	if (tree_data!=NULL) {
+		if (tree_data->opaque!=NULL) {
+			su::BPTree *tree = (su::BPTree *) tree_data->opaque;
+			tree_data->opaque = NULL;
+			delete tree;
+		}
+	}
 }
 
 
@@ -429,7 +452,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
     }
 }
 
-compute_status one_off_inmem_cpp(su::biom_interface &table, su::BPTree &tree,
+compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SETUP_TDBG("one_off_inmem")
@@ -554,6 +577,22 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
     TDBG_STEP("load_files")
     // condensed form
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
+}
+
+compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+    SETUP_TDBG("one_off_wtree")
+    if (tree_data==NULL) return tree_missing;
+    if (tree_data->opaque==NULL) return tree_missing;
+    CHECK_FILE(biom_filename, table_missing)
+    const su::BPTree &tree = *( (su::BPTree*) tree_data->opaque);
+    su::biom table(biom_filename);
+    VALIDATE_TREE_TABLE(tree, table)
+
+    TDBG_STEP("load_files")
+    // condensed form
+    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
 }
 
 // TMat mat_full_fp32_t

@@ -167,6 +167,16 @@ typedef struct support_bptree {
     int n_parens;
 } support_bptree_t;
 
+/* Opaque BTTree structure for externalizing the full BPTree object
+ * Do not assume anything about the internals of the pointer
+ */
+typedef struct opaque_bptree {
+    void *opaque;
+} opaque_bptree_t;
+
+/* Load from file and fill tree_data */
+EXTERN IOStatus load_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data);
+EXTERN void destroy_bptree_opaque(opaque_bptree_t* tree_data);
 
 EXTERN void destroy_mat(mat_t** result);
 EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
@@ -197,6 +207,12 @@ EXTERN void destroy_results_vec(r_vec** result);
 EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, mat_t** result);
+
+
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int n_substeps, mat_t** result);
 
 
 /* Compute UniFrac - against in-memory objects returning full form matrix

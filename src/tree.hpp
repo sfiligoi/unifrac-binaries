@@ -103,7 +103,7 @@ namespace su {
             int32_t parent(uint32_t i) const;
 
             /* get the names at the tips of the tree */
-            std::unordered_set<std::string> get_tip_names();
+            std::unordered_set<std::string> get_tip_names() const;
 
             /* public getters */
             std::vector<bool> get_structure();
@@ -119,11 +119,11 @@ namespace su {
                 }
                 std::cout << std::endl;
             }
-            BPTree mask(std::vector<bool> topology_mask, std::vector<double> in_lengths); // mask self
+            BPTree mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) const; // mask self
 
-            BPTree shear(std::unordered_set<std::string> to_keep);
+            BPTree shear(std::unordered_set<std::string> to_keep) const;
 
-            BPTree collapse();
+            BPTree collapse() const;
 
         private:
             std::vector<bool> structure;          // the topology
