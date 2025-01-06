@@ -305,6 +305,13 @@ EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tr
                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                        mat_full_fp64_t** result);
 
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                        mat_full_fp64_t** result);
+
 /* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
                                     const char* unifrac_method, bool variance_adjust, double alpha,
@@ -339,6 +346,13 @@ EXTERN ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const cha
                                             bool bypass_tips, unsigned int n_substeps,
                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                             mat_full_fp32_t** result);
+
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp32_t** result);
 
 /* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,

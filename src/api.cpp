@@ -709,6 +709,39 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
+/* As above, but from a pre-loaded tree object */
+compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, unsigned int nthreads,
+                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                 mat_full_fp64_t** result) {
+    SETUP_TDBG("one_off_matrix_wtree")
+    if (tree_data==NULL) return tree_missing;
+    if (tree_data->opaque==NULL) return tree_missing;
+    CHECK_FILE(biom_filename, table_missing)
+    const su::BPTree &tree = *( (su::BPTree*) tree_data->opaque);
+    su::biom table(biom_filename);
+    VALIDATE_TREE_TABLE(tree, table)
+    TDBG_STEP("load_files")
+    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, unsigned int nthreads,
+                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                      mat_full_fp32_t** result) {
+    SETUP_TDBG("one_off_matrix_fp32_wtree")
+    if (tree_data==NULL) return tree_missing;
+    if (tree_data->opaque==NULL) return tree_missing;
+    CHECK_FILE(biom_filename, table_missing)
+    const su::BPTree &tree = *( (su::BPTree*) tree_data->opaque);
+    su::biom table(biom_filename);
+    VALIDATE_TREE_TABLE(tree, table)
+    TDBG_STEP("load_files")
+    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
 // Old interface
 compute_status one_off_matrix(const char* biom_filename, const char* tree_filename,
                               const char* unifrac_method, bool variance_adjust, double alpha,
