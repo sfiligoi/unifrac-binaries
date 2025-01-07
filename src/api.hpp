@@ -174,9 +174,11 @@ typedef struct opaque_bptree {
     void *opaque;
 } opaque_bptree_t;
 
-/* Load from file and fill tree_data */
-EXTERN IOStatus load_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data);
-EXTERN void destroy_bptree_opaque(opaque_bptree_t* tree_data);
+/* Read tree from file and fill tree_data */
+EXTERN IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data);
+
+/* Load tree from newick string and fill tree_data */
+EXTERN void load_bptree_opaque(const char* newick, opaque_bptree_t* tree_data);
 
 EXTERN void destroy_mat(mat_t** result);
 EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
@@ -184,6 +186,8 @@ EXTERN void destroy_mat_full_fp32(mat_full_fp32_t** result);
 EXTERN void destroy_partial_mat(partial_mat_t** result);
 EXTERN void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
 EXTERN void destroy_results_vec(r_vec** result);
+
+EXTERN void destroy_bptree_opaque(opaque_bptree_t* tree_data);
 
 /* Compute UniFrac - condensed form
  *

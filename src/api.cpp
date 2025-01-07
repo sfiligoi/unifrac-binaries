@@ -122,13 +122,19 @@ inline std::string get_tree_content(const char* tree_filename) {
     return content;
 }
 
-IOStatus load_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data) {
-    SETUP_TDBG("load_bptree_opaque")
+/* Read tree from file and fill tree_data */
+IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data) {
+    SETUP_TDBG("read_bptree_opaque")
     if(tree_data==NULL) return unexpected_end;
     CHECK_FILE(tree_filename, open_error)
+    TDBG_STEP("load_files")
     tree_data->opaque = (void*) new su::BPTree(get_tree_content(tree_filename));
-    TDBG_STEP("load_bptree_opaque")
     return read_okay;
+}
+
+void load_bptree_opaque(const char* newick, opaque_bptree_t* tree_data) {
+    SETUP_TDBG("load_bptree_opaque")
+    tree_data->opaque = (void*) new su::BPTree(newick);
 }
 
 void destroy_bptree_opaque(opaque_bptree_t* tree_data) {
