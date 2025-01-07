@@ -123,30 +123,36 @@ inline std::string get_tree_content(const char* tree_filename) {
 }
 
 /* Read tree from file and fill tree_data */
-IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data) {
+IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data) {
     SETUP_TDBG("read_bptree_opaque")
     if(tree_data==NULL) return unexpected_end;
     CHECK_FILE(tree_filename, open_error)
     TDBG_STEP("load_files")
-    tree_data->opaque = (void*) new su::BPTree(get_tree_content(tree_filename));
+    *tree_data = (opaque_bptree_t*) new su::BPTree(get_tree_content(tree_filename));
     return read_okay;
 }
 
-void load_bptree_opaque(const char* newick, opaque_bptree_t* tree_data) {
+void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data) {
     SETUP_TDBG("load_bptree_opaque")
-    tree_data->opaque = (void*) new su::BPTree(newick);
+    *tree_data = (opaque_bptree_t*) new su::BPTree(newick);
 }
 
-void destroy_bptree_opaque(opaque_bptree_t* tree_data) {
+void destroy_bptree_opaque(opaque_bptree_t** tree_data) {
 	if (tree_data!=NULL) {
-		if (tree_data->opaque!=NULL) {
-			su::BPTree *tree = (su::BPTree *) tree_data->opaque;
-			tree_data->opaque = NULL;
-			delete tree;
-		}
+		su::BPTree *tree = (su::BPTree *) (*tree_data);
+		*tree_data = NULL;
+		delete tree;
 	}
 }
 
+/* Return number of elements in BPTree, equvalent to n_parens */
+int get_bptree_opaque_els(opaque_bptree_t* tree_data) {
+	if (tree_data!=NULL) {
+		su::BPTree *tree = (su::BPTree *) tree_data;
+		return tree->get_tip_names().size();
+	}
+	return 0; // just to have a reasonable default
+}
 
 void destroy_stripes(vector<double*> &dm_stripes, vector<double*> &dm_stripes_total, unsigned int n_samples,
                      unsigned int stripe_start, unsigned int stripe_stop) {
@@ -596,9 +602,8 @@ compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* t
                              bool bypass_tips, unsigned int n_substeps, mat_t** result) {
     SETUP_TDBG("one_off_wtree")
     if (tree_data==NULL) return tree_missing;
-    if (tree_data->opaque==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
-    const su::BPTree &tree = *( (su::BPTree*) tree_data->opaque);
+    const su::BPTree &tree = *( (su::BPTree*) tree_data);
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
 
@@ -723,9 +728,8 @@ compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree
                                  mat_full_fp64_t** result) {
     SETUP_TDBG("one_off_matrix_wtree")
     if (tree_data==NULL) return tree_missing;
-    if (tree_data->opaque==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
-    const su::BPTree &tree = *( (su::BPTree*) tree_data->opaque);
+    const su::BPTree &tree = *( (su::BPTree*) tree_data);
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")
@@ -739,9 +743,8 @@ compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_b
                                       mat_full_fp32_t** result) {
     SETUP_TDBG("one_off_matrix_fp32_wtree")
     if (tree_data==NULL) return tree_missing;
-    if (tree_data->opaque==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
-    const su::BPTree &tree = *( (su::BPTree*) tree_data->opaque);
+    const su::BPTree &tree = *( (su::BPTree*) tree_data);
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")

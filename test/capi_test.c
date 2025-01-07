@@ -46,14 +46,15 @@ void test_su_wtree(int num_cores){
     const char* method = "unweighted";
     const double exp[] = {0.2, 0.57142857, 0.6, 0.5, 0.2, 0.42857143, 0.66666667, 0.6, 0.33333333, 0.71428571, 0.85714286, 0.42857143, 0.33333333, 0.4, 0.6};
     
-    opaque_bptree_t tree_data;
+    opaque_bptree_t *tree_data;
     IOStatus iostatus;
     iostatus = read_bptree_opaque(tree, &tree_data);
     err(iostatus != read_okay, "Tree read failed");
-
+    int tree_obs = get_bptree_opaque_els(tree_data);
+    err(tree_obs != 5, "Wrong number of obs");
 
     ComputeStatus status;
-    status = one_off_wtree(table, &tree_data, method,
+    status = one_off_wtree(table, tree_data, method,
                      false, 1.0, false, num_cores, &result);
 
     err(status != okay, "Compute failed");
@@ -75,11 +76,13 @@ void test_su_wtree2(int num_cores){
     const char* method = "unweighted";
     const double exp[] = {0.2, 0.57142857, 0.6, 0.5, 0.2, 0.42857143, 0.66666667, 0.6, 0.33333333, 0.71428571, 0.85714286, 0.42857143, 0.33333333, 0.4, 0.6};
     
-    opaque_bptree_t tree_data;
+    opaque_bptree_t *tree_data;
     load_bptree_opaque(tree_str, &tree_data);
+    int tree_obs = get_bptree_opaque_els(tree_data);
+    err(tree_obs != 5, "Wrong number of obs");
 
     ComputeStatus status;
-    status = one_off_wtree(table, &tree_data, method,
+    status = one_off_wtree(table, tree_data, method,
                      false, 1.0, false, num_cores, &result);
 
     err(status != okay, "Compute failed");
@@ -136,13 +139,13 @@ void test_su_matrix_wtree(int num_cores){
 		    0.5,        0.6,        0.85714286, 0.33333333, 0.0,        0.6,
                     0.2,        0.33333333, 0.42857143, 0.4,        0.6,        0.0        };
     
-    opaque_bptree_t tree_data;
+    opaque_bptree_t *tree_data;
     IOStatus iostatus;
     iostatus = read_bptree_opaque(tree, &tree_data);
     err(iostatus != read_okay, "Tree read failed");
 
     ComputeStatus status;
-    status = one_off_matrix_fp32_v2t(table, &tree_data, method,
+    status = one_off_matrix_fp32_v2t(table, tree_data, method,
                                     false, 1.0, false, num_cores,
                                     0, true, NULL,
 				    &result);
@@ -171,11 +174,11 @@ void test_su_matrix_wtree2(int num_cores){
 		    0.5,        0.6,        0.85714286, 0.33333333, 0.0,        0.6,
                     0.2,        0.33333333, 0.42857143, 0.4,        0.6,        0.0        };
     
-    opaque_bptree_t tree_data;
+    opaque_bptree_t *tree_data;
     load_bptree_opaque(tree_str, &tree_data);
 
     ComputeStatus status;
-    status = one_off_matrix_fp32_v2t(table, &tree_data, method,
+    status = one_off_matrix_fp32_v2t(table, tree_data, method,
                                     false, 1.0, false, num_cores,
                                     0, true, NULL,
 				    &result);

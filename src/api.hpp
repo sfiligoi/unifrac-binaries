@@ -171,14 +171,24 @@ typedef struct support_bptree {
  * Do not assume anything about the internals of the pointer
  */
 typedef struct opaque_bptree {
-    void *opaque;
+    int dummy;
 } opaque_bptree_t;
 
-/* Read tree from file and fill tree_data */
-EXTERN IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t* tree_data);
+/* Read tree from file and fill tree_data
+ *
+ * tree_filename <const char*> the filename to the correspodning tree.
+ * tree_data <opaque_bptree_t**> the resulting tree data object, this is initialized within the method so using **
+ *
+ * read_bptree_opaque returns the following error codes:
+ *
+ * read_okay      : no problems encountered
+ * open_error     : the filename for the tree does not exist
+ * unexpected_end : any other error.
+ */
+EXTERN IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data);
 
 /* Load tree from newick string and fill tree_data */
-EXTERN void load_bptree_opaque(const char* newick, opaque_bptree_t* tree_data);
+EXTERN void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data);
 
 EXTERN void destroy_mat(mat_t** result);
 EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
@@ -187,7 +197,10 @@ EXTERN void destroy_partial_mat(partial_mat_t** result);
 EXTERN void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
 EXTERN void destroy_results_vec(r_vec** result);
 
-EXTERN void destroy_bptree_opaque(opaque_bptree_t* tree_data);
+EXTERN void destroy_bptree_opaque(opaque_bptree_t** tree_data);
+
+/* Return number of elements in BPTree, equvalent to n_parens */
+EXTERN int get_bptree_opaque_els(opaque_bptree_t* tree_data);
 
 /* Compute UniFrac - condensed form
  *
