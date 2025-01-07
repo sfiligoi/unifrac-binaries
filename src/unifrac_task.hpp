@@ -415,10 +415,15 @@ namespace SUCMP_NM {
 
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
+#if defined(_OPENACC) || defined(OMPGPU)
+          TFloat *l_sums = this->sums;
+          bool   *l_zcheck = this->zcheck;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:zcheck[0:n_samples],sums[0:n_samples])
+#pragma omp target enter data map(alloc:l_zcheck[0:n_samples],l_sums[0:n_samples])
 #elif defined(_OPENACC)
-#pragma acc enter data create(zcheck[0:n_samples],sums[0:n_samples])
+#pragma acc enter data create(l_zcheck[0:n_samples],l_sums[0:n_samples])
+#endif
+
 #endif
         }
 
@@ -429,10 +434,12 @@ namespace SUCMP_NM {
         {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
+          TFloat *l_sums = this->sums;
+          bool   *l_zcheck = this->zcheck;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:sums[0:n_samples],zcheck[0:n_samples])
+#pragma omp target exit data map(delete:l_sums[0:n_samples],l_zcheck[0:n_samples])
 #else
-#pragma acc exit data delete(sums[0:n_samples],zcheck[0:n_samples])
+#pragma acc exit data delete(l_sums[0:n_samples],l_zcheck[0:n_samples])
 #endif
 
 #endif
@@ -460,10 +467,15 @@ namespace SUCMP_NM {
 
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
+#if defined(_OPENACC) || defined(OMPGPU)
+          TFloat *l_sums = this->sums;
+          bool   *l_zcheck = this->zcheck;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:zcheck[0:n_samples],sums[0:n_samples])
+#pragma omp target enter data map(alloc:l_zcheck[0:n_samples],l_sums[0:n_samples])
 #elif defined(_OPENACC)
-#pragma acc enter data create(zcheck[0:n_samples],sums[0:n_samples])
+#pragma acc enter data create(l_zcheck[0:n_samples],l_sums[0:n_samples])
+#endif
+
 #endif
         }
 
@@ -474,10 +486,12 @@ namespace SUCMP_NM {
         {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
+          TFloat *l_sums = this->sums;
+          bool   *l_zcheck = this->zcheck;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:sums[0:n_samples],zcheck[0:n_samples])
+#pragma omp target exit data map(delete:l_sums[0:n_samples],l_zcheck[0:n_samples])
 #else
-#pragma acc exit data delete(sums[0:n_samples],zcheck[0:n_samples])
+#pragma acc exit data delete(l_sums[0:n_samples],l_zcheck[0:n_samples])
 #endif
 
 #endif
@@ -509,10 +523,16 @@ namespace SUCMP_NM {
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           stripe_sums = (TFloat*) malloc(sizeof(TFloat) *  n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * bsize);
+#if defined(_OPENACC) || defined(OMPGPU)
+          TFloat *l_sums = this->sums;
+          TFloat *l_stripe_sums = this->stripe_sums;
+          bool   *l_zcheck = this->zcheck;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:zcheck[0:n_samples],stripe_sums[0:n_samples],sums[0:bsize])
+#pragma omp target enter data map(alloc:l_zcheck[0:n_samples],l_stripe_sums[0:n_samples],l_sums[0:bsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(zcheck[0:n_samples],stripe_sums[0:n_samples],sums[0:bsize])
+#pragma acc enter data create(l_zcheck[0:n_samples],l_stripe_sums[0:n_samples],l_sums[0:bsize])
+#endif
+
 #endif
         }
 
@@ -524,10 +544,13 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
+          TFloat *l_sums = this->sums;
+          TFloat *l_stripe_sums = this->stripe_sums;
+          bool   *l_zcheck = this->zcheck;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:sums[0:bsize],stripe_sums[0:n_samples],zcheck[0:n_samples])
+#pragma omp target exit data map(delete:l_sums[0:bsize],l_stripe_sums[0:n_samples],l_zcheck[0:n_samples])
 #else
-#pragma acc exit data delete(sums[0:bsize],stripe_sums[0:n_samples],zcheck[0:n_samples])
+#pragma acc exit data delete(l_sums[0:bsize],l_stripe_sums[0:n_samples],l_zcheck[0:n_samples])
 #endif
 
 #endif
@@ -615,12 +638,16 @@ namespace SUCMP_NM {
         , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize))
         , sample_total_counts(_sample_total_counts)
         {
-		const uint64_t l_embsize = this->embsize;
+#if defined(_OPENACC) || defined(OMPGPU)
+          const uint64_t l_embsize = this->embsize;
+          TFloat * const l_embedded_counts = this->embedded_counts;
 #if defined(OMPGPU)
-#pragma omp target enter data map(alloc:embedded_counts[0:l_embsize])
+#pragma omp target enter data map(alloc:l_embedded_counts[0:l_embsize])
 #elif defined(_OPENACC)
-#pragma acc enter data create(embedded_counts[0:l_embsize])
-#endif    
+#pragma acc enter data create(l_embedded_counts[0:l_embsize])
+#endif
+
+#endif
         }
 
        UnifracVawTask<TFloat,TEmb>(const UnifracVawTask<TFloat,TEmb>& ) = delete;
@@ -628,11 +655,15 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
-		const uint64_t l_embsize = this->embsize;
+#if defined(_OPENACC) || defined(OMPGPU)
+          const uint64_t l_embsize = this->embsize;
+          TFloat * const l_embedded_counts = this->embedded_counts;
 #if defined(OMPGPU)
-#pragma omp target exit data map(delete:embedded_counts[0:l_embsize])
+#pragma omp target exit data map(delete:l_embedded_counts[0:l_embsize])
 #elif defined(_OPENACC)
-#pragma acc exit data delete(embedded_counts[0:l_embsize])
+#pragma acc exit data delete(l_embedded_counts[0:l_embsize])
+#endif
+
 #endif
 
           free(embedded_counts);
@@ -643,10 +674,11 @@ namespace SUCMP_NM {
 #if defined(_OPENACC) || defined(OMPGPU)
           const uint64_t  n_samples_r = this->dm_stripes.n_samples_r;
           const uint64_t bsize = n_samples_r * filled_embs;
+          TFloat * const l_embedded_counts = this->embedded_counts;
 #if defined(OMPGPU)
-#pragma omp target update to(embedded_counts[0:bsize])
+#pragma omp target update to(l_embedded_counts[0:bsize])
 #else
-#pragma acc update device(embedded_counts[0:bsize])
+#pragma acc update device(l_embedded_counts[0:bsize])
 #endif
 
 #endif
