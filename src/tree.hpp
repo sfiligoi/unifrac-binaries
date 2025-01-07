@@ -120,7 +120,7 @@ namespace su {
                 }
                 std::cout << std::endl;
             }
-            BPTree mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) const; // mask self
+            BPTree mask(const std::vector<bool>& topology_mask, const std::vector<double>& in_lengths) const; // mask self
 
             BPTree shear(std::unordered_set<std::string> to_keep) const;
 

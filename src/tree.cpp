@@ -98,7 +98,7 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, const c
     index_and_cache();
 }
 
-BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) const {
+BPTree BPTree::mask(const std::vector<bool>& topology_mask, const std::vector<double>& in_lengths) const {
     
     std::vector<bool> new_structure = std::vector<bool>();
     std::vector<double> new_lengths = std::vector<double>();
