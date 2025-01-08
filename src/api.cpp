@@ -865,6 +865,49 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
                                         result);
 }
 
+/* Compute UniFrac from a pair of dense vectors */
+compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                  const opaque_bptree_t* tree_data,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, double* result) {
+    SETUP_TDBG("one_dense_pair_v2t")
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc != okay) return rc;
+
+    if (tree_data==NULL) return tree_missing;
+    const su::BPTree &tree = *( (su::BPTree*) tree_data);
+
+    const char* sample_ids[2] = { "Sample1", "Sample2" };
+    const double* dense_data[2] = { sample1, sample2 };
+    su::biom_inmem table(obs_ids, 
+                         sample_ids,
+                         dense_data, 
+                         n_obs,
+                         2);
+
+    VALIDATE_TREE_TABLE(tree, table)
+
+    TDBG_STEP("load_files")
+    if (fp64) {
+      mat_full_fp64_t* matrix_result = NULL;
+      rc = one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,1,NULL,&matrix_result);
+      if (rc==okay) {
+         *result = matrix_result->matrix[1];
+	 destroy_mat_full_fp64(&matrix_result);
+      }
+    } else {
+      mat_full_fp32_t* matrix_result = NULL;
+      rc = one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,1,NULL,&matrix_result);
+      if (rc==okay) {
+         *result = matrix_result->matrix[1];
+	 destroy_mat_full_fp32(&matrix_result);
+      }
+    }
+    return rc;
+}
+
 // Internal 
 inline std::vector<std::string> stringlist_to_vector(const char *stringlist) {
   char *str = strdup(stringlist);

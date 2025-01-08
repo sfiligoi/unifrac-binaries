@@ -378,6 +378,14 @@ EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* 
                                          const char *mmap_dir,
                                          mat_full_fp32_t** result);
 
+/* Compute UniFrac from a pair of dense vectors 
+ *
+ */
+EXTERN ComputeStatus one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                        const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, double* result);
+
 /* compute Faith PD
  * biom_filename <const char*> the filename to the biom table.
  * tree_filename <const char*> the filename to the correspodning tree.

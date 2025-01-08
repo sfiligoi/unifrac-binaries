@@ -36,6 +36,15 @@ namespace su {
                         uint32_t* indptr,
                         double* data);
 
+            /* constructor from compress sparse data
+             *
+             * @param n_obs number of observations
+             * @param data vector of vectors of observation counts
+             */
+            sparse_data(const uint32_t n_obs,
+                        const uint32_t n_samples,
+                        const double* const * data);
+
             /* default destructor */
             virtual ~sparse_data();
 
@@ -96,6 +105,20 @@ namespace su {
                        uint32_t* index,
                        uint32_t* indptr,
                        double* data,
+                       const int n_obs,
+                       const int n_samples);
+
+            /* constructor from dense data
+             *
+             * @param obs_ids vector of observation identifiers
+             * @param samp_ids vector of sample identifiers
+             * @param data vector of vectors of observation counts
+             * @param n_obs number of observations
+             * @param n_samples number of samples
+             */
+            biom_inmem(const char* const * obs_ids,
+                       const char* const * samp_ids,
+                       const double* const * data,
                        const int n_obs,
                        const int n_samples);
 

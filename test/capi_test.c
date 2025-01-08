@@ -195,6 +195,31 @@ void test_su_matrix_wtree2(int num_cores){
     destroy_bptree_opaque(&tree_data);
 }
 
+void test_su_dense(int num_cores){
+    double result = 0.0;
+    const char tree_str[] = "(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);";
+    const char* table_oids[] = { "GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5" };
+    const double sample1[] = { 0, 5, 0, 2, 0 };
+    const double sample3[] = { 1, 0, 1, 1, 1 };
+    const char* method = "unweighted";
+    float exp13 = 0.57142857;
+    
+    opaque_bptree_t *tree_data;
+    load_bptree_opaque(tree_str, &tree_data);
+
+    ComputeStatus status;
+    status = one_dense_pair_v2t(5, table_oids, sample1, sample3,
+	                        tree_data, method,
+                                false, 1.0, false,
+				&result);
+
+    err(status != okay, "Compute failed");
+
+    err(fabs(exp13 - result) > 0.00001, "Result is wrong");
+
+    destroy_bptree_opaque(&tree_data);
+}
+
 void test_faith_pd(){
     r_vec* result = NULL;
     const char* table = "test.biom";
@@ -226,6 +251,8 @@ int main(int argc, char** argv) {
     printf("Testing Striped UniFrac one_off matrix_wtree...\n");
     test_su_matrix_wtree(num_cores);
     test_su_matrix_wtree2(num_cores);
+    printf("Testing Striped UniFrac one_dense_pair...\n");
+    test_su_dense(num_cores);
     printf("Tests passed.\n");
     printf("Testing Faith's PD...\n");
     test_faith_pd();
