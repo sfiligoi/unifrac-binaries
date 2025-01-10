@@ -91,6 +91,8 @@ void test_su_dense(int num_cores){
 void test_su_matrix(int num_cores){
     mat_full_fp64_t* result = NULL;
     mat_full_fp32_t* result_fp32 = NULL;
+    mat_full_fp64_t* result2 = NULL;
+    mat_full_fp32_t* result2_fp32 = NULL;
     const support_biom_t table = {(char**) obs_ids, (char**) samp_ids, (uint32_t*) indices, (uint32_t*) indptr, (double*) data, n_obs, n_samp, 0};
     const support_bptree_t tree = {(bool*) structure, (double*) lengths, (char**) names, nparens};
 
@@ -134,6 +136,38 @@ void test_su_matrix(int num_cores){
 
 
     destroy_mat_full_fp32(&result_fp32);
+
+    // exercise the old interface, too
+    status = one_off_inmem(&table, &tree, "unweighted_fp64",
+                                  false, 1.0, false, num_cores,
+				  &result2);
+
+    err(status != okay, "Compute failed");
+    err(result2 == NULL, "Empty result");
+    err(result2->n_samples != 6, "Wrong number of samples");
+
+    for(unsigned int i = 0; i < (result2->n_samples*result2->n_samples); i++) {
+        err(fabs(exp[i] - result2->matrix[i]) > 0.00001, "Result is wrong");
+    }
+
+
+    destroy_mat_full_fp64(&result2);
+
+    status = one_off_inmem_fp32(&table, &tree, "unweighted_fp32",
+                                    false, 1.0, false, num_cores,
+				    &result2_fp32);
+
+    err(status != okay, "Compute failed");
+    err(result2 == NULL, "Empty result");
+    err(result2_fp32->n_samples != 6, "Wrong number of samples");
+
+    for(unsigned int i = 0; i < (result2_fp32->n_samples*result2_fp32->n_samples); i++) {
+        err(fabs(exp[i] - result2_fp32->matrix[i]) > 0.00001, "Result is wrong");
+    }
+
+
+    destroy_mat_full_fp32(&result2_fp32);
+
 }
 
 
