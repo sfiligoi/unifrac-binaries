@@ -156,7 +156,7 @@ void destroy_bptree_opaque(opaque_bptree_t** tree_data) {
 }
 
 IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data) {
-   if (dl_read_bptree_opaque==NULL) ssu_load("read_bptree_opaque", (void **) &read_bptree_opaque);
+   if (dl_read_bptree_opaque==NULL) ssu_load("read_bptree_opaque", (void **) &dl_read_bptree_opaque);
 
    return (*dl_read_bptree_opaque)(tree_filename,tree_data);
 }
