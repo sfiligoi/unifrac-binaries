@@ -380,6 +380,20 @@ EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* 
 
 /* Compute UniFrac from a pair of dense vectors 
  *
+ * n_obs <unsigned int> the number of observations, corresponding to length of obs_ids, sample1 and sample2
+ * obs_ids <const char**> the observation IDs
+ * sample1 <const double*> sample values
+ * sample2 <const double*> sample values
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * result <double*> the resulting distance
+ *
+ * one_dense_pair_v2t returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * table_empty    : the table does not have any entries
  */
 EXTERN ComputeStatus one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
 		                        const opaque_bptree_t* tree_data,
