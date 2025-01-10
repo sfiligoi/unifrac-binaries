@@ -190,6 +190,9 @@ EXTERN IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** 
 /* Load tree from newick string and fill tree_data */
 EXTERN void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data);
 
+/* Convert nexplicit tree structure into the opaque form */
+EXTERN void convert_bptree_opaque(const support_bptree_t* in_tree, opaque_bptree_t** tree_data);
+
 EXTERN void destroy_mat(mat_t** result);
 EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
 EXTERN void destroy_mat_full_fp32(mat_full_fp32_t** result);
@@ -399,6 +402,12 @@ EXTERN ComputeStatus one_dense_pair_v2t(unsigned int n_obs, const char ** obs_id
 		                        const opaque_bptree_t* tree_data,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
                                         bool bypass_tips, double* result);
+
+/* Same as above, but usign the explicit treee structure... slightly less efficient */
+EXTERN ComputeStatus one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                       const support_bptree_t* tree_data,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, double* result);
 
 /* compute Faith PD
  * biom_filename <const char*> the filename to the biom table.

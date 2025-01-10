@@ -137,6 +137,15 @@ void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data) {
     *tree_data = (opaque_bptree_t*) new su::BPTree(newick);
 }
 
+void convert_bptree_opaque(const support_bptree_t* in_tree, opaque_bptree_t** tree_data) {
+    SETUP_TDBG("convert_bptree_opaque")
+    *tree_data = (opaque_bptree_t*) new su::BPTree(
+                    in_tree->structure,
+                    in_tree->lengths,
+                    in_tree->names,
+                    in_tree->n_parens);
+}
+
 void destroy_bptree_opaque(opaque_bptree_t** tree_data) {
 	if (tree_data!=NULL) {
 		su::BPTree *tree = (su::BPTree *) (*tree_data);
@@ -603,7 +612,7 @@ compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* t
     SETUP_TDBG("one_off_wtree")
     if (tree_data==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
-    const su::BPTree &tree = *( (su::BPTree*) tree_data);
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
 
@@ -729,7 +738,7 @@ compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree
     SETUP_TDBG("one_off_matrix_wtree")
     if (tree_data==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
-    const su::BPTree &tree = *( (su::BPTree*) tree_data);
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")
@@ -744,7 +753,7 @@ compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_b
     SETUP_TDBG("one_off_matrix_fp32_wtree")
     if (tree_data==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
-    const su::BPTree &tree = *( (su::BPTree*) tree_data);
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")
@@ -866,8 +875,8 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
 }
 
 /* Compute UniFrac from a pair of dense vectors */
-compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
-		                  const opaque_bptree_t* tree_data,
+inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                  const su::BPTree &tree,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
                                   bool bypass_tips, double* result) {
     SETUP_TDBG("one_dense_pair_v2t")
@@ -875,9 +884,6 @@ compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, con
     compute_status rc = is_fp64_method(unifrac_method, fp64);
 
     if (rc != okay) return rc;
-
-    if (tree_data==NULL) return tree_missing;
-    const su::BPTree &tree = *( (su::BPTree*) tree_data);
 
     const char* sample_ids[2] = { "Sample1", "Sample2" };
     const double* dense_data[2] = { sample1, sample2 };
@@ -906,6 +912,32 @@ compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, con
       }
     }
     return rc;
+}
+
+compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                  const opaque_bptree_t* tree_data,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, double* result) {
+    if (tree_data==NULL) return tree_missing;
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
+    return one_dense_pair(n_obs,obs_ids,sample1,sample2,
+                          tree,
+                          unifrac_method,variance_adjust,alpha,bypass_tips,result);
+}
+
+compute_status one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                 const support_bptree_t* tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, double* result) {
+    if (tree_data==NULL) return tree_missing;
+    su::BPTree tree(tree_data->structure,
+                    tree_data->lengths,
+                    tree_data->names,
+                    tree_data->n_parens);
+
+    return one_dense_pair(n_obs,obs_ids,sample1,sample2,
+                          tree,
+                          unifrac_method,variance_adjust,alpha,bypass_tips,result);
 }
 
 // Internal 
