@@ -200,9 +200,11 @@ void test_su_dense(int num_cores){
     const char tree_str[] = "(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);";
     const char* table_oids[] = { "GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5" };
     const double sample1[] = { 0, 5, 0, 2, 0 };
+    const double sample2[] = { 0, 1, 0, 1, 1 };
     const double sample3[] = { 1, 0, 1, 1, 1 };
     const char* method = "unweighted";
     float exp13 = 0.57142857;
+    float exp21 = 0.2;
     
     opaque_bptree_t *tree_data;
     load_bptree_opaque(tree_str, &tree_data);
@@ -216,6 +218,15 @@ void test_su_dense(int num_cores){
     err(status != okay, "Compute failed");
 
     err(fabs(exp13 - result) > 0.00001, "Result is wrong");
+
+    status = one_dense_pair_v2t(5, table_oids, sample2, sample1,
+	                        tree_data, method,
+                                false, 1.0, false,
+				&result);
+
+    err(status != okay, "Compute failed");
+
+    err(fabs(exp21 - result) > 0.00001, "Result is wrong");
 
     destroy_bptree_opaque(&tree_data);
 }
