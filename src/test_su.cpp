@@ -66,6 +66,17 @@ void test_bptree_constructor_simple() {
     SUITE_END();
 }
 
+void test_bptree_constructor_simple_cpp() {
+    SUITE_START("bptree constructor simple cpp");
+                                //01234567
+                                //11101000
+    su::BPTree tree(std::string("(('123:foo; bar':1,b:2)c);"));
+
+    test_bptree_simple_result(tree);
+
+    SUITE_END();
+}
+
 void test_bptree_constructor_from_existing() {
     SUITE_START("bptree constructor from_existing");
                                 //01234567
@@ -1928,6 +1939,7 @@ void test_bptree_constructor_newline_bug() {
 
 int main(int argc, char** argv) {
     test_bptree_constructor_simple();
+    test_bptree_constructor_simple_cpp();
     test_bptree_constructor_newline_bug();
     test_bptree_constructor_from_existing();
     test_bptree_constructor_single_descendent();
