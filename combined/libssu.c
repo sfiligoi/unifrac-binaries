@@ -106,6 +106,12 @@ static void (*dl_destroy_mat_full_fp32)(mat_full_fp32_t**) = NULL;
 static void (*dl_destroy_partial_mat)(partial_mat_t**) = NULL;
 static void (*dl_destroy_partial_dyn_mat)(partial_dyn_mat_t**) = NULL;
 static void (*dl_destroy_results_vec)(r_vec**) = NULL;
+static void (*dl_destroy_bptree_opaque)(opaque_bptree_t**) = NULL;
+
+static IOStatus (*dl_read_bptree_opaque)(const char*, opaque_bptree_t**) = NULL;
+static void (*dl_load_bptree_opaque)(const char*, opaque_bptree_t**) = NULL;
+static void (*dl_convert_bptree_opaque)(const support_bptree_t*, opaque_bptree_t**) = NULL;
+static int (*dl_get_bptree_opaque_els)(opaque_bptree_t*) = NULL;
 
 void destroy_mat(mat_t** result) {
    if (dl_destroy_mat==NULL) ssu_load("destroy_mat", (void **) &dl_destroy_mat);
@@ -143,15 +149,55 @@ void destroy_results_vec(r_vec** result) {
    (*dl_destroy_results_vec)(result);
 }
 
+void destroy_bptree_opaque(opaque_bptree_t** tree_data) {
+   if (dl_destroy_bptree_opaque==NULL) ssu_load("destroy_bptree_opaque", (void **) &dl_destroy_bptree_opaque);
+
+   (*dl_destroy_bptree_opaque)(tree_data);
+}
+
+IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data) {
+   if (dl_read_bptree_opaque==NULL) ssu_load("read_bptree_opaque", (void **) &read_bptree_opaque);
+
+   return (*dl_read_bptree_opaque)(tree_filename,tree_data);
+}
+
+void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data) {
+   if (dl_load_bptree_opaque==NULL) ssu_load("load_bptree_opaque", (void **) &dl_load_bptree_opaque);
+
+   (*dl_load_bptree_opaque)(newick,tree_data);
+}
+
+void convert_bptree_opaque(const support_bptree_t* in_tree, opaque_bptree_t** tree_data) {
+   if (dl_convert_bptree_opaque==NULL) ssu_load("convert_bptree_opaque", (void **) &dl_convert_bptree_opaque);
+
+   (*dl_convert_bptree_opaque)(in_tree,tree_data);
+}
+
+int get_bptree_opaque_els(opaque_bptree_t* tree_data) {
+   if (dl_get_bptree_opaque_els==NULL) ssu_load("get_bptree_opaque_els", (void **) &dl_get_bptree_opaque_els);
+
+   return (*dl_get_bptree_opaque_els)(tree_data);
+}
+
 /*********************************************************************/
 
 static ComputeStatus (*dl_one_off)(const char*, const char*, const char*, bool, double, bool, unsigned int, mat_t**) = NULL;
+static ComputeStatus (*dl_one_off_wtree)(const char*, const opaque_bptree_t*, const char*, bool, double, bool, unsigned int, mat_t**) = NULL;
+
 ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, mat_t** result) {
    if (dl_one_off==NULL) ssu_load("one_off", (void **) &dl_one_off);
 
    return (*dl_one_off)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
+ComputeStatus one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+   if (dl_one_off_wtree==NULL) ssu_load("one_off_wtree", (void **) &dl_one_off_wtree);
+
+   return (*dl_one_off_wtree)(biom_filename, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
 }
 
 /*********************************************************************/
@@ -207,9 +253,13 @@ ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const support
 
 static ComputeStatus (*dl_one_off_matrix_v2)(const char*, const char*, const char*, bool, double,
                                              bool, unsigned int, unsigned int, bool, const char *, mat_full_fp64_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_v2t)(const char*, const opaque_bptree_t*, const char*, bool, double,
+                                             bool, unsigned int, unsigned int, bool, const char *, mat_full_fp64_t**) = NULL;
 static ComputeStatus (*dl_one_off_matrix)(const char*, const char*, const char*, bool, double,
                                           bool, unsigned int, const char *, mat_full_fp64_t**) = NULL;
 static ComputeStatus (*dl_one_off_matrix_fp32_v2)(const char*, const char*, const char*, bool, double,
+                                                  bool, unsigned int, unsigned int, bool, const char *, mat_full_fp32_t**) = NULL;
+static ComputeStatus (*dl_one_off_matrix_fp32_v2t)(const char*, const opaque_bptree_t*, const char*, bool, double,
                                                   bool, unsigned int, unsigned int, bool, const char *, mat_full_fp32_t**) = NULL;
 static ComputeStatus (*dl_one_off_matrix_fp32)(const char*, const char*, const char*, bool, double,
                                                bool, unsigned int, const char *, mat_full_fp32_t**) = NULL;
@@ -222,6 +272,17 @@ ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_file
    if (dl_one_off_matrix_v2==NULL) ssu_load("one_off_matrix_v2", (void **) &dl_one_off_matrix_v2);
 
    return (*dl_one_off_matrix_v2)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                           bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                        mat_full_fp64_t** result) {
+   if (dl_one_off_matrix_v2t==NULL) ssu_load("one_off_matrix_v2t", (void **) &dl_one_off_matrix_v2t);
+
+   return (*dl_one_off_matrix_v2t)(biom_filename, tree_data, unifrac_method, variance_adjust, alpha,
                            bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
 }
 
@@ -244,6 +305,17 @@ ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree
    if (dl_one_off_matrix_fp32_v2==NULL) ssu_load("one_off_matrix_fp32_v2", (void **) &dl_one_off_matrix_fp32_v2);
 
    return (*dl_one_off_matrix_fp32_v2)(biom_filename, tree_filename, unifrac_method, variance_adjust, alpha,
+                                bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
+}
+
+ComputeStatus one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp32_t** result) {
+   if (dl_one_off_matrix_fp32_v2t==NULL) ssu_load("one_off_matrix_fp32_v2t", (void **) &dl_one_off_matrix_fp32_v2t);
+
+   return (*dl_one_off_matrix_fp32_v2t)(biom_filename, tree_data, unifrac_method, variance_adjust, alpha,
                                 bypass_tips, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir, result);
 }
 
@@ -410,6 +482,30 @@ IOStatus write_mat_from_matrix_hdf5_fp32(const char* filename, mat_full_fp32_t* 
    if (dl_write_mat_from_matrix_hdf5_fp32==NULL) ssu_load("write_mat_from_matrix_hdf5_fp32", (void **) &dl_write_mat_from_matrix_hdf5_fp32);
 
    return (*dl_write_mat_from_matrix_hdf5_fp32)(filename, result, pcoa_dims, save_dist);
+}
+
+
+/*********************************************************************/
+
+static ComputeStatus (*dl_one_dense_pair_v2t)(unsigned int, const char **, const double*,const double*,const opaque_bptree_t*,const char*, bool, double,bool, double*) = NULL;
+static ComputeStatus (*dl_one_dense_pair_v2)(unsigned int, const char **, const double*,const double*,const support_bptree_t*,const char*, bool, double,bool, double*) = NULL;
+
+ComputeStatus one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                        const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, double* result) {
+   if (dl_one_dense_pair_v2t==NULL) ssu_load("one_dense_pair_v2t", (void **) &dl_one_dense_pair_v2t);
+
+   return (*dl_one_dense_pair_v2t)(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,result);
+}
+
+ComputeStatus one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                       const support_bptree_t* tree_data,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, double* result) {
+   if (dl_one_dense_pair_v2==NULL) ssu_load("one_dense_pair_v2", (void **) &dl_one_dense_pair_v2);
+
+   return (*dl_one_dense_pair_v2)(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,result);
 }
 
 
