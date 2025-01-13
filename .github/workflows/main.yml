@@ -13,7 +13,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, linux-gpu-cuda]
+        os: [ubuntu-latest, macos-14, linux-gpu-cuda]
         offload: [acc, ompgpu]
     runs-on: ${{ matrix.os }}
     steps:
@@ -30,7 +30,7 @@ jobs:
         then
           conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda gxx_linux-64 gfortran_linux-64 hdf5 lz4 zlib hdf5-static libcblas liblapacke blas-devel make curl
         else
-          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 lz4 hdf5-static libcblas liblapacke blas-devel make curl
+          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda clangxx_osx-arm64 hdf5 lz4 hdf5-static libcblas liblapacke blas-devel make curl
         fi 
         conda clean --yes -t
         df -h .
