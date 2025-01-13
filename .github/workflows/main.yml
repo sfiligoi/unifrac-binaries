@@ -15,6 +15,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-14, linux-gpu-cuda]
         offload: [acc, ompgpu]
+        exclude:
+          - os: ubuntu-latest
+            offload: acc
+          - os: macos-14
+            offload: acc
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
