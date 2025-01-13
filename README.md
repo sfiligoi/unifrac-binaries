@@ -68,7 +68,7 @@ make install
 `conda-forge` channel, for example (on Linux):
 
 ```
-conda create --strict-channel-priority -n unifrac-binaries -c conda-forge -c bioconda gxx_linux-64 gfortran_linux-64 hdf5 mkl-include lz4 zlib hdf5-static libcblas liblapacke make curl
+conda create --strict-channel-priority -n unifrac-binaries -c conda-forge -c bioconda gxx_linux-64 gfortran_linux-64 hdf5 lz4 zlib hdf5-static libcblas liblapacke blas-devel make curl
 conda activate unifrac-binaries
 ```
 
