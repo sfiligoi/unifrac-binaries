@@ -103,7 +103,8 @@ ifneq ($(BUILD_FULL_OPTIMIZATION),False)
     else
 	ifeq ($(PERFORMING_CONDA_BUILD),True)
 	   ifeq ($(PLATFORM),Darwin)
-		CPPFLAGS += -mpopcnt
+                # no special tuning for the MacOS at this point
+		CPPFLAGS += 
 	   else
 		# enable avx2
 		CPPFLAGS += -march=haswell -mtune=znver2
