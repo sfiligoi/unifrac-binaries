@@ -879,7 +879,7 @@ inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, 
 		                  const su::BPTree &tree,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
                                   bool bypass_tips, double* result) {
-    SETUP_TDBG("one_dense_pair_v2t")
+    SETUP_TDBG("one_dense_pair")
     bool fp64;
     compute_status rc = is_fp64_method(unifrac_method, fp64);
 
