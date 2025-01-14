@@ -89,7 +89,7 @@ inline void unifracTT(const su::biom_interface &table,
 
     TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total),max_emb,task_p);
 
-    TFloat *lengths = taskObj.lengths;
+    TFloat * const lengths = taskObj.lengths;
 
         /*
          * The values in the example vectors correspond to index positions of an
@@ -176,14 +176,7 @@ inline void unifracTT(const su::biom_interface &table,
           }
 
           taskObj.sync_embedded_proportions(filled_emb);
-#if defined(OMPGPU)
-          // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[0:filled_emb])
-#elif defined(_OPENACC)
-          // lengths may be still in use in async mode, wait
-#pragma acc wait
-#pragma acc update device(lengths[0:filled_emb])
-#endif
+          taskObj.sync_lengths(filled_emb);
           taskObj._run(filled_emb);
           filled_emb=0;
 
@@ -280,7 +273,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
     TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total), sample_total_counts, max_emb, task_p);
 
-    TFloat *lengths = taskObj.lengths;
+    TFloat * const lengths = taskObj.lengths;
 
     unsigned int k = 0; // index in tree
     const unsigned int max_k = (tree.nparens>1) ? ((tree.nparens / 2) - 1) : 0;
@@ -325,15 +318,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
             }
           }
 
-#if defined(OMPGPU)
-          // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[0:filled_emb])
-#elif defined(_OPENACC)
-          // lengths may be still in use in async mode, wait
-#pragma acc wait
-#pragma acc update device(lengths[0:filled_emb])
-#endif
-
+	  taskObj.sync_lengths(filled_emb);
           taskObj.sync_embedded(filled_emb);
           taskObj._run(filled_emb);
           filled_emb = 0;

@@ -239,6 +239,23 @@ namespace SUCMP_NM {
 #endif
         }
 
+        void sync_lengths(unsigned int filled_embs)
+        {
+#if defined(_OPENACC) || defined(OMPGPU)
+          TFloat *lengths = this->lengths;
+
+#if defined(OMPGPU)
+          // TODO: Change if we ever implement async in OMPGPU
+#pragma omp target update to(lengths[0:filled_emb])
+#elif defined(_OPENACC)
+          // lengths may be still in use in async mode, wait
+#pragma acc wait
+#pragma acc update device(lengths[0:filled_emb])
+#endif
+
+#endif
+        }
+
         static unsigned int get_emb_els(unsigned int max_embs);
 
         static uint64_t get_embedded_bsize(const uint64_t  n_samples_r, unsigned int max_embs) {
