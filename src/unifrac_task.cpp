@@ -55,6 +55,21 @@ void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
 #endif
 }
 
+template<class TFloat, class TEmb>
+void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {         
+         TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
+   const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
+   const uint64_t bufels = this->dm_stripes.bufels;
+
+#if defined(OMPGPU)
+#pragma omp target teams distribute parallel for simd default(shared)
+#elif defined(_OPENACC)
+#pragma acc parallel loop gang vector present(dm_stripes_buf,dm_stripes_total_buf)
+#endif
+   for(uint64_t idx=0; idx< bufels; idx++)
+       dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
+}
+
 #if defined(_OPENACC) || defined(OMPGPU)
 // will not use popcnt for accelerated compute
 #else

@@ -235,27 +235,7 @@ namespace SUCMP_NM {
 
         }
 
-        void compute_totals() {         
-                TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-          const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-          const uint64_t bufels = this->dm_stripes.bufels;
-
-#if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd default(shared)
-#elif defined(_OPENACC)
-#pragma acc parallel loop gang vector present(dm_stripes_buf,dm_stripes_total_buf)
-#endif
-          for(uint64_t idx=0; idx< bufels; idx++)
-              dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
-
-          /* Original code:
-          for(uint64_t i = start_idx; i < stop_idx; i++)
-            for(uint64_t j = 0; j < n_samples; j++) {
-                dm_stripes[i][j] = dm_stripes[i][j] / dm_stripes_total[i][j];
-            }
-          */
-        
-       }
+        void compute_totals();
 
         //
         // ===== Internal, do not use directly =======
