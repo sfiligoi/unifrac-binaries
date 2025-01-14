@@ -246,11 +246,11 @@ namespace SUCMP_NM {
 
 #if defined(OMPGPU)
           // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[0:filled_emb])
+#pragma omp target update to(lengths[0:filled_embs])
 #elif defined(_OPENACC)
           // lengths may be still in use in async mode, wait
 #pragma acc wait
-#pragma acc update device(lengths[0:filled_emb])
+#pragma acc update device(lengths[0:filled_embs])
 #endif
 
 #endif
@@ -265,6 +265,15 @@ namespace SUCMP_NM {
 
         void embed_proportions_range(const TFloat* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb);
         void embed_proportions(const TFloat* __restrict__ in, unsigned int emb) {embed_proportions_range(in,0,dm_stripes.n_samples,emb);}
+
+        void wait_completion() {
+#if defined(OMPGPU)
+          // TODO: Change if we ever implement async in OMPGPU
+#elif defined(_OPENACC)
+#pragma acc wait
+#endif
+
+        }
 
         void compute_totals() {         
                 TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;

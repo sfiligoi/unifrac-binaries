@@ -183,11 +183,7 @@ inline void unifracTT(const su::biom_interface &table,
           su::try_report(task_p, k, max_k);
     }
 
-#if defined(OMPGPU)
-    // TODO: Change if we ever implement async in OMPGPU
-#elif defined(_OPENACC)
-#pragma acc wait
-#endif
+    taskObj.wait_completion();
 
     if(want_total) {
         taskObj.compute_totals();
@@ -326,11 +322,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
           su::try_report(task_p, k, max_k);
     }
 
-#if defined(OMPGPU)
-    // TODO: Change if we ever implement async in OMPGPU
-#elif defined(_OPENACC)
-#pragma acc wait
-#endif
+    taskObj.wait_completion();
 
     if(want_total) {
         taskObj.compute_totals();
