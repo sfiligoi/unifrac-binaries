@@ -60,9 +60,6 @@ inline void unifracTT(const su::biom_interface &table,
         fprintf(stderr, "Task and table n_samples not equal\n");
         exit(EXIT_FAILURE);
     }
-    const unsigned int n_samples = task_p->n_samples;
-    const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
-
 
     su::PropStackMulti<TFloat> propstack_multi(table.n_samples);
 
@@ -232,8 +229,6 @@ inline void unifrac_vawTT(const su::biom_interface &table,
         fprintf(stderr, "Task and table n_samples not equal\n");
         exit(EXIT_FAILURE);
     }
-    const unsigned int n_samples = task_p->n_samples;
-    const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
 
     su::PropStackMulti<TFloat> propstack_multi(table.n_samples);
     su::PropStackMulti<TFloat> countstack_multi(table.n_samples);
