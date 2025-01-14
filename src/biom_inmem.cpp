@@ -169,24 +169,24 @@ sparse_data::sparse_data(const uint32_t _n_obs,
 
     if (n_obs>0) {
         malloc_resident();
-	unsigned int start = 0;
+        unsigned int start = 0;
         for (uint32_t i = 0; i < n_obs; i++) {
-	    // pre-allocate with max size
-	    // the waste is stypically acceptable
+            // pre-allocate with max size
+            // the waste is stypically acceptable
             obs_data_resident[i]    = malloc_wcheck<double>(n_samples);
             obs_indices_resident[i] = malloc_wcheck<uint32_t>(n_samples);
 
             unsigned int cnt = 0;
             for (uint32_t j=0; j<n_samples; j++) {
-	      double val = data[j][i];
+              double val = data[j][i];
               if (val>0.0) {
                 obs_data_resident[i][cnt] = val;
-		obs_indices_resident[i][cnt] = j;
-		cnt++;
-	      }
-	    }
+                obs_indices_resident[i][cnt] = j;
+                cnt++;
+              }
+            }
             obs_counts_resident[i]  = cnt;
-	    start+=cnt;
+            start+=cnt;
         }
     }
 }
