@@ -2,6 +2,59 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+void SUCMP_NM::acc_wait() {
+#if defined(OMPGPU)
+    // TODO: Change if we ever implement async in OMPGPU
+#elif defined(_OPENACC)
+#pragma acc wait
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_create_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc enter data create(buf[start:end])
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_copyin_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target enter data map(to:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc enter data copyin(buf[start:end])
+#endif    
+}
+
+template<class T>
+void SUCMP_NM::acc_update_device(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target update to(buf[start:end])
+#else
+#pragma acc update device(buf[start:end])
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_copyout_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target exit data map(from:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc exit data copyout(buf[start:end])
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target exit data map(delete:buf[start:end])
+#else
+#pragma acc exit data delete(buf[start:end])
+#endif
+}
+
 #if defined(_OPENACC) || defined(OMPGPU)
 // will not use popcnt for accelerated compute
 #else
