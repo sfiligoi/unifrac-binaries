@@ -47,23 +47,6 @@ bool SUCMP_NM::found_gpu() {
 }
 #endif
 
-template<class TFloat>
-inline void initialize_sample_counts(TFloat*& _counts, const su::task_parameters* task_p, const su::biom_interface &table) {
-    const unsigned int n_samples = task_p->n_samples;
-    const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
-    const double *sample_counts = table.get_sample_counts();
-    TFloat * counts = (TFloat *) malloc(sizeof(TFloat) * n_samples_r);
-    for(unsigned int i = 0; i < n_samples; i++) {
-        counts[i] = sample_counts[i];
-    }
-   // avoid NaNs
-   for(unsigned int i = n_samples; i < n_samples_r; i++) {
-       counts[i] = 0.0;
-   }
-
-   _counts=counts;
-}
-
 template<class TaskT, class TFloat>
 inline void unifracTT(const su::biom_interface &table,
                       const su::BPTree &tree,
@@ -257,17 +240,9 @@ inline void unifrac_vawTT(const su::biom_interface &table,
 
     const unsigned int max_emb = TaskT::RECOMMENDED_MAX_EMBS;
 
-    TFloat *sample_total_counts;
-
-    initialize_sample_counts(sample_total_counts, task_p, table);
-#if defined(OMPGPU)
-#pragma omp target enter data map(to:sample_total_counts[0:n_samples_r])
-#elif defined(_OPENACC)
-#pragma acc enter data copyin(sample_total_counts[0:n_samples_r])
-#endif
     su::initialize_stripes(std::ref(dm_stripes), std::ref(dm_stripes_total), want_total, task_p);
 
-    TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total), sample_total_counts, max_emb, task_p);
+    TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total), table.get_sample_counts(), max_emb, task_p);
 
     TFloat * const lengths = taskObj.lengths;
 
@@ -329,12 +304,6 @@ inline void unifrac_vawTT(const su::biom_interface &table,
     }
 
 
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:sample_total_counts[0:n_samples_r])
-#elif defined(_OPENACC)
-#pragma acc exit data delete(sample_total_counts[0:n_samples_r])
-#endif
-    free(sample_total_counts);
 }
 
 void SUCMP_NM::unifrac_vaw(const su::biom_interface &table,
