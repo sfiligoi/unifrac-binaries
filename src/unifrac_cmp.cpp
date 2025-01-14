@@ -25,28 +25,6 @@
 
 using namespace SUCMP_NM;
 
-#if defined(OMPGPU)
-
-#include <omp.h>
-
-bool SUCMP_NM::found_gpu() {
-  return omp_get_num_devices() > 0;
-}
-
-#elif defined(_OPENACC)
-
-#include <openacc.h>
-
-bool SUCMP_NM::found_gpu() {
-  return acc_get_device_type() != acc_device_host;
-}
-
-#else
-bool SUCMP_NM::found_gpu() {
-  return false;
-}
-#endif
-
 template<class TaskT, class TFloat>
 inline void unifracTT(const su::biom_interface &table,
                       const su::BPTree &tree,

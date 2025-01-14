@@ -2,6 +2,26 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+#if defined(OMPGPU)
+
+#include <omp.h>
+
+#elif defined(_OPENACC)
+
+#include <openacc.h>
+
+#endif
+
+bool SUCMP_NM::found_gpu() {
+#if defined(OMPGPU)
+  return omp_get_num_devices() > 0;
+#elif defined(_OPENACC)
+  return acc_get_device_type() != acc_device_host;
+#else
+  return false;
+#endif
+}
+
 void SUCMP_NM::acc_wait() {
 #if defined(OMPGPU)
     // TODO: Change if we ever implement async in OMPGPU
@@ -32,7 +52,7 @@ template<class T>
 void SUCMP_NM::acc_update_device(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target update to(buf[start:end])
-#else
+#elif defined(_OPENACC)
 #pragma acc update device(buf[start:end])
 #endif
 }
@@ -50,7 +70,7 @@ template<class T>
 void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target exit data map(delete:buf[start:end])
-#else
+#elif defined(_OPENACC)
 #pragma acc exit data delete(buf[start:end])
 #endif
 }
