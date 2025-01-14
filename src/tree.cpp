@@ -1,20 +1,14 @@
 #include "tree.hpp"
 #include <stack>
 #include <algorithm>
+#include <cstring>
 
 using namespace su;
 
 BPTree::BPTree() { }
 
-BPTree::BPTree(std::string newick) {
-    openclose = std::vector<uint32_t>();
-    lengths = std::vector<double>();
-    names = std::vector<std::string>();
-    excess = std::vector<uint32_t>();
-
-    select_0_index = std::vector<uint32_t>();
-    select_1_index = std::vector<uint32_t>();
-    structure = std::vector<bool>();
+template<typename T>
+void BPTree::_init(T newick) {
     structure.reserve(500000);  // a fair sized tree... avoid reallocs, and its not _that_ much waste if this is wrong
 
     // three pass for parse. not ideal, but easier to map from IOW code    
@@ -33,16 +27,39 @@ BPTree::BPTree(std::string newick) {
     index_and_cache();
 }
 
-BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_lengths, std::vector<std::string> input_names) {
-    structure = input_structure;
-    lengths = input_lengths;
-    names = input_names;
-    
-    nparens = structure.size();
+BPTree::BPTree(const std::string& newick) 
+	: lengths() 
+	, names() 
+	, nparens(0)
+	, structure()
+	, openclose()
+	, select_0_index()
+	, select_1_index()
+	, excess() {
+   _init<const std::string&>(newick);
+}
 
-    openclose = std::vector<uint32_t>();
-    select_0_index = std::vector<uint32_t>();
-    select_1_index = std::vector<uint32_t>();
+BPTree::BPTree(const char * newick) 
+	: lengths() 
+	, names() 
+	, nparens(0)
+	, structure()
+	, openclose()
+	, select_0_index()
+	, select_1_index()
+	, excess() {
+   _init<const char *>(newick);
+}
+
+BPTree::BPTree(const std::vector<bool>& input_structure, const std::vector<double>& input_lengths, const std::vector<std::string>& input_names) 
+	: lengths(input_lengths) 
+	, names(input_names) 
+	, nparens(input_structure.size())
+	, structure(input_structure)
+	, openclose()
+	, select_0_index()
+	, select_1_index()
+	, excess() {
     openclose.resize(nparens);
     select_0_index.resize(nparens / 2);
     select_1_index.resize(nparens / 2);
@@ -52,16 +69,18 @@ BPTree::BPTree(std::vector<bool> input_structure, std::vector<double> input_leng
     index_and_cache();
 }
 
-BPTree::BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens) {
-    structure = std::vector<bool>();
-    lengths = std::vector<double>();
-    names = std::vector<std::string>();
-
+BPTree::BPTree(const bool* input_structure, const double* input_lengths, const char* const * input_names, const int n_parens)
+	: lengths() 
+	, names() 
+	, nparens(n_parens)
+	, structure()
+	, openclose()
+	, select_0_index()
+	, select_1_index()
+	, excess() {
     structure.resize(n_parens);
     lengths.resize(n_parens);
     names.resize(n_parens);
-
-    nparens = n_parens;
 
     //#pragma omp parallel for schedule(static)
     for(int i = 0; i < n_parens; i++) {
@@ -70,9 +89,6 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, const c
         names[i] = std::string(input_names[i]);
     }
 
-    openclose = std::vector<uint32_t>();
-    select_0_index = std::vector<uint32_t>();
-    select_1_index = std::vector<uint32_t>();
     openclose.resize(nparens);
     select_0_index.resize(nparens / 2);
     select_1_index.resize(nparens / 2);
@@ -82,7 +98,7 @@ BPTree::BPTree(const bool* input_structure, const double* input_lengths, const c
     index_and_cache();
 }
 
-BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_lengths) {
+BPTree BPTree::mask(const std::vector<bool>& topology_mask, const std::vector<double>& in_lengths) const {
     
     std::vector<bool> new_structure = std::vector<bool>();
     std::vector<double> new_lengths = std::vector<double>();
@@ -114,7 +130,7 @@ BPTree BPTree::mask(std::vector<bool> topology_mask, std::vector<double> in_leng
     return BPTree(new_structure, new_lengths, new_names);
 }
 
-std::unordered_set<std::string> BPTree::get_tip_names() {
+std::unordered_set<std::string> BPTree::get_tip_names() const {
     std::unordered_set<std::string> observed;
 	
     for(unsigned int i = 0; i < this->nparens; i++) {
@@ -126,7 +142,7 @@ std::unordered_set<std::string> BPTree::get_tip_names() {
     return observed;
 }
 
-BPTree BPTree::shear(std::unordered_set<std::string> to_keep) {
+BPTree BPTree::shear(std::unordered_set<std::string> to_keep) const {
     std::vector<bool> shearmask = std::vector<bool>(this->nparens);
     int32_t p;
 
@@ -146,7 +162,7 @@ BPTree BPTree::shear(std::unordered_set<std::string> to_keep) {
     return this->mask(shearmask, this->lengths);
 }
 
-BPTree BPTree::collapse() {
+BPTree BPTree::collapse() const {
     std::vector<bool> collapsemask = std::vector<bool>(this->nparens);
     std::vector<double> new_lengths = std::vector<double>(this->lengths);
 
@@ -296,24 +312,25 @@ int32_t BPTree::bwd(uint32_t i, int d) const {
     return -1;
 }
 
-void BPTree::newick_to_bp(std::string newick) {
+void BPTree::newick_to_bp(const char *newick) {
     char last_structure;
     bool potential_single_descendent = false;
     int count = 0;
     bool in_quote = false;
-    for(auto c = newick.begin(); c != newick.end(); c++) {
-        if(*c == '\'') 
+    for(const char* cptr = newick; cptr[0] != 0; cptr++) {
+	 const char c = cptr[0];
+        if(c == '\'') 
             in_quote = !in_quote;
 
         if(in_quote)
             continue;
 
-        switch(*c) {
+        switch(c) {
             case '(':
                 // opening of a node
                 count++;
                 structure.push_back(true);
-                last_structure = *c;
+                last_structure = c;
                 potential_single_descendent = true;
                 break;
             case ')':
@@ -331,7 +348,7 @@ void BPTree::newick_to_bp(std::string newick) {
                     count += 1;
                     structure.push_back(false);
                 }
-                last_structure = *c;
+                last_structure = c;
                 break;
             case ',':
                 if(last_structure != ')') {
@@ -341,7 +358,7 @@ void BPTree::newick_to_bp(std::string newick) {
                     structure.push_back(false);
                 }
                 potential_single_descendent = false;
-                last_structure = *c;
+                last_structure = c;
                 break;
             default:
                 break;
@@ -350,6 +367,9 @@ void BPTree::newick_to_bp(std::string newick) {
     nparens = structure.size();
 }
 
+void BPTree::newick_to_bp(const std::string& newick) {
+	newick_to_bp(newick.c_str());
+}
 
 void BPTree::structure_to_openclose() {
     std::stack<unsigned int> oc;
@@ -367,21 +387,15 @@ void BPTree::structure_to_openclose() {
         }
     }
 }
-// trim from end
-// from http://stackoverflow.com/a/217605
-static inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
-}
 
 //// WEIRDNESS. THIS SOLVES IT WITH THE RTRIM. ISOLATE, MOVE TO CONSTRUCTOR.
-void BPTree::newick_to_metadata(std::string newick) {
-    rtrim(newick);
-    
-    std::string::iterator start = newick.begin();
-    std::string::iterator end = newick.end();
-    std::string token;
+void BPTree::newick_to_metadata(const char*  newick) {
+    const char* start = newick;
+    const char* end = start+strlen(newick);
+    //rtrim i.e.
+    // trim from end
+    while ((end!=start) && std::isspace(end[-1])) end--;
+
     char last_structure = '\0';
 
     unsigned int structure_idx = 0;
@@ -389,7 +403,7 @@ void BPTree::newick_to_metadata(std::string newick) {
     unsigned int open_idx;
 
     while(start != end) {
-        token = tokenize(start, end);
+        std::string token = tokenize(start, end);
         // this sucks. 
         if(token.length() == 1 && is_structure_character(token[0])) {
             switch(token[0]) {
@@ -424,6 +438,10 @@ void BPTree::newick_to_metadata(std::string newick) {
     }
 }
 
+void BPTree::newick_to_metadata(const std::string& newick) {
+	newick_to_metadata(newick.c_str());
+}
+
 void BPTree::set_node_metadata(unsigned int open_idx, std::string &token) {
     double length = 0.0;
     std::string name = std::string();
@@ -441,18 +459,17 @@ void BPTree::set_node_metadata(unsigned int open_idx, std::string &token) {
     lengths[open_idx] = length;
 }
 
-inline bool BPTree::is_structure_character(char c) const {
+inline bool BPTree::is_structure_character(char c) {
     return (c == '(' || c == ')' || c == ',' || c == ';');
 }
 
-std::string BPTree::tokenize(std::string::iterator &start, const std::string::iterator &end) {
+inline std::string BPTree::tokenize(const char * &start, const char * const end) {
     bool inquote = false;
     bool isquote = false;
-    char c;
     std::string token;
     
     do {
-        c = *start;
+        char c = *start;
         start++;
         
         if(c == '\n') {
@@ -483,11 +500,11 @@ std::string BPTree::tokenize(std::string::iterator &start, const std::string::it
     return token;
 }   
 
-std::vector<bool> BPTree::get_structure() {
+const std::vector<bool>& BPTree::get_structure() const {
     return structure;
 }
 
-std::vector<uint32_t> BPTree::get_openclose() {
+const std::vector<uint32_t>& BPTree::get_openclose() const {
     return openclose;
 }
 

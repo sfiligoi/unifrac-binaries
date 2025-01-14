@@ -5,12 +5,7 @@
 #include "unifrac_internal.hpp"
 #include "test_helper.hpp"
 
-void test_bptree_constructor_simple() {
-    SUITE_START("bptree constructor simple");
-                                //01234567
-                                //11101000
-    su::BPTree tree("(('123:foo; bar':1,b:2)c);");
-
+void test_bptree_simple_result(const su::BPTree &tree) {
     unsigned int exp_nparens = 8;
 
     std::vector<bool> exp_structure;
@@ -58,6 +53,26 @@ void test_bptree_constructor_simple() {
     ASSERT(tree.get_openclose() == exp_openclose);
     ASSERT(tree.lengths == exp_lengths);
     ASSERT(tree.names == exp_names);
+}
+
+void test_bptree_constructor_simple() {
+    SUITE_START("bptree constructor simple");
+                                //01234567
+                                //11101000
+    su::BPTree tree("(('123:foo; bar':1,b:2)c);");
+
+    test_bptree_simple_result(tree);
+
+    SUITE_END();
+}
+
+void test_bptree_constructor_simple_cpp() {
+    SUITE_START("bptree constructor simple cpp");
+                                //01234567
+                                //11101000
+    su::BPTree tree(std::string("(('123:foo; bar':1,b:2)c);"));
+
+    test_bptree_simple_result(tree);
 
     SUITE_END();
 }
@@ -69,52 +84,29 @@ void test_bptree_constructor_from_existing() {
     su::BPTree existing("(('123:foo; bar':1,b:2)c);");
     su::BPTree tree(existing.get_structure(), existing.lengths, existing.names);
  
-    unsigned int exp_nparens = 8;
-    std::vector<bool> exp_structure;
-    exp_structure.push_back(true);
-    exp_structure.push_back(true);
-    exp_structure.push_back(true);
-    exp_structure.push_back(false);
-    exp_structure.push_back(true);
-    exp_structure.push_back(false);
-    exp_structure.push_back(false);
-    exp_structure.push_back(false);
+    test_bptree_simple_result(tree);
 
-    std::vector<uint32_t> exp_openclose;
-    exp_openclose.push_back(7);
-    exp_openclose.push_back(6);
-    exp_openclose.push_back(3);
-    exp_openclose.push_back(2);
-    exp_openclose.push_back(5);
-    exp_openclose.push_back(4);
-    exp_openclose.push_back(1);
-    exp_openclose.push_back(0);
+    SUITE_END();
+}
 
-    std::vector<std::string> exp_names;
-    exp_names.push_back(std::string());
-    exp_names.push_back(std::string("c"));
-    exp_names.push_back(std::string("123:foo; bar"));
-    exp_names.push_back(std::string());
-    exp_names.push_back(std::string("b"));
-    exp_names.push_back(std::string());
-    exp_names.push_back(std::string());
-    exp_names.push_back(std::string());
+void test_bptree_constructor_inmem() {
+    SUITE_START("bptree constructor inmem");
+                                //01234567
+                                //11101000
+    su::BPTree tree_org("(('123:foo; bar':1,b:2)c);");
+    test_bptree_simple_result(tree_org);
 
-    std::vector<double> exp_lengths;
-    exp_lengths.push_back(0.0);
-    exp_lengths.push_back(0.0);
-    exp_lengths.push_back(1.0);
-    exp_lengths.push_back(0.0);
-    exp_lengths.push_back(2.0);
-    exp_lengths.push_back(0.0);
-    exp_lengths.push_back(0.0);
-    exp_lengths.push_back(0.0);
 
-    ASSERT(tree.nparens == exp_nparens);
-    ASSERT(tree.get_structure() == exp_structure);
-    ASSERT(tree.get_openclose() == exp_openclose);
-    ASSERT(tree.lengths == exp_lengths);
-    ASSERT(tree.names == exp_names);
+    bool t_structure[] = { true, true, true, false, true, false, false, false };
+    double t_lengths[] = { 0, 0, 1, 0, 2, 0, 0, 0 };
+    const char*  t_names[] = { "", "c", "123:foo; bar", "", "b", "", "", "" };
+    const support_bptree_t support_tree = {t_structure, t_lengths, (char**) t_names, 8};
+
+    su::BPTree tree(support_tree.structure,
+                    support_tree.lengths,
+                    support_tree.names,
+                    support_tree.n_parens);
+    test_bptree_simple_result(tree);
 
     SUITE_END();
 }
@@ -503,6 +495,24 @@ void test_biom_constructor_from_sparse() {
     const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
 
     su::biom_inmem table(obs_ids, samp_ids, index, indptr, data, 5, 6);
+    _exercise_get_obs_data(table);
+   
+    SUITE_END();
+}
+
+void test_biom_constructor_from_dense() {
+    SUITE_START("biom from dense constructor");
+    double sample1[] = {0, 5, 0, 2, 0};
+    double sample2[] = {0, 1, 0, 1, 1};
+    double sample3[] = {1, 0, 1, 1, 1};
+    double sample4[] = {0, 2, 4, 0, 0};
+    double sample5[] = {0, 3, 0, 0, 0};
+    double sample6[] = {0, 1, 2, 1, 0};
+    const char* obs_ids[] = {"GG_OTU_1", "GG_OTU_2", "GG_OTU_3", "GG_OTU_4", "GG_OTU_5"};
+    const char* samp_ids[] = {"Sample1", "Sample2", "Sample3", "Sample4", "Sample5", "Sample6"};
+
+    double* data_ptrs[] = {sample1,sample2,sample3,sample4,sample5, sample6};
+    su::biom_inmem table(obs_ids, samp_ids, data_ptrs, 5, 6);
     _exercise_get_obs_data(table);
    
     SUITE_END();
@@ -1929,6 +1939,7 @@ void test_bptree_constructor_newline_bug() {
 
 int main(int argc, char** argv) {
     test_bptree_constructor_simple();
+    test_bptree_constructor_simple_cpp();
     test_bptree_constructor_newline_bug();
     test_bptree_constructor_from_existing();
     test_bptree_constructor_single_descendent();
@@ -1951,9 +1962,11 @@ int main(int argc, char** argv) {
     test_bptree_shear_deep();
     test_bptree_collapse_simple();
     test_bptree_collapse_edge();
+    test_bptree_constructor_inmem();
 
     test_biom_constructor();
     test_biom_constructor_from_sparse();
+    test_biom_constructor_from_dense();
     test_biom_nullary();
     test_biom_get_obs_data();
     test_biom_filter();

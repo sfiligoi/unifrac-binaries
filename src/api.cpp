@@ -95,11 +95,8 @@
                                                             return table_and_tree_do_not_overlap;                                \
                                                         }   
 
-#define PARSE_TREE_TABLE(tree_filename, table_filename) std::ifstream ifs(tree_filename);                                        \
-                                                        std::string content = std::string(std::istreambuf_iterator<char>(ifs),   \
-                                                                                          std::istreambuf_iterator<char>());     \
-                                                        su::BPTree tree(content);                                                \
-                                                        su::biom table(biom_filename);                                           \
+#define PARSE_TREE_TABLE(tree_filename, table_filename) su::BPTree tree(get_tree_content(tree_filename)); \
+                                                        su::biom table(biom_filename);                    \
 							VALIDATE_TREE_TABLE(tree, table)
 
 #define PARSE_SYNC_TREE_TABLE(tree_filename, table_filename) PARSE_TREE_TABLE(tree_filename, table_filename) \
@@ -118,6 +115,53 @@ bool is_file_exists(const char *fileName) {
         return infile.good();
 }
 
+inline std::string get_tree_content(const char* tree_filename) {
+    std::ifstream ifs(tree_filename);
+    std::string content = std::string(std::istreambuf_iterator<char>(ifs),
+                                      std::istreambuf_iterator<char>());
+    return content;
+}
+
+/* Read tree from file and fill tree_data */
+IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data) {
+    SETUP_TDBG("read_bptree_opaque")
+    if(tree_data==NULL) return unexpected_end;
+    CHECK_FILE(tree_filename, open_error)
+    TDBG_STEP("load_files")
+    *tree_data = (opaque_bptree_t*) new su::BPTree(get_tree_content(tree_filename));
+    return read_okay;
+}
+
+void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data) {
+    SETUP_TDBG("load_bptree_opaque")
+    *tree_data = (opaque_bptree_t*) new su::BPTree(newick);
+}
+
+void convert_bptree_opaque(const support_bptree_t* in_tree, opaque_bptree_t** tree_data) {
+    SETUP_TDBG("convert_bptree_opaque")
+    *tree_data = (opaque_bptree_t*) new su::BPTree(
+                    in_tree->structure,
+                    in_tree->lengths,
+                    in_tree->names,
+                    in_tree->n_parens);
+}
+
+void destroy_bptree_opaque(opaque_bptree_t** tree_data) {
+	if (tree_data!=NULL) {
+		su::BPTree *tree = (su::BPTree *) (*tree_data);
+		*tree_data = NULL;
+		delete tree;
+	}
+}
+
+/* Return number of elements in BPTree, equvalent to n_parens */
+int get_bptree_opaque_els(opaque_bptree_t* tree_data) {
+	if (tree_data!=NULL) {
+		su::BPTree *tree = (su::BPTree *) tree_data;
+		return tree->get_tip_names().size();
+	}
+	return 0; // just to have a reasonable default
+}
 
 void destroy_stripes(vector<double*> &dm_stripes, vector<double*> &dm_stripes_total, unsigned int n_samples,
                      unsigned int stripe_start, unsigned int stripe_stop) {
@@ -435,7 +479,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
     }
 }
 
-compute_status one_off_inmem_cpp(su::biom_interface &table, su::BPTree &tree,
+compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int nthreads, mat_t** result) {
     SETUP_TDBG("one_off_inmem")
@@ -562,9 +606,24 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
 }
 
+compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+    SETUP_TDBG("one_off_wtree")
+    if (tree_data==NULL) return tree_missing;
+    CHECK_FILE(biom_filename, table_missing)
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
+    su::biom table(biom_filename);
+    VALIDATE_TREE_TABLE(tree, table)
+
+    TDBG_STEP("load_files")
+    // condensed form
+    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+}
+
 // TMat mat_full_fp32_t
 template<class TReal, class TMat>
-compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
+compute_status one_off_matrix_T(su::biom_interface &table, const su::BPTree &tree,
                                 const char* unifrac_method, bool variance_adjust, double alpha,
                                 bool bypass_tips, unsigned int nthreads,
                                 const char *mmap_dir,  
@@ -625,6 +684,25 @@ compute_status one_off_matrix_T(su::biom_interface &table, su::BPTree &tree,
 }
 
 
+template<class TReal, class TMat>
+compute_status one_off_matrix_v2_T(su::biom_inmem &table, const su::BPTree &tree,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int nthreads,
+                                   unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                   TMat** result) {
+    SETUP_TDBG("one_off_matrix_inmem_v2")
+    if (subsample_depth>0) {
+        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
+        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
+           return table_empty;
+        }
+        TDBG_STEP("subsample")
+        return one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
+    } else {
+        return one_off_matrix_T<TReal,TMat>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
+    }
+}
+
 compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
                                  bool bypass_tips, unsigned int nthreads,
@@ -635,16 +713,7 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
-    if (subsample_depth>0) {
-        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
-        if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
-           return table_empty;
-        }
-        TDBG_STEP("subsample")
-        return one_off_matrix_T<double,mat_full_fp64_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    } else {
-        return one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    }
+    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
@@ -657,13 +726,38 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
-    if (subsample_depth>0) {
-        su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
-        TDBG_STEP("subsample")
-       return one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    } else {
-       return one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    }
+    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+/* As above, but from a pre-loaded tree object */
+compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, unsigned int nthreads,
+                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                 mat_full_fp64_t** result) {
+    SETUP_TDBG("one_off_matrix_wtree")
+    if (tree_data==NULL) return tree_missing;
+    CHECK_FILE(biom_filename, table_missing)
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
+    su::biom table(biom_filename);
+    VALIDATE_TREE_TABLE(tree, table)
+    TDBG_STEP("load_files")
+    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, unsigned int nthreads,
+                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                      mat_full_fp32_t** result) {
+    SETUP_TDBG("one_off_matrix_fp32_wtree")
+    if (tree_data==NULL) return tree_missing;
+    CHECK_FILE(biom_filename, table_missing)
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
+    su::biom table(biom_filename);
+    VALIDATE_TREE_TABLE(tree, table)
+    TDBG_STEP("load_files")
+    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 // Old interface
@@ -720,13 +814,7 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
 
     VALIDATE_TREE_TABLE(tree,table)
 
-    if (subsample_depth>0) {
-       su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
-       TDBG_STEP("subsample")
-       return one_off_matrix_T<double,mat_full_fp64_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    } else {
-       return one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    }
+    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 // Old interface
@@ -774,13 +862,7 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
 
     VALIDATE_TREE_TABLE(tree,table)
 
-    if (subsample_depth>0) {
-       su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
-       TDBG_STEP("subsample")
-       return one_off_matrix_T<float,mat_full_fp32_t>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    } else {
-       return one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
-    }
+    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 // Old interface
@@ -790,6 +872,72 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
     return one_off_matrix_inmem_fp32_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
                                         0, true,  NULL,
                                         result);
+}
+
+/* Compute UniFrac from a pair of dense vectors */
+inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                  const su::BPTree &tree,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, double* result) {
+    SETUP_TDBG("one_dense_pair")
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc != okay) return rc;
+
+    const char* sample_ids[2] = { "Sample1", "Sample2" };
+    const double* dense_data[2] = { sample1, sample2 };
+    su::biom_inmem table(obs_ids, 
+                         sample_ids,
+                         dense_data, 
+                         n_obs,
+                         2);
+
+    VALIDATE_TREE_TABLE(tree, table)
+
+    TDBG_STEP("load_files")
+    if (fp64) {
+      mat_full_fp64_t* matrix_result = NULL;
+      rc = one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,1,NULL,&matrix_result);
+      if (rc==okay) {
+         *result = matrix_result->matrix[1];
+	 destroy_mat_full_fp64(&matrix_result);
+      }
+    } else {
+      mat_full_fp32_t* matrix_result = NULL;
+      rc = one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,1,NULL,&matrix_result);
+      if (rc==okay) {
+         *result = matrix_result->matrix[1];
+	 destroy_mat_full_fp32(&matrix_result);
+      }
+    }
+    return rc;
+}
+
+compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                  const opaque_bptree_t* tree_data,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, double* result) {
+    if (tree_data==NULL) return tree_missing;
+    const su::BPTree &tree = *( (const su::BPTree*) tree_data);
+    return one_dense_pair(n_obs,obs_ids,sample1,sample2,
+                          tree,
+                          unifrac_method,variance_adjust,alpha,bypass_tips,result);
+}
+
+compute_status one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                 const support_bptree_t* tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, double* result) {
+    if (tree_data==NULL) return tree_missing;
+    su::BPTree tree(tree_data->structure,
+                    tree_data->lengths,
+                    tree_data->names,
+                    tree_data->n_parens);
+
+    return one_dense_pair(n_obs,obs_ids,sample1,sample2,
+                          tree,
+                          unifrac_method,variance_adjust,alpha,bypass_tips,result);
 }
 
 // Internal 

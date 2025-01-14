@@ -156,6 +156,41 @@ sparse_data::sparse_data(const uint32_t _n_obs,
     }
 }
 
+// dense to sparse conversion
+sparse_data::sparse_data(const uint32_t _n_obs,
+                         const uint32_t _n_samples,
+                         const double* const *data)
+  : n_obs(_n_obs)
+  , n_samples(_n_samples)
+  , clean_on_destruction(true)
+  , obs_indices_resident(NULL)
+  , obs_data_resident(NULL)
+  , obs_counts_resident(NULL) {
+
+    if (n_obs>0) {
+        malloc_resident();
+        unsigned int start = 0;
+        for (uint32_t i = 0; i < n_obs; i++) {
+            // pre-allocate with max size
+            // the waste is stypically acceptable
+            obs_data_resident[i]    = malloc_wcheck<double>(n_samples);
+            obs_indices_resident[i] = malloc_wcheck<uint32_t>(n_samples);
+
+            unsigned int cnt = 0;
+            for (uint32_t j=0; j<n_samples; j++) {
+              double val = data[j][i];
+              if (val>0.0) {
+                obs_data_resident[i][cnt] = val;
+                obs_indices_resident[i][cnt] = j;
+                cnt++;
+              }
+            }
+            obs_counts_resident[i]  = cnt;
+            start+=cnt;
+        }
+    }
+}
+
 sparse_data::~sparse_data() {
     if(clean_on_destruction) {
         if(obs_indices_resident != NULL && obs_data_resident != NULL) {
@@ -315,6 +350,48 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
                        const int _n_samples)
   : biom_interface(_n_samples, _n_obs)
   , resident_obj(_n_obs,_n_samples,indices,indptr,data)
+  , sample_counts(NULL)
+  , obs_id_index()
+  , sample_id_index()
+  , sample_ids()
+  , obs_ids() {
+
+    #pragma omp parallel for schedule(static)
+    for(int x = 0; x < 2; x++) {
+        if(x == 0) {
+            obs_ids.resize(n_obs);
+            for(int i = 0; i < n_obs; i++) {
+                obs_ids[i] = std::string(obs_ids_in[i]);
+            }
+        } else {
+            sample_ids.resize(n_samples);
+            for(int i = 0; i < n_samples; i++) {
+                sample_ids[i] = std::string(samp_ids_in[i]);
+            }
+        }
+    }
+
+    /* define a mapping between an ID and its corresponding offset */
+
+    #pragma omp parallel for schedule(static)
+    for(int i = 0; i < 3; i++) {
+        if(i == 0)
+            create_id_index(obs_ids, obs_id_index);
+        else if(i == 1)
+            create_id_index(sample_ids, sample_id_index);
+        else if(i == 2)
+            compute_sample_counts();
+    }
+
+}
+
+biom_inmem::biom_inmem(const char* const * obs_ids_in,
+                       const char* const * samp_ids_in,
+                       const double* const * data,
+                       const int _n_obs,
+                       const int _n_samples)
+  : biom_interface(_n_samples, _n_obs)
+  , resident_obj(_n_obs,_n_samples,data)
   , sample_counts(NULL)
   , obs_id_index()
   , sample_id_index()

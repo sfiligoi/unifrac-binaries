@@ -167,6 +167,31 @@ typedef struct support_bptree {
     int n_parens;
 } support_bptree_t;
 
+/* Opaque BTTree structure for externalizing the full BPTree object
+ * Do not assume anything about the internals of the pointer
+ */
+typedef struct opaque_bptree {
+    int dummy;
+} opaque_bptree_t;
+
+/* Read tree from file and fill tree_data
+ *
+ * tree_filename <const char*> the filename to the correspodning tree.
+ * tree_data <opaque_bptree_t**> the resulting tree data object, this is initialized within the method so using **
+ *
+ * read_bptree_opaque returns the following error codes:
+ *
+ * read_okay      : no problems encountered
+ * open_error     : the filename for the tree does not exist
+ * unexpected_end : any other error.
+ */
+EXTERN IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data);
+
+/* Load tree from newick string and fill tree_data */
+EXTERN void load_bptree_opaque(const char* newick, opaque_bptree_t** tree_data);
+
+/* Convert nexplicit tree structure into the opaque form */
+EXTERN void convert_bptree_opaque(const support_bptree_t* in_tree, opaque_bptree_t** tree_data);
 
 EXTERN void destroy_mat(mat_t** result);
 EXTERN void destroy_mat_full_fp64(mat_full_fp64_t** result);
@@ -174,6 +199,11 @@ EXTERN void destroy_mat_full_fp32(mat_full_fp32_t** result);
 EXTERN void destroy_partial_mat(partial_mat_t** result);
 EXTERN void destroy_partial_dyn_mat(partial_dyn_mat_t** result);
 EXTERN void destroy_results_vec(r_vec** result);
+
+EXTERN void destroy_bptree_opaque(opaque_bptree_t** tree_data);
+
+/* Return number of elements in BPTree, equvalent to n_parens */
+EXTERN int get_bptree_opaque_els(opaque_bptree_t* tree_data);
 
 /* Compute UniFrac - condensed form
  *
@@ -197,6 +227,12 @@ EXTERN void destroy_results_vec(r_vec** result);
 EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, mat_t** result);
+
+
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                   const char* unifrac_method, bool variance_adjust, double alpha,
+                                   bool bypass_tips, unsigned int n_substeps, mat_t** result);
 
 
 /* Compute UniFrac - against in-memory objects returning full form matrix
@@ -289,6 +325,13 @@ EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tr
                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                        mat_full_fp64_t** result);
 
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int n_substeps,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                        mat_full_fp64_t** result);
+
 /* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
                                     const char* unifrac_method, bool variance_adjust, double alpha,
@@ -324,12 +367,47 @@ EXTERN ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const cha
                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                             mat_full_fp32_t** result);
 
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp32_t** result);
+
 /* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
                                          const char* unifrac_method, bool variance_adjust, double alpha,
                                          bool bypass_tips, unsigned int n_substeps,
                                          const char *mmap_dir,
                                          mat_full_fp32_t** result);
+
+/* Compute UniFrac from a pair of dense vectors 
+ *
+ * n_obs <unsigned int> the number of observations, corresponding to length of obs_ids, sample1 and sample2
+ * obs_ids <const char**> the observation IDs
+ * sample1 <const double*> sample values
+ * sample2 <const double*> sample values
+ * unifrac_method <const char*> the requested unifrac method.
+ * variance_adjust <bool> whether to apply variance adjustment.
+ * alpha <double> GUniFrac alpha, only relevant if method == generalized.
+ * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * result <double*> the resulting distance
+ *
+ * one_dense_pair_v2t returns the following error codes:
+ *
+ * okay           : no problems encountered
+ * table_empty    : the table does not have any entries
+ */
+EXTERN ComputeStatus one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                        const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, double* result);
+
+/* Same as above, but usign the explicit treee structure... slightly less efficient */
+EXTERN ComputeStatus one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                       const support_bptree_t* tree_data,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, double* result);
 
 /* compute Faith PD
  * biom_filename <const char*> the filename to the biom table.

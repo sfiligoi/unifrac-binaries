@@ -94,6 +94,7 @@ jobs:
         popd
         pushd test
         ./capi_test 1
+        ./capi_inmem_test 1
         # explicitly check that we do not have hdf5 dependencies
         if [[ "$(uname -s)" == "Linux" ]];
         then

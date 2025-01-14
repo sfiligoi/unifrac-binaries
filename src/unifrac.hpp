@@ -23,7 +23,7 @@
 
         void faith_pd(biom_interface &table, BPTree &tree, double* result);
 
-        std::string test_table_ids_are_subset_of_tree(biom_interface &table, BPTree &tree);
+        std::string test_table_ids_are_subset_of_tree(const biom_interface &table, const BPTree &tree);
         void unifrac(biom_interface &table, 
                      BPTree &tree, 
                      Method unifrac_method,

@@ -34,7 +34,8 @@ namespace su {
              *
              * @param newick A newick string
              */
-            BPTree(std::string newick);
+            BPTree(const std::string& newick);
+            BPTree(const char * newick);
             
             /* constructor from a defined topology 
              *
@@ -42,7 +43,7 @@ namespace su {
              * @param input_lengths A vector of double of the branch lengths
              * @param input_names A vector of str of the vertex names
              */
-            BPTree(std::vector<bool> input_structure, std::vector<double> input_lengths, std::vector<std::string> input_names);
+            BPTree(const std::vector<bool>& input_structure, const std::vector<double>& input_lengths, const std::vector<std::string>& input_names);
             ~BPTree();
 
             /* constructor from a defined topology using c-types
@@ -103,11 +104,11 @@ namespace su {
             int32_t parent(uint32_t i) const;
 
             /* get the names at the tips of the tree */
-            std::unordered_set<std::string> get_tip_names();
+            std::unordered_set<std::string> get_tip_names() const;
 
             /* public getters */
-            std::vector<bool> get_structure();
-            std::vector<uint32_t> get_openclose();
+            const std::vector<bool>& get_structure() const;
+            const std::vector<uint32_t>& get_openclose() const;
 
             /* serialize the structure as a sequence of 1s and 0s */
             void print() {
@@ -119,11 +120,11 @@ namespace su {
                 }
                 std::cout << std::endl;
             }
-            BPTree mask(std::vector<bool> topology_mask, std::vector<double> in_lengths); // mask self
+            BPTree mask(const std::vector<bool>& topology_mask, const std::vector<double>& in_lengths) const; // mask self
 
-            BPTree shear(std::unordered_set<std::string> to_keep);
+            BPTree shear(std::unordered_set<std::string> to_keep) const;
 
-            BPTree collapse();
+            BPTree collapse() const;
 
         private:
             std::vector<bool> structure;          // the topology
@@ -133,17 +134,22 @@ namespace su {
             std::vector<uint32_t> excess;
 
             void index_and_cache();  // construct the select caches
-            void newick_to_bp(std::string newick);  // convert a newick string to parentheses
-            void newick_to_metadata(std::string newick);  // convert newick to attributes
+            void newick_to_bp(const char* newick);  // convert a newick string to parentheses
+            void newick_to_bp(const std::string& newick);  // convert a newick string to parentheses
+            void newick_to_metadata(const char* newick);  // convert newick to attributes
+            void newick_to_metadata(const std::string& newick);  // convert newick to attributes
             void structure_to_openclose();  // set the cache mapping between parentheses pairs
             void set_node_metadata(unsigned int open_idx, std::string &token); // set attributes for a node
-            bool is_structure_character(char c) const;  // test if a character is a newick structure
+            static bool is_structure_character(char c);  // test if a character is a newick structure
             inline uint32_t open(uint32_t i) const;  // obtain the index of the opening for a given parenthesis
             inline uint32_t close(uint32_t i) const;  // obtain the index of the closing for a given parenthesis
-            std::string tokenize(std::string::iterator &start, const std::string::iterator &end);  // newick -> tokens
+            static std::string tokenize(const char * &start, const char * const end);  // newick -> tokens
 
             int32_t bwd(uint32_t i, int32_t d) const;
             int32_t enclose(uint32_t i) const;
+
+	    // to be used in the constructors only
+            template<typename T> void _init(T newick);
     };
 }
 
