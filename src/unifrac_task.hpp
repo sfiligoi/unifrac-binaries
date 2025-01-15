@@ -546,23 +546,8 @@ namespace SUCMP_NM {
     template<class TFloat, class TEmb>
     class UnifracVawTask : public UnifracTaskBase<TFloat,TEmb> {
       protected:
-#if defined(_OPENACC) || defined(OMPGPU)
-        // The parallel nature of GPUs needs a largish step
-  #ifndef SMALLGPU
-        // default to larger step, which makes a big difference for bigger GPUs like V100
-        static constexpr unsigned int step_size = 32;
-        // keep the vector size just big enough to keep the used emb array inside the 32k buffer
-        static constexpr unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
-  #else
-        // smaller GPUs prefer a slightly smaller step
-        static constexpr unsigned int step_size = 16;
-        // keep the vector size just big enough to keep the used emb array inside the 32k buffer
-        static constexpr unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
-  #endif
-#else
-        // The serial nature of CPU cores prefers a small step
-        static constexpr unsigned int step_size = 4;
-#endif
+        // Use a moderate sized step, a few cache lines
+        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
 
       public:
         TFloat * const embedded_counts;
