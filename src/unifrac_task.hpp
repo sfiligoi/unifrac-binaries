@@ -338,11 +338,6 @@ namespace SUCMP_NM {
         // Use a moderate sized step, a few cache lines
         static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
 
-#if defined(_OPENACC) || defined(OMPGPU)
-        // Use as big vector size as we can, to maximize cache line reuse
-        static constexpr unsigned int acc_vector_size = 2048;
-#endif
-
       public:
 
         UnifracTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
