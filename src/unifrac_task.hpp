@@ -197,7 +197,7 @@ namespace SUCMP_NM {
         }
 
         TEmb * get_embedded_proportions() {return use_alt_emb ? my_embedded_proportions_alt : my_embedded_proportions;}
-        void  set_alt_embedded_proportions() {use_alt_emb = !use_alt_emb;}
+        void  set_alt_embedded_proportions() {if (my_embedded_proportions_alt!=NULL) use_alt_emb = !use_alt_emb; /*else , noop */}
 
         void sync_embedded_proportions(unsigned int filled_embs)
         {
