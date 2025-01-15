@@ -16,6 +16,21 @@
 
 #include "unifrac_internal.hpp"
 
+// We must explicitly set SUCMP_NM, to distinguish between the various flavors
+#if defined(OMPGPU)
+
+#define SUCMP_NM su_ompgpu
+
+#elif defined(_OPENACC)
+
+#define SUCMP_NM su_acc
+
+#else
+
+#define SUCMP_NM su_cpu
+
+#endif
+
 #include "unifrac_task.hpp"
 // Note: unifrac_task.hpp defines SUCMP_NM, needed by unifrac_cmp.hpp
 #include "unifrac_cmp.hpp"

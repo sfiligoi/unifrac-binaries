@@ -19,20 +19,6 @@
 #ifndef __UNIFRAC_TASKS
 #define __UNIFRAC_TASKS 1
 
-#if defined(OMPGPU)
-
-#define SUCMP_NM su_ompgpu
-
-#elif defined(_OPENACC)
-
-#define SUCMP_NM su_acc
-
-#else
-
-#define SUCMP_NM su_cpu
-
-#endif
-
 namespace SUCMP_NM {
 
     // do we have access to a GPU?
