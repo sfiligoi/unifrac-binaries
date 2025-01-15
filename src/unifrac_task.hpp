@@ -156,11 +156,10 @@ namespace SUCMP_NM {
         TFloat * lengths;
        private:
         TEmb * my_embedded_proportions;
-#if defined(_OPENACC) || defined(OMPGPU)
         // alternate buffer only needed in async environments, like openacc
         TEmb * my_embedded_proportions_alt; // used as temp
         bool use_alt_emb;
-#endif
+
        public:
 
         UnifracTaskBase(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
@@ -169,16 +168,15 @@ namespace SUCMP_NM {
         , embsize(get_embedded_bsize(dm_stripes.n_samples_r,_max_embs))
         , lengths( (TFloat *) malloc(sizeof(TFloat) * _max_embs))
         , my_embedded_proportions((TEmb *) malloc(sizeof(TEmb)*embsize))
-#if defined(_OPENACC) || defined(OMPGPU)
-        , my_embedded_proportions_alt((TEmb *) malloc(sizeof(TEmb)*embsize))
+        , my_embedded_proportions_alt((TEmb *) NULL)
         , use_alt_emb(false)
-#endif
         {
             acc_create_buf(lengths,0,max_embs);
             acc_create_buf(my_embedded_proportions,0,embsize);
-#if defined(_OPENACC) || defined(OMPGPU)
-            acc_create_buf(my_embedded_proportions_alt,0,embsize);
-#endif
+            if (need_alt()) {
+               my_embedded_proportions_alt = (TEmb *) malloc(sizeof(TEmb)*embsize);
+               acc_create_buf(my_embedded_proportions_alt,0,embsize);
+            }
         }
 
         UnifracTaskBase(const UnifracTaskBase<TFloat,TEmb>& ) = delete;
@@ -186,26 +184,20 @@ namespace SUCMP_NM {
 
         virtual ~UnifracTaskBase()
         {
-#if defined(_OPENACC) || defined(OMPGPU)
-           acc_destroy_buf(my_embedded_proportions_alt,0,embsize);
-#endif
+           if (my_embedded_proportions_alt!=NULL) {
+              acc_destroy_buf(my_embedded_proportions_alt,0,embsize);
+              free(my_embedded_proportions_alt);
+           }
+
            acc_destroy_buf(my_embedded_proportions,0,embsize);
            acc_destroy_buf(lengths,0,max_embs);
 
-#if defined(_OPENACC) || defined(OMPGPU)
-          free(my_embedded_proportions_alt);
-#endif
-          free(my_embedded_proportions);
-          free(lengths);
+           free(my_embedded_proportions);
+           free(lengths);
         }
 
-#if defined(_OPENACC) || defined(OMPGPU)
         TEmb * get_embedded_proportions() {return use_alt_emb ? my_embedded_proportions_alt : my_embedded_proportions;}
         void  set_alt_embedded_proportions() {use_alt_emb = !use_alt_emb;}
-#else
-        TEmb * get_embedded_proportions() {return my_embedded_proportions;}
-        void  set_alt_embedded_proportions() {}
-#endif
 
         void sync_embedded_proportions(unsigned int filled_embs)
         {
@@ -239,6 +231,9 @@ namespace SUCMP_NM {
         //
         // ===== Internal, do not use directly =======
         //
+
+	// is the implementation async, and need the alt structures?
+	static bool need_alt();
 
 
         // Just copy from one buffer to another

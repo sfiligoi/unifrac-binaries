@@ -95,6 +95,16 @@ uint64_t SUCMP_NM::UnifracTaskVector<TFloat>::block_round(uint64_t bufsize) {
   return ((bufsize + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
 }
 
+// is the implementation async, and need the alt structures?
+template<class TFloat, class TEmb>
+bool SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::need_alt() {
+#if defined(_OPENACC) || defined(OMPGPU)
+   return true;
+#else
+   return false;
+#endif
+}
+
 template<class TFloat, class TEmb>
 void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {         
          TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
