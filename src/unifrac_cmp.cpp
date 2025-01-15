@@ -16,6 +16,21 @@
 
 #include "unifrac_internal.hpp"
 
+// We must explicitly set SUCMP_NM, to distinguish between the various flavors
+#if defined(OMPGPU)
+
+#define SUCMP_NM su_ompgpu
+
+#elif defined(_OPENACC)
+
+#define SUCMP_NM su_acc
+
+#else
+
+#define SUCMP_NM su_cpu
+
+#endif
+
 #include "unifrac_task.hpp"
 // Note: unifrac_task.hpp defines SUCMP_NM, needed by unifrac_cmp.hpp
 #include "unifrac_cmp.hpp"
@@ -24,45 +39,6 @@
 #include "unifrac_task.cpp"
 
 using namespace SUCMP_NM;
-
-#if defined(OMPGPU)
-
-#include <omp.h>
-
-bool SUCMP_NM::found_gpu() {
-  return omp_get_num_devices() > 0;
-}
-
-#elif defined(_OPENACC)
-
-#include <openacc.h>
-
-bool SUCMP_NM::found_gpu() {
-  return acc_get_device_type() != acc_device_host;
-}
-
-#else
-bool SUCMP_NM::found_gpu() {
-  return false;
-}
-#endif
-
-template<class TFloat>
-inline void initialize_sample_counts(TFloat*& _counts, const su::task_parameters* task_p, const su::biom_interface &table) {
-    const unsigned int n_samples = task_p->n_samples;
-    const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
-    const double *sample_counts = table.get_sample_counts();
-    TFloat * counts = (TFloat *) malloc(sizeof(TFloat) * n_samples_r);
-    for(unsigned int i = 0; i < n_samples; i++) {
-        counts[i] = sample_counts[i];
-    }
-   // avoid NaNs
-   for(unsigned int i = n_samples; i < n_samples_r; i++) {
-       counts[i] = 0.0;
-   }
-
-   _counts=counts;
-}
 
 template<class TaskT, class TFloat>
 inline void unifracTT(const su::biom_interface &table,
@@ -77,9 +53,6 @@ inline void unifracTT(const su::biom_interface &table,
         fprintf(stderr, "Task and table n_samples not equal\n");
         exit(EXIT_FAILURE);
     }
-    const unsigned int n_samples = task_p->n_samples;
-    const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
-
 
     su::PropStackMulti<TFloat> propstack_multi(table.n_samples);
 
@@ -89,7 +62,7 @@ inline void unifracTT(const su::biom_interface &table,
 
     TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total),max_emb,task_p);
 
-    TFloat *lengths = taskObj.lengths;
+    TFloat * const lengths = taskObj.lengths;
 
         /*
          * The values in the example vectors correspond to index positions of an
@@ -176,25 +149,14 @@ inline void unifracTT(const su::biom_interface &table,
           }
 
           taskObj.sync_embedded_proportions(filled_emb);
-#if defined(OMPGPU)
-          // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[0:filled_emb])
-#elif defined(_OPENACC)
-          // lengths may be still in use in async mode, wait
-#pragma acc wait
-#pragma acc update device(lengths[0:filled_emb])
-#endif
+          taskObj.sync_lengths(filled_emb);
           taskObj._run(filled_emb);
           filled_emb=0;
 
           su::try_report(task_p, k, max_k);
     }
 
-#if defined(OMPGPU)
-    // TODO: Change if we ever implement async in OMPGPU
-#elif defined(_OPENACC)
-#pragma acc wait
-#endif
+    taskObj.wait_completion();
 
     if(want_total) {
         taskObj.compute_totals();
@@ -260,27 +222,17 @@ inline void unifrac_vawTT(const su::biom_interface &table,
         fprintf(stderr, "Task and table n_samples not equal\n");
         exit(EXIT_FAILURE);
     }
-    const unsigned int n_samples = task_p->n_samples;
-    const uint64_t  n_samples_r = ((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
 
     su::PropStackMulti<TFloat> propstack_multi(table.n_samples);
     su::PropStackMulti<TFloat> countstack_multi(table.n_samples);
 
     const unsigned int max_emb = TaskT::RECOMMENDED_MAX_EMBS;
 
-    TFloat *sample_total_counts;
-
-    initialize_sample_counts(sample_total_counts, task_p, table);
-#if defined(OMPGPU)
-#pragma omp target enter data map(to:sample_total_counts[0:n_samples_r])
-#elif defined(_OPENACC)
-#pragma acc enter data copyin(sample_total_counts[0:n_samples_r])
-#endif
     su::initialize_stripes(std::ref(dm_stripes), std::ref(dm_stripes_total), want_total, task_p);
 
-    TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total), sample_total_counts, max_emb, task_p);
+    TaskT taskObj(std::ref(dm_stripes), std::ref(dm_stripes_total), table.get_sample_counts(), max_emb, task_p);
 
-    TFloat *lengths = taskObj.lengths;
+    TFloat * const lengths = taskObj.lengths;
 
     unsigned int k = 0; // index in tree
     const unsigned int max_k = (tree.nparens>1) ? ((tree.nparens / 2) - 1) : 0;
@@ -325,15 +277,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
             }
           }
 
-#if defined(OMPGPU)
-          // TODO: Change if we ever implement async in OMPGPU
-#pragma omp target update to(lengths[0:filled_emb])
-#elif defined(_OPENACC)
-          // lengths may be still in use in async mode, wait
-#pragma acc wait
-#pragma acc update device(lengths[0:filled_emb])
-#endif
-
+	  taskObj.sync_lengths(filled_emb);
           taskObj.sync_embedded(filled_emb);
           taskObj._run(filled_emb);
           filled_emb = 0;
@@ -341,23 +285,13 @@ inline void unifrac_vawTT(const su::biom_interface &table,
           su::try_report(task_p, k, max_k);
     }
 
-#if defined(OMPGPU)
-    // TODO: Change if we ever implement async in OMPGPU
-#elif defined(_OPENACC)
-#pragma acc wait
-#endif
+    taskObj.wait_completion();
 
     if(want_total) {
         taskObj.compute_totals();
     }
 
 
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:sample_total_counts[0:n_samples_r])
-#elif defined(_OPENACC)
-#pragma acc exit data delete(sample_total_counts[0:n_samples_r])
-#endif
-    free(sample_total_counts);
 }
 
 void SUCMP_NM::unifrac_vaw(const su::biom_interface &table,

@@ -2,6 +2,130 @@
 #include "unifrac_task.hpp"
 #include <cstdlib>
 
+#if defined(OMPGPU)
+
+#include <omp.h>
+
+// Biggest vector size supported by the GPU
+#define SUCMP_ACC_MAXVEC 2048
+
+#elif defined(_OPENACC)
+
+#include <openacc.h>
+
+// Biggest vector size supported by the GPU
+#define SUCMP_ACC_MAXVEC 2048
+
+#endif
+
+bool SUCMP_NM::found_gpu() {
+#if defined(OMPGPU)
+  return omp_get_num_devices() > 0;
+#elif defined(_OPENACC)
+  return acc_get_device_type() != acc_device_host;
+#else
+  return false;
+#endif
+}
+
+void SUCMP_NM::acc_wait() {
+#if defined(OMPGPU)
+    // TODO: Change if we ever implement async in OMPGPU
+#elif defined(_OPENACC)
+#pragma acc wait
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_create_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc enter data create(buf[start:end])
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_copyin_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target enter data map(to:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc enter data copyin(buf[start:end])
+#endif    
+}
+
+template<class T>
+void SUCMP_NM::acc_update_device(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target update to(buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc update device(buf[start:end])
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_copyout_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target exit data map(from:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc exit data copyout(buf[start:end])
+#endif
+}
+
+template<class T>
+void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target exit data map(delete:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc exit data delete(buf[start:end])
+#endif
+}
+
+template<class TFloat>
+uint64_t SUCMP_NM::UnifracTaskVector<TFloat>::block_round(uint64_t bufsize) {
+#if defined(_OPENACC) || defined(OMPGPU)
+
+#ifndef SMALLGPU
+  // defaultt on larger alignment, which improves performance on GPUs like V100
+  const uint64_t UNIFRAC_BLOCK=64;
+#else
+  // smaller GPUs prefer smaller allignment 
+  const uint64_t UNIFRAC_BLOCK=32;
+#endif
+
+#else
+  // CPUs don't need such a big alignment
+  const uint64_t UNIFRAC_BLOCK=16;
+#endif
+
+  return ((bufsize + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
+}
+
+// is the implementation async, and need the alt structures?
+template<class TFloat, class TEmb>
+bool SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::need_alt() {
+#if defined(_OPENACC) || defined(OMPGPU)
+   return true;
+#else
+   return false;
+#endif
+}
+
+template<class TFloat, class TEmb>
+void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {         
+         TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
+   const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
+   const uint64_t bufels = this->dm_stripes.bufels;
+
+#if defined(OMPGPU)
+#pragma omp target teams distribute parallel for simd default(shared)
+#elif defined(_OPENACC)
+#pragma acc parallel loop gang vector present(dm_stripes_buf,dm_stripes_total_buf)
+#endif
+   for(uint64_t idx=0; idx< bufels; idx++)
+       dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
+}
+
 #if defined(_OPENACC) || defined(OMPGPU)
 // will not use popcnt for accelerated compute
 #else
@@ -441,13 +565,12 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
 
     // now do the real compute
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
@@ -547,13 +670,12 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,lengths) async
+#pragma acc parallel loop collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,lengths) async
 #endif
 
 #else
@@ -900,13 +1022,12 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop gang vector collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
@@ -1007,13 +1128,12 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#pragma acc parallel loop collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
 
 #else
@@ -1090,13 +1210,12 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracGeneralizedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#pragma acc parallel loop collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
 
 #else
@@ -1174,13 +1293,12 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs)
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#pragma acc parallel loop collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
 
 #else
@@ -1675,13 +1793,12 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums,zcheck,stripe_sums) async
+#pragma acc parallel loop collapse(3) gang vector vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,sums,zcheck,stripe_sums) async
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
       for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
@@ -1843,13 +1960,12 @@ void SUCMP_NM::UnifracUnnormalizedUnweightedTask<TFloat>::_run(unsigned int fill
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) gang vector vector_length(acc_vector_size) present(embedded_proportions,dm_stripes_buf,sums,zcheck,stripe_sums) async
+#pragma acc parallel loop collapse(3) gang vector vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,sums,zcheck,stripe_sums) async
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
       for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
@@ -1930,13 +2046,12 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) 
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
+#pragma acc parallel loop collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,dm_stripes_total_buf,lengths) async
 #endif
 
 #else
@@ -2029,13 +2144,12 @@ void SUCMP_NM::UnifracVawUnnormalizedUnweightedTask<TFloat>::_run(unsigned int f
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
-    const unsigned int acc_vector_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::acc_vector_size;
-
+    // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen(acc_vector_size) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
 #else
-#pragma acc parallel loop collapse(3) vector_length(acc_vector_size) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,lengths) async
+#pragma acc parallel loop collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,embedded_counts,sample_total_counts,dm_stripes_buf,lengths) async
 #endif
 
 #else

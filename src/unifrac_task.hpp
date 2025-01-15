@@ -19,36 +19,36 @@
 #ifndef __UNIFRAC_TASKS
 #define __UNIFRAC_TASKS 1
 
-#if defined(OMPGPU)
-
-#define SUCMP_NM su_ompgpu
-
-#elif defined(_OPENACC)
-
-#define SUCMP_NM su_acc
-
-#else
-
-#define SUCMP_NM su_cpu
-
-#endif
-
-#if defined(_OPENACC) || defined(OMPGPU)
-
-#ifndef SMALLGPU
-  // defaultt on larger alignment, which improves performance on GPUs like V100
-#define UNIFRAC_BLOCK 64
-#else
-  // smaller GPUs prefer smaller allignment 
-#define UNIFRAC_BLOCK 32
-#endif
-
-#else
-// CPUs don't need such a big alignment
-#define UNIFRAC_BLOCK 16
-#endif
-
 namespace SUCMP_NM {
+
+    // do we have access to a GPU?
+    bool found_gpu();
+
+    // wait for the async compute to finish
+    void acc_wait();
+
+    // create the equivalent buffer in the device memory space, if partitioned
+    // the content in undefined
+    template<class T>
+    void acc_create_buf(T *buf, uint64_t start, uint64_t end);
+
+    // create the equivalent buffer in the device memory space, if partitioned
+    // also copy the buffer over
+    template<class T>
+    void acc_copyin_buf(T *buf, uint64_t start, uint64_t end);
+
+    // make a copy from host to device buffer, if partitioned
+    template<class T>
+    void acc_update_device(T *buf, uint64_t start, uint64_t end);
+
+    // make a copy from device to host buffer, if partitioned
+    // destroy the equivalent buffer in the device memory space, if partitioned
+    template<class T>
+    void acc_copyout_buf(T *buf, uint64_t start, uint64_t end);
+
+    // destroy the equivalent buffer in the device memory space, if partitioned
+    template<class T>
+    void acc_destroy_buf(T *buf, uint64_t start, uint64_t end);
 
     // Note: This adds a copy, which is suboptimal
     //       But was the easiest way to get a contiguous buffer
@@ -70,7 +70,7 @@ namespace SUCMP_NM {
       UnifracTaskVector(std::vector<double*> &_dm_stripes, const su::task_parameters* _task_p)
       : dm_stripes(_dm_stripes), task_p(_task_p)
       , start_idx(task_p->start), stop_idx(task_p->stop), n_samples(task_p->n_samples)
-      , n_samples_r(((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK) // round up
+      , n_samples_r(block_round(n_samples))
       , bufels(n_samples_r * (stop_idx-start_idx))
       , buf((dm_stripes[start_idx]==NULL) ? NULL : (TFloat*) malloc(sizeof(TFloat) * bufels)) // dm_stripes could be null, in which case keep it null
       {
@@ -90,11 +90,7 @@ namespace SUCMP_NM {
                 buf_stripe[j] = 0.0;
              }
            }
-#if defined(OMPGPU)
-#pragma omp target enter data map(to:ibuf[0:ibufels])
-#elif defined(_OPENACC)
-#pragma acc enter data copyin(ibuf[0:ibufels])
-#endif    
+           acc_copyin_buf(ibuf,0,ibufels);
         }
       }
 
@@ -111,11 +107,7 @@ namespace SUCMP_NM {
         const uint64_t  ibufels = bufels;
         TFloat* const ibuf = buf;
         if (ibuf != NULL) {
-#if defined(OMPGPU)
-#pragma omp target exit data map(from:ibuf[0:ibufels])
-#elif defined(_OPENACC)
-#pragma acc exit data copyout(ibuf[0:ibufels])
-#endif
+           acc_copyout_buf(ibuf,0,ibufels);
           for(uint64_t stripe=start_idx; stripe < stop_idx; stripe++) {
              double * dm_stripe = dm_stripes[stripe];
              TFloat * buf_stripe = ibuf+buf_idx(stripe);
@@ -126,6 +118,8 @@ namespace SUCMP_NM {
           free(buf);
         }
       }
+
+      static uint64_t block_round(uint64_t bufsize);
 
     private:
       UnifracTaskVector() = delete;
@@ -148,11 +142,10 @@ namespace SUCMP_NM {
         TFloat * lengths;
        private:
         TEmb * my_embedded_proportions;
-#if defined(_OPENACC) || defined(OMPGPU)
         // alternate buffer only needed in async environments, like openacc
         TEmb * my_embedded_proportions_alt; // used as temp
         bool use_alt_emb;
-#endif
+
        public:
 
         UnifracTaskBase(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
@@ -161,29 +154,15 @@ namespace SUCMP_NM {
         , embsize(get_embedded_bsize(dm_stripes.n_samples_r,_max_embs))
         , lengths( (TFloat *) malloc(sizeof(TFloat) * _max_embs))
         , my_embedded_proportions((TEmb *) malloc(sizeof(TEmb)*embsize))
-#if defined(_OPENACC) || defined(OMPGPU)
-        , my_embedded_proportions_alt((TEmb *) malloc(sizeof(TEmb)*embsize))
+        , my_embedded_proportions_alt((TEmb *) NULL)
         , use_alt_emb(false)
-#endif
         {
-#if defined(_OPENACC) || defined(OMPGPU)
-		// keep local copies to avoid the need for *this in the GPU
-		TFloat * l_lengths = lengths;
-		TEmb * l_my_embedded_proportions = my_embedded_proportions;
-		TEmb * l_my_embedded_proportions_alt = my_embedded_proportions_alt;
-		const unsigned int l_max_embs = max_embs;
-		const uint64_t l_embsize = embsize;
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:l_lengths[0:l_max_embs])
-#pragma omp target enter data map(alloc:l_my_embedded_proportions[0:l_embsize])
-#pragma omp target enter data map(alloc:l_my_embedded_proportions_alt[0:l_embsize])
-#elif defined(_OPENACC)
-#pragma acc enter data create(l_lengths[0:l_max_embs])
-#pragma acc enter data create(l_my_embedded_proportions[0:l_embsize])
-#pragma acc enter data create(l_my_embedded_proportions_alt[0:l_embsize])
-#endif
-
-#endif
+            acc_create_buf(lengths,0,max_embs);
+            acc_create_buf(my_embedded_proportions,0,embsize);
+            if (need_alt()) {
+               my_embedded_proportions_alt = (TEmb *) malloc(sizeof(TEmb)*embsize);
+               acc_create_buf(my_embedded_proportions_alt,0,embsize);
+            }
         }
 
         UnifracTaskBase(const UnifracTaskBase<TFloat,TEmb>& ) = delete;
@@ -191,52 +170,31 @@ namespace SUCMP_NM {
 
         virtual ~UnifracTaskBase()
         {
-#if defined(_OPENACC) || defined(OMPGPU)
-		TFloat * l_lengths = lengths;
-		// keep local copies to avoid the need for *this in the GPU
-		TEmb * l_my_embedded_proportions = my_embedded_proportions;
-		TEmb * l_my_embedded_proportions_alt = my_embedded_proportions_alt;
-		const unsigned int l_max_embs = max_embs;
-		const uint64_t l_embsize = embsize;
+           if (my_embedded_proportions_alt!=NULL) {
+              acc_destroy_buf(my_embedded_proportions_alt,0,embsize);
+              free(my_embedded_proportions_alt);
+           }
 
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:l_my_embedded_proportions_alt[0:l_embsize])
-#pragma omp target exit data map(delete:l_my_embedded_proportions[0:l_embsize])
-#pragma omp target exit data map(delete:l_lengths[0:l_max_embs])
-#elif defined(_OPENACC)
-#pragma acc exit data delete(l_my_embedded_proportions_alt[0:l_embsize])
-#pragma acc exit data delete(l_my_embedded_proportions[0:l_embsize])
-#pragma acc exit data delete(l_lengths[0:l_max_embs])
-#endif
+           acc_destroy_buf(my_embedded_proportions,0,embsize);
+           acc_destroy_buf(lengths,0,max_embs);
 
-          free(my_embedded_proportions_alt);
-#endif
-          free(my_embedded_proportions);
-          free(lengths);
+           free(my_embedded_proportions);
+           free(lengths);
         }
 
-#if defined(_OPENACC) || defined(OMPGPU)
         TEmb * get_embedded_proportions() {return use_alt_emb ? my_embedded_proportions_alt : my_embedded_proportions;}
-        void  set_alt_embedded_proportions() {use_alt_emb = !use_alt_emb;}
-#else
-        TEmb * get_embedded_proportions() {return my_embedded_proportions;}
-        void  set_alt_embedded_proportions() {}
-#endif
+        void  set_alt_embedded_proportions() {if (my_embedded_proportions_alt!=NULL) use_alt_emb = !use_alt_emb; /*else , noop */}
 
         void sync_embedded_proportions(unsigned int filled_embs)
         {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t  n_samples_r = dm_stripes.n_samples_r;
-		// keep local copies to avoid the need for *this in the GPU
-          const uint64_t bsize = n_samples_r * get_emb_els(filled_embs);
-          TEmb * l_embedded_proportions = this->get_embedded_proportions();
-#if defined(OMPGPU)
-#pragma omp target update to(l_embedded_proportions[0:bsize])
-#else
-#pragma acc update device(l_embedded_proportions[0:bsize])
-#endif
+          acc_update_device(this->get_embedded_proportions(),
+                            0,dm_stripes.n_samples_r * get_emb_els(filled_embs));
+        }
 
-#endif
+        void sync_lengths(unsigned int filled_embs)
+        {
+           acc_wait();
+           acc_update_device(this->lengths, 0, filled_embs);
         }
 
         static unsigned int get_emb_els(unsigned int max_embs);
@@ -249,31 +207,19 @@ namespace SUCMP_NM {
         void embed_proportions_range(const TFloat* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb);
         void embed_proportions(const TFloat* __restrict__ in, unsigned int emb) {embed_proportions_range(in,0,dm_stripes.n_samples,emb);}
 
-        void compute_totals() {         
-                TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-          const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-          const uint64_t bufels = this->dm_stripes.bufels;
+        void wait_completion() {
+          acc_wait();
 
-#if defined(OMPGPU)
-#pragma omp target teams distribute parallel for simd default(shared)
-#elif defined(_OPENACC)
-#pragma acc parallel loop gang vector present(dm_stripes_buf,dm_stripes_total_buf)
-#endif
-          for(uint64_t idx=0; idx< bufels; idx++)
-              dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
+        }
 
-          /* Original code:
-          for(uint64_t i = start_idx; i < stop_idx; i++)
-            for(uint64_t j = 0; j < n_samples; j++) {
-                dm_stripes[i][j] = dm_stripes[i][j] / dm_stripes_total[i][j];
-            }
-          */
-        
-       }
+        void compute_totals();
 
         //
         // ===== Internal, do not use directly =======
         //
+
+	// is the implementation async, and need the alt structures?
+	static bool need_alt();
 
 
         // Just copy from one buffer to another
@@ -378,11 +324,6 @@ namespace SUCMP_NM {
         // Use a moderate sized step, a few cache lines
         static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
 
-#if defined(_OPENACC) || defined(OMPGPU)
-        // Use as big vector size as we can, to maximize cache line reuse
-        static constexpr unsigned int acc_vector_size = 2048;
-#endif
-
       public:
 
         UnifracTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
@@ -415,16 +356,8 @@ namespace SUCMP_NM {
 
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
-#if defined(_OPENACC) || defined(OMPGPU)
-          TFloat *l_sums = this->sums;
-          bool   *l_zcheck = this->zcheck;
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:l_zcheck[0:n_samples],l_sums[0:n_samples])
-#elif defined(_OPENACC)
-#pragma acc enter data create(l_zcheck[0:n_samples],l_sums[0:n_samples])
-#endif
-
-#endif
+          acc_create_buf(zcheck, 0, n_samples);
+          acc_create_buf(sums, 0 , n_samples);
         }
 
         UnifracUnnormalizedWeightedTask(const UnifracUnnormalizedWeightedTask<TFloat>& ) = delete;
@@ -432,17 +365,11 @@ namespace SUCMP_NM {
 
         virtual ~UnifracUnnormalizedWeightedTask()
         {
-#if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
-          TFloat *l_sums = this->sums;
-          bool   *l_zcheck = this->zcheck;
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:l_sums[0:n_samples],l_zcheck[0:n_samples])
-#else
-#pragma acc exit data delete(l_sums[0:n_samples],l_zcheck[0:n_samples])
-#endif
 
-#endif
+          acc_destroy_buf(sums, 0 , n_samples);
+          acc_destroy_buf(zcheck, 0, n_samples);
+
           free(sums);
           free(zcheck);
         }
@@ -467,16 +394,8 @@ namespace SUCMP_NM {
 
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * n_samples);
-#if defined(_OPENACC) || defined(OMPGPU)
-          TFloat *l_sums = this->sums;
-          bool   *l_zcheck = this->zcheck;
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:l_zcheck[0:n_samples],l_sums[0:n_samples])
-#elif defined(_OPENACC)
-#pragma acc enter data create(l_zcheck[0:n_samples],l_sums[0:n_samples])
-#endif
-
-#endif
+          acc_create_buf(zcheck, 0, n_samples);
+          acc_create_buf(sums, 0 , n_samples);
         }
 
         UnifracNormalizedWeightedTask(const UnifracNormalizedWeightedTask<TFloat>& ) = delete;
@@ -484,17 +403,11 @@ namespace SUCMP_NM {
 
         virtual ~UnifracNormalizedWeightedTask()
         {
-#if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
-          TFloat *l_sums = this->sums;
-          bool   *l_zcheck = this->zcheck;
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:l_sums[0:n_samples],l_zcheck[0:n_samples])
-#else
-#pragma acc exit data delete(l_sums[0:n_samples],l_zcheck[0:n_samples])
-#endif
 
-#endif
+          acc_destroy_buf(sums, 0 , n_samples);
+          acc_destroy_buf(zcheck, 0, n_samples);
+
           free(sums);
           free(zcheck);
         }
@@ -523,34 +436,21 @@ namespace SUCMP_NM {
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
           stripe_sums = (TFloat*) malloc(sizeof(TFloat) *  n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * bsize);
-#if defined(_OPENACC) || defined(OMPGPU)
-          TFloat *l_sums = this->sums;
-          TFloat *l_stripe_sums = this->stripe_sums;
-          bool   *l_zcheck = this->zcheck;
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:l_zcheck[0:n_samples],l_stripe_sums[0:n_samples],l_sums[0:bsize])
-#elif defined(_OPENACC)
-#pragma acc enter data create(l_zcheck[0:n_samples],l_stripe_sums[0:n_samples],l_sums[0:bsize])
-#endif
 
-#endif
+          acc_create_buf(zcheck, 0, n_samples);
+          acc_create_buf(stripe_sums, 0 , n_samples);
+          acc_create_buf(sums, 0 , bsize);
         }
 
         virtual ~UnifracCommonUnweightedTask()
         {
-#if defined(_OPENACC) || defined(OMPGPU)
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
-          TFloat *l_sums = this->sums;
-          TFloat *l_stripe_sums = this->stripe_sums;
-          bool   *l_zcheck = this->zcheck;
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:l_sums[0:bsize],l_stripe_sums[0:n_samples],l_zcheck[0:n_samples])
-#else
-#pragma acc exit data delete(l_sums[0:bsize],l_stripe_sums[0:n_samples],l_zcheck[0:n_samples])
-#endif
 
-#endif
+          acc_destroy_buf(sums, 0 , bsize);
+          acc_destroy_buf(stripe_sums, 0 , n_samples);
+          acc_destroy_buf(zcheck, 0, n_samples);
+
           free(sums);
           free(stripe_sums);
           free(zcheck);
@@ -632,23 +532,8 @@ namespace SUCMP_NM {
     template<class TFloat, class TEmb>
     class UnifracVawTask : public UnifracTaskBase<TFloat,TEmb> {
       protected:
-#if defined(_OPENACC) || defined(OMPGPU)
-        // The parallel nature of GPUs needs a largish step
-  #ifndef SMALLGPU
-        // default to larger step, which makes a big difference for bigger GPUs like V100
-        static constexpr unsigned int step_size = 32;
-        // keep the vector size just big enough to keep the used emb array inside the 32k buffer
-        static constexpr unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
-  #else
-        // smaller GPUs prefer a slightly smaller step
-        static constexpr unsigned int step_size = 16;
-        // keep the vector size just big enough to keep the used emb array inside the 32k buffer
-        static constexpr unsigned int acc_vector_size = 32*32*8/sizeof(TFloat);
-  #endif
-#else
-        // The serial nature of CPU cores prefers a small step
-        static constexpr unsigned int step_size = 4;
-#endif
+        // Use a moderate sized step, a few cache lines
+        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
 
       public:
         TFloat * const embedded_counts;
@@ -657,22 +542,14 @@ namespace SUCMP_NM {
         static constexpr unsigned int RECOMMENDED_MAX_EMBS = 128;
 
         UnifracVawTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
-                    const TFloat * _sample_total_counts,
+                    const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTaskBase<TFloat,TEmb>(_dm_stripes, _dm_stripes_total, _max_embs, _task_p)
         , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize))
-        , sample_total_counts(_sample_total_counts)
+        , sample_total_counts(initialize_sample_counts(this->dm_stripes.n_samples, this->dm_stripes.n_samples_r, _task_p, _sample_counts))
         {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t l_embsize = this->embsize;
-          TFloat * const l_embedded_counts = this->embedded_counts;
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:l_embedded_counts[0:l_embsize])
-#elif defined(_OPENACC)
-#pragma acc enter data create(l_embedded_counts[0:l_embsize])
-#endif
-
-#endif
+          acc_create_buf(embedded_counts, 0, this->embsize);
+          acc_copyin_buf(sample_total_counts, 0 , this->dm_stripes.n_samples_r);
         }
 
        UnifracVawTask(const UnifracVawTask<TFloat,TEmb>& ) = delete;
@@ -680,33 +557,29 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t l_embsize = this->embsize;
-          TFloat * const l_embedded_counts = this->embedded_counts;
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:l_embedded_counts[0:l_embsize])
-#elif defined(_OPENACC)
-#pragma acc exit data delete(l_embedded_counts[0:l_embsize])
-#endif
+          acc_destroy_buf(sample_total_counts, 0 , this->dm_stripes.n_samples_r);
+          acc_destroy_buf(embedded_counts, 0, this->embsize);
 
-#endif
-
+          free((void*) sample_total_counts); // while const for the life of this, not const past its lifetime
           free(embedded_counts);
+       }
+
+       static TFloat* initialize_sample_counts(uint64_t n_samples, uint64_t n_samples_r, const su::task_parameters* task_p, const double sample_counts[]) {
+          TFloat * counts = (TFloat *) malloc(sizeof(TFloat) * n_samples_r);
+          for(unsigned int i = 0; i < n_samples; i++) {
+            counts[i] = sample_counts[i];
+          }
+          // avoid NaNs
+          for(unsigned int i = n_samples; i < n_samples_r; i++) {
+            counts[i] = 0.0;
+          }
+
+          return counts;
        }
 
        void sync_embedded_counts(unsigned int filled_embs)
        {
-#if defined(_OPENACC) || defined(OMPGPU)
-          const uint64_t  n_samples_r = this->dm_stripes.n_samples_r;
-          const uint64_t bsize = n_samples_r * filled_embs;
-          TFloat * const l_embedded_counts = this->embedded_counts;
-#if defined(OMPGPU)
-#pragma omp target update to(l_embedded_counts[0:bsize])
-#else
-#pragma acc update device(l_embedded_counts[0:bsize])
-#endif
-
-#endif
+          acc_update_device(this->embedded_counts, 0, this->dm_stripes.n_samples_r * filled_embs);
        }
 
        void sync_embedded(unsigned int filled_embs) { this->sync_embedded_proportions(filled_embs); this->sync_embedded_counts(filled_embs);}
@@ -724,9 +597,9 @@ namespace SUCMP_NM {
     class UnifracVawUnnormalizedWeightedTask : public UnifracVawTask<TFloat,TFloat> {
       public:
         UnifracVawUnnormalizedWeightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
-                    const TFloat * _sample_total_counts, 
+                    const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
-        : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
+        : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_counts,_max_embs,_task_p) {}
 
         UnifracVawUnnormalizedWeightedTask(const UnifracVawUnnormalizedWeightedTask<TFloat>& ) = delete;
         UnifracVawUnnormalizedWeightedTask<TFloat>& operator= (const UnifracVawUnnormalizedWeightedTask<TFloat>&) = delete;
@@ -739,9 +612,9 @@ namespace SUCMP_NM {
     class UnifracVawNormalizedWeightedTask : public UnifracVawTask<TFloat,TFloat> {
       public:
         UnifracVawNormalizedWeightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
-                    const TFloat * _sample_total_counts, 
+                    const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
-        : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
+        : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_counts,_max_embs,_task_p) {}
 
         UnifracVawNormalizedWeightedTask(const UnifracVawNormalizedWeightedTask<TFloat>& ) = delete;
         UnifracVawNormalizedWeightedTask<TFloat>& operator= (const UnifracVawNormalizedWeightedTask<TFloat>&) = delete;
@@ -754,9 +627,9 @@ namespace SUCMP_NM {
     class UnifracVawUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {
       public:
         UnifracVawUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
-                    const TFloat * _sample_total_counts, 
+                    const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
-        : UnifracVawTask<TFloat,uint32_t>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
+        : UnifracVawTask<TFloat,uint32_t>(_dm_stripes,_dm_stripes_total,_sample_counts,_max_embs,_task_p) {}
 
         UnifracVawUnweightedTask(const UnifracVawUnweightedTask<TFloat>& ) = delete;
         UnifracVawUnweightedTask<TFloat>& operator= (const UnifracVawUnweightedTask<TFloat>&) = delete;
@@ -769,9 +642,9 @@ namespace SUCMP_NM {
     class UnifracVawUnnormalizedUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {
       public:
         UnifracVawUnnormalizedUnweightedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, 
-                    const TFloat * _sample_total_counts, 
+                    const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
-        : UnifracVawTask<TFloat,uint32_t>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
+        : UnifracVawTask<TFloat,uint32_t>(_dm_stripes,_dm_stripes_total,_sample_counts,_max_embs,_task_p) {}
 
         UnifracVawUnnormalizedUnweightedTask(const UnifracVawUnweightedTask<TFloat>& ) = delete;
         UnifracVawUnnormalizedUnweightedTask<TFloat>& operator= (const UnifracVawUnweightedTask<TFloat>&) = delete;
@@ -784,9 +657,9 @@ namespace SUCMP_NM {
     class UnifracVawGeneralizedTask : public UnifracVawTask<TFloat,TFloat> {
       public:
         UnifracVawGeneralizedTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total,
-                    const TFloat * _sample_total_counts, 
+                    const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
-        : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_total_counts,_max_embs,_task_p) {}
+        : UnifracVawTask<TFloat,TFloat>(_dm_stripes,_dm_stripes_total,_sample_counts,_max_embs,_task_p) {}
 
         UnifracVawGeneralizedTask(const UnifracVawGeneralizedTask<TFloat>& ) = delete;
         UnifracVawGeneralizedTask<TFloat>& operator= (const UnifracVawGeneralizedTask<TFloat>&) = delete;
