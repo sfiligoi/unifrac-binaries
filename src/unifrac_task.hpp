@@ -33,21 +33,6 @@
 
 #endif
 
-#if defined(_OPENACC) || defined(OMPGPU)
-
-#ifndef SMALLGPU
-  // defaultt on larger alignment, which improves performance on GPUs like V100
-#define UNIFRAC_BLOCK 64
-#else
-  // smaller GPUs prefer smaller allignment 
-#define UNIFRAC_BLOCK 32
-#endif
-
-#else
-// CPUs don't need such a big alignment
-#define UNIFRAC_BLOCK 16
-#endif
-
 namespace SUCMP_NM {
 
     // do we have access to a GPU?
@@ -99,7 +84,7 @@ namespace SUCMP_NM {
       UnifracTaskVector(std::vector<double*> &_dm_stripes, const su::task_parameters* _task_p)
       : dm_stripes(_dm_stripes), task_p(_task_p)
       , start_idx(task_p->start), stop_idx(task_p->stop), n_samples(task_p->n_samples)
-      , n_samples_r(((n_samples + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK) // round up
+      , n_samples_r(block_round(n_samples))
       , bufels(n_samples_r * (stop_idx-start_idx))
       , buf((dm_stripes[start_idx]==NULL) ? NULL : (TFloat*) malloc(sizeof(TFloat) * bufels)) // dm_stripes could be null, in which case keep it null
       {
@@ -147,6 +132,8 @@ namespace SUCMP_NM {
           free(buf);
         }
       }
+
+      static uint64_t block_round(uint64_t bufsize);
 
     private:
       UnifracTaskVector() = delete;

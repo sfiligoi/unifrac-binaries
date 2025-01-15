@@ -75,6 +75,26 @@ void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
 #endif
 }
 
+template<class TFloat>
+uint64_t SUCMP_NM::UnifracTaskVector<TFloat>::block_round(uint64_t bufsize) {
+#if defined(_OPENACC) || defined(OMPGPU)
+
+#ifndef SMALLGPU
+  // defaultt on larger alignment, which improves performance on GPUs like V100
+  const uint64_t UNIFRAC_BLOCK=64;
+#else
+  // smaller GPUs prefer smaller allignment 
+  const uint64_t UNIFRAC_BLOCK=32;
+#endif
+
+#else
+  // CPUs don't need such a big alignment
+  const uint64_t UNIFRAC_BLOCK=16;
+#endif
+
+  return ((bufsize + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
+}
+
 template<class TFloat, class TEmb>
 void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {         
          TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
