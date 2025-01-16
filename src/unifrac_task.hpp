@@ -320,10 +320,6 @@ namespace SUCMP_NM {
 
     template<class TFloat, class TEmb>
     class UnifracTask : public UnifracTaskBase<TFloat,TEmb> {
-      protected:
-        // Use a moderate sized step, a few cache lines
-        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
-
       public:
 
         UnifracTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
@@ -423,8 +419,6 @@ namespace SUCMP_NM {
     template<class TFloat>
     class UnifracCommonUnweightedTask : public UnifracTask<TFloat,uint64_t> {
       public:
-        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
-
         static constexpr unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,uint64_t>::RECOMMENDED_MAX_EMBS_BOOL;
 
         // Note: _max_emb MUST be multiple of 64
@@ -531,10 +525,6 @@ namespace SUCMP_NM {
      */
     template<class TFloat, class TEmb>
     class UnifracVawTask : public UnifracTaskBase<TFloat,TEmb> {
-      protected:
-        // Use a moderate sized step, a few cache lines
-        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
-
       public:
         TFloat * const embedded_counts;
         const TFloat * const sample_total_counts;

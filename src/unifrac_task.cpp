@@ -18,6 +18,9 @@
 
 #endif
 
+// Use a moderate sized step, a few cache lines
+#define STEP_SIZE(TFloat) (64*4/sizeof(TFloat))
+
 bool SUCMP_NM::found_gpu() {
 #if defined(OMPGPU)
   return omp_get_num_devices() > 0;
@@ -555,7 +558,7 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
     bool * const __restrict__ zcheck = this->zcheck;
     TFloat * const __restrict__ sums = this->sums;
 
-    const uint64_t step_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // check for zero values and pre-compute single column sums
@@ -665,7 +668,7 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
     const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
 
-    const uint64_t step_size = SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
@@ -1012,7 +1015,7 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
     bool * const __restrict__ zcheck = this->zcheck;
     TFloat * const __restrict__ sums = this->sums;
 
-    const uint64_t step_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // check for zero values and pre-compute single column sums
@@ -1123,7 +1126,7 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
-    const uint64_t step_size = SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
@@ -1205,7 +1208,7 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
 
     const TFloat g_unifrac_alpha = this->task_p->g_unifrac_alpha;
 
-    const uint64_t step_size = SUCMP_NM::UnifracGeneralizedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
@@ -1287,7 +1290,7 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs)
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
-    const uint64_t step_size = SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
     // quick hack, to be finished
 
@@ -1707,7 +1710,7 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
     bool   * const __restrict__ zcheck = this->zcheck;
     TFloat * const __restrict__ stripe_sums = this->stripe_sums;
 
-    const uint64_t step_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = filled_embs/64;
@@ -1874,7 +1877,7 @@ void SUCMP_NM::UnifracUnnormalizedUnweightedTask<TFloat>::_run(unsigned int fill
     bool   * const __restrict__ zcheck = this->zcheck;
     TFloat * const __restrict__ stripe_sums = this->stripe_sums;
 
-    const uint64_t step_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = filled_embs/64;
@@ -2039,7 +2042,7 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) 
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
     TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
 
-    const uint64_t step_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = (filled_embs+31)/32; // round up
@@ -2137,7 +2140,7 @@ void SUCMP_NM::UnifracVawUnnormalizedUnweightedTask<TFloat>::_run(unsigned int f
     const TFloat  * const __restrict__ sample_total_counts = this->sample_total_counts;
     TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
 
-    const uint64_t step_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = (filled_embs+31)/32; // round up
