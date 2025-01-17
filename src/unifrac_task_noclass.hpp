@@ -44,11 +44,25 @@ namespace SUCMP_NM {
     template<class T>
     void acc_destroy_buf(T *buf, uint64_t start, uint64_t end);
 
+    // compute totals
     template<class TFloat>
     void compute_stripes_totals(
 		TFloat * const __restrict__ dm_stripes_buf,
 		const TFloat * const __restrict__ dm_stripes_total_buf,
 		const uint64_t bufels);
+
+    // Compute UnnormalizedWeighted step
+    template<class TFloat>
+    void run_UnnormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		bool * const __restrict__ zcheck,
+		TFloat * const __restrict__ sums);
+
 }
 
 #endif

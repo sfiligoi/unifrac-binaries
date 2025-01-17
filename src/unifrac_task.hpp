@@ -343,7 +343,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+           run_UnnormalizedWeightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths,  this->get_embedded_proportions(), this->dm_stripes.buf,
+			  this->zcheck, this->sums);
+
+           // next iteration will use the alternative space
+           this->set_alt_embedded_proportions();
+	}
       protected:
         // temp buffers
         bool     *zcheck;
