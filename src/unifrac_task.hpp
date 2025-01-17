@@ -181,7 +181,9 @@ namespace SUCMP_NM {
 
         }
 
-        void compute_totals();
+        void compute_totals() {
+          compute_stripes_totals(this->dm_stripes.buf, this->dm_stripes_total.buf, this->dm_stripes.bufels);
+	}
 
         //
         // ===== Internal, do not use directly =======

@@ -44,6 +44,11 @@ namespace SUCMP_NM {
     template<class T>
     void acc_destroy_buf(T *buf, uint64_t start, uint64_t end);
 
+    template<class TFloat>
+    void compute_stripes_totals(
+		TFloat * const __restrict__ dm_stripes_buf,
+		const TFloat * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels);
 }
 
 #endif

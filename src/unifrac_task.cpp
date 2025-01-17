@@ -94,12 +94,11 @@ bool SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::need_alt() {
 #endif
 }
 
-template<class TFloat, class TEmb>
-void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {         
-         TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-   const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-   const uint64_t bufels = this->dm_stripes.bufels;
-
+template<class TFloat>
+void SUCMP_NM::compute_stripes_totals(
+		TFloat * const __restrict__ dm_stripes_buf,
+		const TFloat * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels) { 
 #if defined(OMPGPU)
 #pragma omp target teams distribute parallel for simd default(shared)
 #elif defined(_OPENACC)
