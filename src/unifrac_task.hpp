@@ -70,7 +70,7 @@ namespace SUCMP_NM {
       UnifracTaskVector(std::vector<double*> &_dm_stripes, const su::task_parameters* _task_p)
       : dm_stripes(_dm_stripes), task_p(_task_p)
       , start_idx(task_p->start), stop_idx(task_p->stop), n_samples(task_p->n_samples)
-      , n_samples_r(block_round(n_samples))
+      , n_samples_r(((n_samples + 64-1)/64)*64) // round up to 64 elements (2kbit/4kbits)
       , bufels(n_samples_r * (stop_idx-start_idx))
       , buf((dm_stripes[start_idx]==NULL) ? NULL : (TFloat*) malloc(sizeof(TFloat) * bufels)) // dm_stripes could be null, in which case keep it null
       {
@@ -118,8 +118,6 @@ namespace SUCMP_NM {
           free(buf);
         }
       }
-
-      static uint64_t block_round(uint64_t bufsize);
 
     private:
       UnifracTaskVector() = delete;
