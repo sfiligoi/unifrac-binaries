@@ -128,7 +128,7 @@ namespace SUCMP_NM {
         {
             acc_create_buf(lengths,0,max_embs);
             acc_create_buf(my_embedded_proportions,0,embsize);
-            if (need_alt()) {
+            if (acc_need_alt()) {
                my_embedded_proportions_alt = (TEmb *) malloc(sizeof(TEmb)*embsize);
                acc_create_buf(my_embedded_proportions_alt,0,embsize);
             }
@@ -188,10 +188,6 @@ namespace SUCMP_NM {
         //
         // ===== Internal, do not use directly =======
         //
-
-	// is the implementation async, and need the alt structures?
-	static bool need_alt();
-
 
         // Just copy from one buffer to another
         // May convert between fp formats in the process (if TOut!=double)

@@ -1,5 +1,6 @@
+#include <math.h> 
 #include <algorithm> 
-#include "unifrac_task.hpp"
+#include "unifrac_task_noclass.hpp"
 #include <cstdlib>
 
 #if defined(OMPGPU)
@@ -85,8 +86,7 @@ void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
 }
 
 // is the implementation async, and need the alt structures?
-template<class TFloat, class TEmb>
-bool SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::need_alt() {
+bool SUCMP_NM::acc_need_alt() {
 #if defined(_OPENACC) || defined(OMPGPU)
    return true;
 #else

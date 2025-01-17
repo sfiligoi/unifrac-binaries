@@ -31,12 +31,12 @@
 
 #endif
 
+// embed in this file, to properly instantiate the templatized functions
+#include "unifrac_task_noclass.cpp"
+
 #include "unifrac_task.hpp"
 // Note: unifrac_task.hpp defines SUCMP_NM, needed by unifrac_cmp.hpp
 #include "unifrac_cmp.hpp"
-
-// embed in this file, to properly instantiate the templatized functions
-#include "unifrac_task.cpp"
 
 using namespace SUCMP_NM;
 
