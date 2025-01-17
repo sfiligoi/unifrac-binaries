@@ -54,6 +54,21 @@ namespace SUCMP_NM {
 		const TFloat * const __restrict__ dm_stripes_total_buf,
 		const uint64_t bufels);
 
+    /* Unifrac tasks
+     *
+     * All functions utilize the same basic data structures:
+     *
+     * dm_stripes vector<double> the stripes of the distance matrix being accumulated 
+     *      into for unique branch length
+     * dm_stripes vector<double> the stripes of the distance matrix being accumulated 
+     *      into for total branch length (e.g., to normalize unweighted unifrac)
+     * embedded_proportions <double*> the proportions vector for a sample, or rather
+     *      the counts vector normalized to 1. this vector is embedded as it is 
+     *      duplicated: if A, B and C are proportions for features A, B, and C, the
+     *      vector will look like [A B C A B C].
+     * length <double> the branch length of the current node to its parent.
+     */
+
     // Compute UnnormalizedWeighted step
     template<class TFloat>
     void run_UnnormalizedWeightedTask(
@@ -117,6 +132,26 @@ namespace SUCMP_NM {
 		TFloat * const __restrict__ dm_stripes_buf,
 		TFloat * const __restrict__ dm_stripes_total_buf,
 		const TFloat g_unifrac_alpha);
+
+    /* Unifrac vaw tasks
+     *
+     * All functions utilize the same basic data structures:
+     *
+     * dm_stripes vector<double> the stripes of the distance matrix being accumulated 
+     *      into for unique branch length
+     * dm_stripes vector<double> the stripes of the distance matrix being accumulated 
+     *      into for total branch length (e.g., to normalize unweighted unifrac)
+     * embedded_proportions <double*> the proportions vector for a sample, or rather
+     *      the counts vector normalized to 1. this vector is embedded as it is 
+     *      duplicated: if A, B and C are proportions for features A, B, and C, the
+     *      vector will look like [A B C A B C].
+     * embedded_counts <double*> the counts vector embedded in the same way and order as
+     *      embedded_proportions. the values of this array are unnormalized feature 
+     *      counts for the subtree.
+     * sample_total_counts <double*> the total unnormalized feature counts for all samples
+     *      embedded in the same way and order as embedded_proportions.
+     * length <double> the branch length of the current node to its parent.
+     */
 
     // Compute VawUnnormalizedWeighted step
     template<class TFloat>
