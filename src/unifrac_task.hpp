@@ -390,7 +390,17 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_NormalizedWeightedTask(
+			    filled_embs,
+			    this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			    this->lengths, this->get_embedded_proportions(),
+			    this->dm_stripes.buf, this->dm_stripes_total.buf,
+			    this->zcheck, this->sums);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
       protected:
         // temp buffers
         bool     *zcheck;
@@ -576,7 +586,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+           run_VawUnnormalizedWeightedTask(
+			   filled_embs,
+			   this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			   this->lengths, this->get_embedded_proportions(), this->embedded_counts, this->sample_total_counts,
+			   this->dm_stripes.buf);
+
+           // next iteration will use the alternative space
+           this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracVawNormalizedWeightedTask : public UnifracVawTask<TFloat,TFloat> {
@@ -591,7 +610,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_VawNormalizedWeightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(), this->embedded_counts, this->sample_total_counts,
+			  this->dm_stripes.buf, this->dm_stripes_total.buf);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracVawUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {

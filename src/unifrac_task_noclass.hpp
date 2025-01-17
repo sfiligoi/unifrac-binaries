@@ -63,6 +63,43 @@ namespace SUCMP_NM {
 		bool * const __restrict__ zcheck,
 		TFloat * const __restrict__ sums);
 
+    // Compute NormalizedWeighted step
+    template<class TFloat>
+    void run_NormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf,
+		bool * const __restrict__ zcheck,
+		TFloat * const __restrict__ sums);
+
+    // Compute VawUnnormalizedWeighted step
+    template<class TFloat>
+    void run_VawUnnormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		const TFloat * const __restrict__ embedded_counts,
+		const TFloat * const __restrict__ sample_total_counts,
+		TFloat * const __restrict__ dm_stripes_buf);
+
+    // Compute VawNormalizedWeighted step
+    template<class TFloat>
+    void run_VawNormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		const TFloat * const __restrict__ embedded_counts,
+		const TFloat * const __restrict__ sample_total_counts,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf);
 }
 
 #endif
