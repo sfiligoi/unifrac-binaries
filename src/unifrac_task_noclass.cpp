@@ -32,59 +32,6 @@ bool SUCMP_NM::found_gpu() {
 #endif
 }
 
-void SUCMP_NM::acc_wait() {
-#if defined(OMPGPU)
-    // TODO: Change if we ever implement async in OMPGPU
-#elif defined(_OPENACC)
-#pragma acc wait
-#endif
-}
-
-template<class T>
-void SUCMP_NM::acc_create_buf(T *buf, uint64_t start, uint64_t end) {
-#if defined(OMPGPU)
-#pragma omp target enter data map(alloc:buf[start:end])
-#elif defined(_OPENACC)
-#pragma acc enter data create(buf[start:end])
-#endif
-}
-
-template<class T>
-void SUCMP_NM::acc_copyin_buf(T *buf, uint64_t start, uint64_t end) {
-#if defined(OMPGPU)
-#pragma omp target enter data map(to:buf[start:end])
-#elif defined(_OPENACC)
-#pragma acc enter data copyin(buf[start:end])
-#endif    
-}
-
-template<class T>
-void SUCMP_NM::acc_update_device(T *buf, uint64_t start, uint64_t end) {
-#if defined(OMPGPU)
-#pragma omp target update to(buf[start:end])
-#elif defined(_OPENACC)
-#pragma acc update device(buf[start:end])
-#endif
-}
-
-template<class T>
-void SUCMP_NM::acc_copyout_buf(T *buf, uint64_t start, uint64_t end) {
-#if defined(OMPGPU)
-#pragma omp target exit data map(from:buf[start:end])
-#elif defined(_OPENACC)
-#pragma acc exit data copyout(buf[start:end])
-#endif
-}
-
-template<class T>
-void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
-#if defined(OMPGPU)
-#pragma omp target exit data map(delete:buf[start:end])
-#elif defined(_OPENACC)
-#pragma acc exit data delete(buf[start:end])
-#endif
-}
-
 // is the implementation async, and need the alt structures?
 bool SUCMP_NM::acc_need_alt() {
 #if defined(_OPENACC) || defined(OMPGPU)
@@ -94,8 +41,63 @@ bool SUCMP_NM::acc_need_alt() {
 #endif
 }
 
+void SUCMP_NM::acc_wait() {
+#if defined(OMPGPU)
+    // TODO: Change if we ever implement async in OMPGPU
+#elif defined(_OPENACC)
+#pragma acc wait
+#endif
+}
+
+namespace SUCMP_NM {
+
+template<class T>
+static inline void acc_create_buf_T(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target enter data map(alloc:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc enter data create(buf[start:end])
+#endif
+}
+
+template<class T>
+static inline void acc_copyin_buf_T(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target enter data map(to:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc enter data copyin(buf[start:end])
+#endif    
+}
+
+template<class T>
+static inline void acc_update_device_T(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target update to(buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc update device(buf[start:end])
+#endif
+}
+
+template<class T>
+static inline void acc_copyout_buf_T(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target exit data map(from:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc exit data copyout(buf[start:end])
+#endif
+}
+
+template<class T>
+static inline void acc_destroy_buf_T(T *buf, uint64_t start, uint64_t end) {
+#if defined(OMPGPU)
+#pragma omp target exit data map(delete:buf[start:end])
+#elif defined(_OPENACC)
+#pragma acc exit data delete(buf[start:end])
+#endif
+}
+
 template<class TFloat>
-void SUCMP_NM::compute_stripes_totals(
+static inline void compute_stripes_totals_T(
 		TFloat * const __restrict__ dm_stripes_buf,
 		const TFloat * const __restrict__ dm_stripes_total_buf,
 		const uint64_t bufels) { 
@@ -107,6 +109,7 @@ void SUCMP_NM::compute_stripes_totals(
    for(uint64_t idx=0; idx< bufels; idx++)
        dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
 }
+
 
 #if defined(_OPENACC) || defined(OMPGPU)
 // will not use popcnt for accelerated compute
@@ -522,6 +525,8 @@ static inline void UnnormalizedWeighted8(
 }
 #endif
 
+} // end namespace
+
 template<class TFloat>
 void SUCMP_NM::run_UnnormalizedWeightedTask(
 		const unsigned int filled_embs,
@@ -694,6 +699,8 @@ void SUCMP_NM::run_VawUnnormalizedWeightedTask(
       }
     }
 }
+
+namespace SUCMP_NM {
 
 // Single step in computing NormalizedWeighted Unifrac
 template<class TFloat>
@@ -964,6 +971,8 @@ static inline void NormalizedWeighted8(
        } // (allzero_k && allzero_l)
 }
 #endif
+
+} // end namespace
 
 template<class TFloat>
 void SUCMP_NM::run_NormalizedWeightedTask(
@@ -2128,5 +2137,110 @@ void SUCMP_NM::run_VawUnnormalizedUnweightedTask(
 
       }
     }
+}
+
+/*
+ * Create concrete implementation wrappers
+ */
+
+template<>
+void SUCMP_NM::acc_create_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(bool *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+
+template<>
+void SUCMP_NM::acc_copyin_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyin_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyin_buf(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyin_buf(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+
+template<>
+void SUCMP_NM::acc_update_device(float *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_update_device(double *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_update_device(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_update_device(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+
+template<>
+void SUCMP_NM::acc_copyout_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_copyout_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyout_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_copyout_buf_T(buf, start, end);
+}
+
+template<>
+void SUCMP_NM::acc_destroy_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(bool *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+
+template<>
+void SUCMP_NM::compute_stripes_totals(
+		float * const __restrict__ dm_stripes_buf,
+		const float * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels) {
+   compute_stripes_totals_T(dm_stripes_buf, dm_stripes_total_buf, bufels);
+}
+
+template<>
+void SUCMP_NM::compute_stripes_totals(
+		double * const __restrict__ dm_stripes_buf,
+		const double * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels) {
+   compute_stripes_totals_T(dm_stripes_buf, dm_stripes_total_buf, bufels);
 }
 

@@ -554,7 +554,7 @@ namespace SUCMP_NM {
         , sample_total_counts(initialize_sample_counts(this->dm_stripes.n_samples, this->dm_stripes.n_samples_r, _task_p, _sample_counts))
         {
           acc_create_buf(embedded_counts, 0, this->embsize);
-          acc_copyin_buf(sample_total_counts, 0 , this->dm_stripes.n_samples_r);
+          acc_copyin_buf(const_cast<TFloat *>(sample_total_counts), 0 , this->dm_stripes.n_samples_r); // const after the contructor
         }
 
        UnifracVawTask(const UnifracVawTask<TFloat,TEmb>& ) = delete;
@@ -562,10 +562,10 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
-          acc_destroy_buf(sample_total_counts, 0 , this->dm_stripes.n_samples_r);
+          acc_destroy_buf(const_cast<TFloat *>(sample_total_counts), 0 , this->dm_stripes.n_samples_r);
           acc_destroy_buf(embedded_counts, 0, this->embsize);
 
-          free((void*) sample_total_counts); // while const for the life of this, not const past its lifetime
+          free(const_cast<TFloat *>(sample_total_counts)); // while const for the life of this, not const past its lifetime
           free(embedded_counts);
        }
 
