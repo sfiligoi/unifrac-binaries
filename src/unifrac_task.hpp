@@ -19,6 +19,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef SUCMP_NM
+/* create a default */
+#define SUCMP_NM su_cpu
+#endif
+
 namespace SUCMP_NM {
 
     // Note: This adds a copy, which is suboptimal

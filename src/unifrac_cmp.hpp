@@ -17,6 +17,11 @@
 
 #include "unifrac_internal.hpp"
 
+#ifndef SUCMP_NM
+/* create a default */
+#define SUCMP_NM su_cpu
+#endif
+
 namespace SUCMP_NM {
 
   // Returns True iff a GPU can be used

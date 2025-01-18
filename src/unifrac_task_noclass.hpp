@@ -13,6 +13,11 @@
 
 #include <stdint.h>
 
+#ifndef SUCMP_NM
+/* create a default */
+#define SUCMP_NM su_cpu
+#endif
+
 namespace SUCMP_NM {
 
     // do we have access to a GPU?
