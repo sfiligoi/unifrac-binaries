@@ -22,7 +22,7 @@
 // Use a moderate sized step, a few cache lines
 #define STEP_SIZE(TFloat) (64*4/sizeof(TFloat))
 
-bool SUCMP_NM::found_gpu() {
+bool SUCMP_NM::acc_found_gpu() {
 #if defined(OMPGPU)
   return omp_get_num_devices() > 0;
 #elif defined(_OPENACC)

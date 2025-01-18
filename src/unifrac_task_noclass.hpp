@@ -16,7 +16,7 @@
 namespace SUCMP_NM {
 
     // do we have access to a GPU?
-    bool found_gpu();
+    bool acc_found_gpu();
 
     // is the implementation async, and need the alt structures?
     bool acc_need_alt();
