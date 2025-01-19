@@ -7,8 +7,6 @@
  * See LICENSE file for more details
  */
 
-#ifdef SUCMP_NM
-
 /* Note: Allow multiple definitions of this header, using different SUCMP_NM */
 
 #include "task_parameters.hpp"
@@ -43,4 +41,3 @@ namespace SUCMP_NM {
 
 }
 
-#endif /* SUCMP_NM */
