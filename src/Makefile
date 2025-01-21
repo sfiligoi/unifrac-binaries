@@ -1,9 +1,10 @@
 .PHONY: all main api test test_binaries install clean rapi_test
 
-CXX := h5c++
+# will use h5c++ for most of the objects
+# but will use the plain CXX for accelerator-enabled code
 
 PLATFORM := $(shell uname -s)
-COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
+COMPILER := $(shell (h5c++ -v 2>&1) | tr A-Z a-z )
 
 ifeq ($(BUILD_VARIANT),)
 	SSU = ssu
@@ -147,23 +148,23 @@ api: lib$(SSU).so
 test_binaries: test_su test_ska test_api
 
 test_su: test_su.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+	h5c++ $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o api.o -llz4 $(BLASLIB) -lpthread
+	h5c++ $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o api.o -llz4 $(BLASLIB) -lpthread
 test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+	h5c++ $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 
 $(SSU): su.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $(SSU) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+	h5c++ $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $(SSU) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
 $(FPD): faithpd.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $(FPD) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+	h5c++ $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $(FPD) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
 
 lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(LDDFLAGS) -o lib$(SSU).so tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
+	h5c++ $(LDDFLAGS) -o lib$(SSU).so tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
-	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
+	h5c++ $(CPPFLAGS) api.cpp -c -o api.o -fPIC
 
 unifrac_task_cpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp
 	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
@@ -174,15 +175,15 @@ unifrac_task_ompgpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp
 	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 
 unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
-	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 
 unifrac_cmp_acc.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
-	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
+	h5c++ $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
 unifrac_cmp_ompgpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
-	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
+	h5c++ $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	h5c++ $(CPPFLAGS) -c $< -o $@
 
 test: test_binaries
 	./test_su
