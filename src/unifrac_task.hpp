@@ -7,6 +7,10 @@
  * See LICENSE file for more details
  */
 
+#ifndef __UNIFRAC_TASKS
+#define __UNIFRAC_TASKS 1
+
+#include "unifrac_task_noclass.hpp"
 #include "task_parameters.hpp"
 #include <math.h>
 #include <vector>
@@ -15,40 +19,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-#ifndef __UNIFRAC_TASKS
-#define __UNIFRAC_TASKS 1
+#ifndef SUCMP_NM
+/* create a default */
+#define SUCMP_NM su_cpu
+#endif
 
 namespace SUCMP_NM {
-
-    // do we have access to a GPU?
-    bool found_gpu();
-
-    // wait for the async compute to finish
-    void acc_wait();
-
-    // create the equivalent buffer in the device memory space, if partitioned
-    // the content in undefined
-    template<class T>
-    void acc_create_buf(T *buf, uint64_t start, uint64_t end);
-
-    // create the equivalent buffer in the device memory space, if partitioned
-    // also copy the buffer over
-    template<class T>
-    void acc_copyin_buf(T *buf, uint64_t start, uint64_t end);
-
-    // make a copy from host to device buffer, if partitioned
-    template<class T>
-    void acc_update_device(T *buf, uint64_t start, uint64_t end);
-
-    // make a copy from device to host buffer, if partitioned
-    // destroy the equivalent buffer in the device memory space, if partitioned
-    template<class T>
-    void acc_copyout_buf(T *buf, uint64_t start, uint64_t end);
-
-    // destroy the equivalent buffer in the device memory space, if partitioned
-    template<class T>
-    void acc_destroy_buf(T *buf, uint64_t start, uint64_t end);
 
     // Note: This adds a copy, which is suboptimal
     //       But was the easiest way to get a contiguous buffer
@@ -70,7 +46,7 @@ namespace SUCMP_NM {
       UnifracTaskVector(std::vector<double*> &_dm_stripes, const su::task_parameters* _task_p)
       : dm_stripes(_dm_stripes), task_p(_task_p)
       , start_idx(task_p->start), stop_idx(task_p->stop), n_samples(task_p->n_samples)
-      , n_samples_r(block_round(n_samples))
+      , n_samples_r(((n_samples + 64-1)/64)*64) // round up to 64 elements (2kbit/4kbits)
       , bufels(n_samples_r * (stop_idx-start_idx))
       , buf((dm_stripes[start_idx]==NULL) ? NULL : (TFloat*) malloc(sizeof(TFloat) * bufels)) // dm_stripes could be null, in which case keep it null
       {
@@ -119,8 +95,6 @@ namespace SUCMP_NM {
         }
       }
 
-      static uint64_t block_round(uint64_t bufsize);
-
     private:
       UnifracTaskVector() = delete;
       UnifracTaskVector operator=(const UnifracTaskVector&other) const = delete;
@@ -159,7 +133,7 @@ namespace SUCMP_NM {
         {
             acc_create_buf(lengths,0,max_embs);
             acc_create_buf(my_embedded_proportions,0,embsize);
-            if (need_alt()) {
+            if (acc_need_alt()) {
                my_embedded_proportions_alt = (TEmb *) malloc(sizeof(TEmb)*embsize);
                acc_create_buf(my_embedded_proportions_alt,0,embsize);
             }
@@ -212,15 +186,13 @@ namespace SUCMP_NM {
 
         }
 
-        void compute_totals();
+        void compute_totals() {
+          compute_stripes_totals(this->dm_stripes.buf, this->dm_stripes_total.buf, this->dm_stripes.bufels);
+	}
 
         //
         // ===== Internal, do not use directly =======
         //
-
-	// is the implementation async, and need the alt structures?
-	static bool need_alt();
-
 
         // Just copy from one buffer to another
         // May convert between fp formats in the process (if TOut!=double)
@@ -320,10 +292,6 @@ namespace SUCMP_NM {
 
     template<class TFloat, class TEmb>
     class UnifracTask : public UnifracTaskBase<TFloat,TEmb> {
-      protected:
-        // Use a moderate sized step, a few cache lines
-        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
-
       public:
 
         UnifracTask(std::vector<double*> &_dm_stripes, std::vector<double*> &_dm_stripes_total, unsigned int _max_embs, const su::task_parameters* _task_p)
@@ -376,7 +344,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+           run_UnnormalizedWeightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths,  this->get_embedded_proportions(), this->dm_stripes.buf,
+			  this->zcheck, this->sums);
+
+           // next iteration will use the alternative space
+           this->set_alt_embedded_proportions();
+	}
       protected:
         // temp buffers
         bool     *zcheck;
@@ -414,7 +391,17 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_NormalizedWeightedTask(
+			    filled_embs,
+			    this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			    this->lengths, this->get_embedded_proportions(),
+			    this->dm_stripes.buf, this->dm_stripes_total.buf,
+			    this->zcheck, this->sums);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
       protected:
         // temp buffers
         bool     *zcheck;
@@ -423,8 +410,6 @@ namespace SUCMP_NM {
     template<class TFloat>
     class UnifracCommonUnweightedTask : public UnifracTask<TFloat,uint64_t> {
       public:
-        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
-
         static constexpr unsigned int RECOMMENDED_MAX_EMBS = UnifracTask<TFloat,uint64_t>::RECOMMENDED_MAX_EMBS_BOOL;
 
         // Note: _max_emb MUST be multiple of 64
@@ -475,7 +460,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_UnweightedTask(
+			 filled_embs,
+			 this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			 this->lengths, this->get_embedded_proportions(), this->dm_stripes.buf, this->dm_stripes_total.buf,
+			 this->sums, this->zcheck, this->stripe_sums);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracUnnormalizedUnweightedTask : public UnifracCommonUnweightedTask<TFloat> {
@@ -490,7 +484,17 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_UnnormalizedUnweightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(),
+			  this->dm_stripes.buf,
+			  this->sums, this->zcheck, this->stripe_sums);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
 
     template<class TFloat>
@@ -506,7 +510,17 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_GeneralizedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(),
+			  this->dm_stripes.buf, this->dm_stripes_total.buf,
+			  (TFloat) this->task_p->g_unifrac_alpha);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
 
     /* void unifrac_vaw tasks
@@ -531,10 +545,6 @@ namespace SUCMP_NM {
      */
     template<class TFloat, class TEmb>
     class UnifracVawTask : public UnifracTaskBase<TFloat,TEmb> {
-      protected:
-        // Use a moderate sized step, a few cache lines
-        static constexpr unsigned int step_size = 64*4/sizeof(TFloat);
-
       public:
         TFloat * const embedded_counts;
         const TFloat * const sample_total_counts;
@@ -549,7 +559,7 @@ namespace SUCMP_NM {
         , sample_total_counts(initialize_sample_counts(this->dm_stripes.n_samples, this->dm_stripes.n_samples_r, _task_p, _sample_counts))
         {
           acc_create_buf(embedded_counts, 0, this->embsize);
-          acc_copyin_buf(sample_total_counts, 0 , this->dm_stripes.n_samples_r);
+          acc_copyin_buf(const_cast<TFloat *>(sample_total_counts), 0 , this->dm_stripes.n_samples_r); // const after the contructor
         }
 
        UnifracVawTask(const UnifracVawTask<TFloat,TEmb>& ) = delete;
@@ -557,10 +567,10 @@ namespace SUCMP_NM {
 
        virtual ~UnifracVawTask() 
        {
-          acc_destroy_buf(sample_total_counts, 0 , this->dm_stripes.n_samples_r);
+          acc_destroy_buf(const_cast<TFloat *>(sample_total_counts), 0 , this->dm_stripes.n_samples_r);
           acc_destroy_buf(embedded_counts, 0, this->embsize);
 
-          free((void*) sample_total_counts); // while const for the life of this, not const past its lifetime
+          free(const_cast<TFloat *>(sample_total_counts)); // while const for the life of this, not const past its lifetime
           free(embedded_counts);
        }
 
@@ -606,7 +616,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+           run_VawUnnormalizedWeightedTask(
+			   filled_embs,
+			   this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			   this->lengths, this->get_embedded_proportions(), this->embedded_counts, this->sample_total_counts,
+			   this->dm_stripes.buf);
+
+           // next iteration will use the alternative space
+           this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracVawNormalizedWeightedTask : public UnifracVawTask<TFloat,TFloat> {
@@ -621,7 +640,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_VawNormalizedWeightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(), this->embedded_counts, this->sample_total_counts,
+			  this->dm_stripes.buf, this->dm_stripes_total.buf);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracVawUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {
@@ -636,7 +664,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_VawUnweightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(), this->embedded_counts, this->sample_total_counts,
+			  this->dm_stripes.buf, this->dm_stripes_total.buf);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracVawUnnormalizedUnweightedTask : public UnifracVawTask<TFloat,uint32_t> {
@@ -651,7 +688,16 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_VawUnnormalizedUnweightedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(), this->embedded_counts, this->sample_total_counts,
+			  this->dm_stripes.buf);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
     template<class TFloat>
     class UnifracVawGeneralizedTask : public UnifracVawTask<TFloat,TFloat> {
@@ -666,7 +712,17 @@ namespace SUCMP_NM {
 
         virtual void run(unsigned int filled_embs) {_run(filled_embs);}
 
-        void _run(unsigned int filled_embs);
+        void _run(unsigned int filled_embs) {
+          run_VawGeneralizedTask(
+			  filled_embs,
+			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
+			  this->lengths, this->get_embedded_proportions(), this->embedded_counts,this->sample_total_counts,
+			  this->dm_stripes.buf, this->dm_stripes_total.buf,
+			  (TFloat) this->task_p->g_unifrac_alpha);
+
+          // next iteration will use the alternative space
+          this->set_alt_embedded_proportions();
+	}
     };
 
 }

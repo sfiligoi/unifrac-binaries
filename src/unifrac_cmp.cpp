@@ -14,31 +14,17 @@
 #include <thread>
 #include <algorithm>
 
-#include "unifrac_internal.hpp"
-
-// We must explicitly set SUCMP_NM, to distinguish between the various flavors
-#if defined(OMPGPU)
-
-#define SUCMP_NM su_ompgpu
-
-#elif defined(_OPENACC)
-
-#define SUCMP_NM su_acc
-
-#else
-
-#define SUCMP_NM su_cpu
-
-#endif
-
-#include "unifrac_task.hpp"
-// Note: unifrac_task.hpp defines SUCMP_NM, needed by unifrac_cmp.hpp
 #include "unifrac_cmp.hpp"
-
-// embed in this file, to properly instantiate the templatized functions
-#include "unifrac_task.cpp"
+#include "unifrac_internal.hpp"
+#include "unifrac_task.hpp"
 
 using namespace SUCMP_NM;
+
+// do we have access to a GPU?
+// Just a wrapper, to expose it to the rest of the code
+bool SUCMP_NM::found_gpu() {
+  return acc_found_gpu();
+}
 
 template<class TaskT, class TFloat>
 inline void unifracTT(const su::biom_interface &table,

@@ -7,8 +7,6 @@
  * See LICENSE file for more details
  */
 
-#ifdef SUCMP_NM
-
 /* Note: Allow multiple definitions of this header, using different SUCMP_NM */
 
 #include "task_parameters.hpp"
@@ -16,6 +14,11 @@
 #include "biom_interface.hpp"
 
 #include "unifrac_internal.hpp"
+
+#ifndef SUCMP_NM
+/* create a default */
+#define SUCMP_NM su_cpu
+#endif
 
 namespace SUCMP_NM {
 
@@ -38,4 +41,3 @@ namespace SUCMP_NM {
 
 }
 
-#endif /* SUCMP_NM */

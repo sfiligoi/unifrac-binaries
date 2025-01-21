@@ -58,13 +58,13 @@ endif
 LDDFLAGS += $(MPFLAG)
 CPPFLAGS += $(MPFLAG)
 
-UNIFRAC_FILES = unifrac_internal.o unifrac_cmp_cpu.o
+UNIFRAC_FILES = unifrac_internal.o unifrac_task_cpu.o unifrac_cmp_cpu.o
 
 ifndef NOGPU
    ifeq ($(BUILD_OFFLOAD),ompgpu)
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
-                UNIFRAC_FILES += unifrac_cmp_ompgpu.o
+                UNIFRAC_FILES += unifrac_task_ompgpu.o unifrac_cmp_ompgpu.o
 		OMPGPUCPPFLAGS += -mp=gpu -DOMPGPU=1 -noacc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
 	            OMPGPUCPPFLAGS += -gpu=ccall
@@ -79,7 +79,7 @@ ifndef NOGPU
    else 
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_ACC=1
-                UNIFRAC_FILES += unifrac_cmp_acc.o
+                UNIFRAC_FILES += unifrac_task_acc.o unifrac_cmp_acc.o
 		ACCCPPFLAGS += -acc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
 	            ACCCPPFLAGS += -gpu=ccall
@@ -165,13 +165,21 @@ lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
 
-unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.cpp unifrac_task.hpp biom_interface.hpp tree.hpp
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+unifrac_task_cpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp
+	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 
-unifrac_cmp_acc.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.cpp unifrac_task.hpp biom_interface.hpp tree.hpp
-	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -c $< -o $@
-unifrac_cmp_ompgpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.cpp unifrac_task.hpp biom_interface.hpp tree.hpp
-	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -c $< -o $@
+unifrac_task_acc.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp
+	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
+unifrac_task_ompgpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp
+	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
+
+unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
+	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
+
+unifrac_cmp_acc.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
+	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
+unifrac_cmp_ompgpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
+	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CPPFLAGS) -c $< -o $@

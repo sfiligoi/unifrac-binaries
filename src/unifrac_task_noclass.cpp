@@ -1,5 +1,6 @@
+#include <math.h> 
 #include <algorithm> 
-#include "unifrac_task.hpp"
+#include "unifrac_task_noclass.hpp"
 #include <cstdlib>
 
 #if defined(OMPGPU)
@@ -18,13 +19,25 @@
 
 #endif
 
-bool SUCMP_NM::found_gpu() {
+// Use a moderate sized step, a few cache lines
+#define STEP_SIZE(TFloat) (64*4/sizeof(TFloat))
+
+bool SUCMP_NM::acc_found_gpu() {
 #if defined(OMPGPU)
   return omp_get_num_devices() > 0;
 #elif defined(_OPENACC)
   return acc_get_device_type() != acc_device_host;
 #else
   return false;
+#endif
+}
+
+// is the implementation async, and need the alt structures?
+bool SUCMP_NM::acc_need_alt() {
+#if defined(_OPENACC) || defined(OMPGPU)
+   return true;
+#else
+   return false;
 #endif
 }
 
@@ -36,8 +49,10 @@ void SUCMP_NM::acc_wait() {
 #endif
 }
 
+namespace SUCMP_NM {
+
 template<class T>
-void SUCMP_NM::acc_create_buf(T *buf, uint64_t start, uint64_t end) {
+static inline void acc_create_buf_T(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:buf[start:end])
 #elif defined(_OPENACC)
@@ -46,7 +61,7 @@ void SUCMP_NM::acc_create_buf(T *buf, uint64_t start, uint64_t end) {
 }
 
 template<class T>
-void SUCMP_NM::acc_copyin_buf(T *buf, uint64_t start, uint64_t end) {
+static inline void acc_copyin_buf_T(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target enter data map(to:buf[start:end])
 #elif defined(_OPENACC)
@@ -55,7 +70,7 @@ void SUCMP_NM::acc_copyin_buf(T *buf, uint64_t start, uint64_t end) {
 }
 
 template<class T>
-void SUCMP_NM::acc_update_device(T *buf, uint64_t start, uint64_t end) {
+static inline void acc_update_device_T(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target update to(buf[start:end])
 #elif defined(_OPENACC)
@@ -64,7 +79,7 @@ void SUCMP_NM::acc_update_device(T *buf, uint64_t start, uint64_t end) {
 }
 
 template<class T>
-void SUCMP_NM::acc_copyout_buf(T *buf, uint64_t start, uint64_t end) {
+static inline void acc_copyout_buf_T(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target exit data map(from:buf[start:end])
 #elif defined(_OPENACC)
@@ -73,7 +88,7 @@ void SUCMP_NM::acc_copyout_buf(T *buf, uint64_t start, uint64_t end) {
 }
 
 template<class T>
-void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
+static inline void acc_destroy_buf_T(T *buf, uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target exit data map(delete:buf[start:end])
 #elif defined(_OPENACC)
@@ -82,41 +97,10 @@ void SUCMP_NM::acc_destroy_buf(T *buf, uint64_t start, uint64_t end) {
 }
 
 template<class TFloat>
-uint64_t SUCMP_NM::UnifracTaskVector<TFloat>::block_round(uint64_t bufsize) {
-#if defined(_OPENACC) || defined(OMPGPU)
-
-#ifndef SMALLGPU
-  // defaultt on larger alignment, which improves performance on GPUs like V100
-  const uint64_t UNIFRAC_BLOCK=64;
-#else
-  // smaller GPUs prefer smaller allignment 
-  const uint64_t UNIFRAC_BLOCK=32;
-#endif
-
-#else
-  // CPUs don't need such a big alignment
-  const uint64_t UNIFRAC_BLOCK=16;
-#endif
-
-  return ((bufsize + UNIFRAC_BLOCK-1)/UNIFRAC_BLOCK)*UNIFRAC_BLOCK; // round up
-}
-
-// is the implementation async, and need the alt structures?
-template<class TFloat, class TEmb>
-bool SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::need_alt() {
-#if defined(_OPENACC) || defined(OMPGPU)
-   return true;
-#else
-   return false;
-#endif
-}
-
-template<class TFloat, class TEmb>
-void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {         
-         TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-   const TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-   const uint64_t bufels = this->dm_stripes.bufels;
-
+static inline void compute_stripes_totals_T(
+		TFloat * const __restrict__ dm_stripes_buf,
+		const TFloat * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels) { 
 #if defined(OMPGPU)
 #pragma omp target teams distribute parallel for simd default(shared)
 #elif defined(_OPENACC)
@@ -125,6 +109,7 @@ void SUCMP_NM::UnifracTaskBase<TFloat,TEmb>::compute_totals() {
    for(uint64_t idx=0; idx< bufels; idx++)
        dm_stripes_buf[idx]=dm_stripes_buf[idx]/dm_stripes_total_buf[idx];
 }
+
 
 #if defined(_OPENACC) || defined(OMPGPU)
 // will not use popcnt for accelerated compute
@@ -541,21 +526,17 @@ static inline void UnnormalizedWeighted8(
 #endif
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_UnnormalizedWeightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		bool * const __restrict__ zcheck,
+		TFloat * const __restrict__ sums) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-
-    bool * const __restrict__ zcheck = this->zcheck;
-    TFloat * const __restrict__ sums = this->sums;
-
-    const uint64_t step_size = SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // check for zero values and pre-compute single column sums
@@ -646,26 +627,20 @@ void SUCMP_NM::UnifracUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled
      } // for sk
     } // for ss
 #endif
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_VawUnnormalizedWeightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		const TFloat * const __restrict__ embedded_counts,
+		const TFloat * const __restrict__ sample_total_counts,
+		TFloat * const __restrict__ dm_stripes_buf) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
-    const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-
-    const uint64_t step_size = SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
@@ -721,9 +696,6 @@ void SUCMP_NM::UnifracVawUnnormalizedWeightedTask<TFloat>::_run(unsigned int fil
 
       }
     }
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 // Single step in computing NormalizedWeighted Unifrac
@@ -997,22 +969,18 @@ static inline void NormalizedWeighted8(
 #endif
 
 template<class TFloat>
-void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_NormalizedWeightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf,
+		bool * const __restrict__ zcheck,
+		TFloat * const __restrict__ sums) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-    TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-
-    bool * const __restrict__ zcheck = this->zcheck;
-    TFloat * const __restrict__ sums = this->sums;
-
-    const uint64_t step_size = SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // check for zero values and pre-compute single column sums
@@ -1103,27 +1071,21 @@ void SUCMP_NM::UnifracNormalizedWeightedTask<TFloat>::_run(unsigned int filled_e
      } // for sk
     } // for ss
 #endif
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_VawNormalizedWeightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		const TFloat * const __restrict__ embedded_counts,
+		const TFloat * const __restrict__ sample_total_counts,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
-    const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-    TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-
-    const uint64_t step_size = SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
@@ -1185,27 +1147,20 @@ void SUCMP_NM::UnifracVawNormalizedWeightedTask<TFloat>::_run(unsigned int fille
 
       }
     }
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_GeneralizedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf,
+		const TFloat g_unifrac_alpha) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-    TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-
-    const TFloat g_unifrac_alpha = this->task_p->g_unifrac_alpha;
-
-    const uint64_t step_size = SUCMP_NM::UnifracGeneralizedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     // point of thread
@@ -1265,29 +1220,21 @@ void SUCMP_NM::UnifracGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
 
       }
     }
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_VawGeneralizedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx, const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const TFloat * const __restrict__ embedded_proportions,
+		const TFloat * const __restrict__ embedded_counts,
+		const TFloat * const __restrict__ sample_total_counts ,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf,
+		const TFloat g_unifrac_alpha) {
 
-    const TFloat g_unifrac_alpha = this->task_p->g_unifrac_alpha;
-
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const TFloat * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    const TFloat * const __restrict__ embedded_counts = this->embedded_counts;
-    const TFloat * const __restrict__ sample_total_counts = this->sample_total_counts;
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-    TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-
-    const uint64_t step_size = SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
     // quick hack, to be finished
 
@@ -1352,9 +1299,6 @@ void SUCMP_NM::UnifracVawGeneralizedTask<TFloat>::_run(unsigned int filled_embs)
         }
       }
     }
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 // Single step in computing Unweighted Unifrac
@@ -1690,24 +1634,20 @@ static inline void UnweightedZerosAndSums(
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
+static inline void run_UnweightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const uint64_t * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf,
+		TFloat * const __restrict__ sums,
+		bool   * const __restrict__ zcheck,
+		TFloat * const __restrict__ stripe_sums) {
     static constexpr bool compute_total = true;
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const uint64_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-    TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-
-    TFloat * const __restrict__ sums = this->sums;
-    bool   * const __restrict__ zcheck = this->zcheck;
-    TFloat * const __restrict__ stripe_sums = this->stripe_sums;
-
-    const uint64_t step_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = filled_embs/64;
@@ -1852,29 +1792,22 @@ void SUCMP_NM::UnifracUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
       } // for sk
     } // for ss
 #endif
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracUnnormalizedUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
+static inline void run_UnnormalizedUnweightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const uint64_t * const __restrict__ embedded_proportions,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ sums,
+		bool   * const __restrict__ zcheck,
+		TFloat * const __restrict__ stripe_sums) {
     static constexpr bool compute_total = false;
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const uint64_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-
-    TFloat * const __restrict__ sums = this->sums;
-    bool   * const __restrict__ zcheck = this->zcheck;
-    TFloat * const __restrict__ stripe_sums = this->stripe_sums;
-
-    const uint64_t step_size = SUCMP_NM::UnifracUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = filled_embs/64;
@@ -2019,27 +1952,21 @@ void SUCMP_NM::UnifracUnnormalizedUnweightedTask<TFloat>::_run(unsigned int fill
       } // for sk
     } // for ss
 #endif
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_VawUnweightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const uint32_t * const __restrict__ embedded_proportions,
+		const TFloat  * const __restrict__ embedded_counts,
+		const TFloat  * const __restrict__ sample_total_counts,
+		TFloat * const __restrict__ dm_stripes_buf,
+		TFloat * const __restrict__ dm_stripes_total_buf) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const uint32_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    const TFloat  * const __restrict__ embedded_counts = this->embedded_counts;
-    const TFloat  * const __restrict__ sample_total_counts = this->sample_total_counts;
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-    TFloat * const __restrict__ dm_stripes_total_buf = this->dm_stripes_total.buf;
-
-    const uint64_t step_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = (filled_embs+31)/32; // round up
@@ -2118,26 +2045,20 @@ void SUCMP_NM::UnifracVawUnweightedTask<TFloat>::_run(unsigned int filled_embs) 
 
       }
     }
-
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
 }
 
 template<class TFloat>
-void SUCMP_NM::UnifracVawUnnormalizedUnweightedTask<TFloat>::_run(unsigned int filled_embs) {
-    const uint64_t start_idx = this->task_p->start;
-    const uint64_t stop_idx = this->task_p->stop;
-    const uint64_t n_samples = this->task_p->n_samples;
-    const uint64_t n_samples_r = this->dm_stripes.n_samples_r;
+static inline void run_VawUnnormalizedUnweightedTask_T(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const TFloat * const __restrict__ lengths,
+		const uint32_t * const __restrict__ embedded_proportions,
+		const TFloat  * const __restrict__ embedded_counts,
+		const TFloat  * const __restrict__ sample_total_counts,
+		TFloat * const __restrict__ dm_stripes_buf) {
 
-    // openacc only works well with local variables
-    const TFloat * const __restrict__ lengths = this->lengths;
-    const uint32_t * const __restrict__ embedded_proportions = this->get_embedded_proportions();
-    const TFloat  * const __restrict__ embedded_counts = this->embedded_counts;
-    const TFloat  * const __restrict__ sample_total_counts = this->sample_total_counts;
-    TFloat * const __restrict__ dm_stripes_buf = this->dm_stripes.buf;
-
-    const uint64_t step_size = SUCMP_NM::UnifracVawUnweightedTask<TFloat>::step_size;
+    constexpr uint64_t step_size = STEP_SIZE(TFloat);
     const uint64_t sample_steps = (n_samples+(step_size-1))/step_size; // round up
 
     const uint64_t filled_embs_els = (filled_embs+31)/32; // round up
@@ -2210,8 +2131,510 @@ void SUCMP_NM::UnifracVawUnnormalizedUnweightedTask<TFloat>::_run(unsigned int f
 
       }
     }
+}
 
-   // next iteration will use the alternative space
-   this->set_alt_embedded_proportions();
+} // end namespace
+
+/*
+ * Create concrete implementation wrappers
+ */
+
+template<>
+void SUCMP_NM::acc_create_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_create_buf(bool *buf, uint64_t start, uint64_t end) {
+   acc_create_buf_T(buf, start, end);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::acc_copyin_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyin_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyin_buf(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyin_buf(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_copyin_buf_T(buf, start, end);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::acc_update_device(float *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_update_device(double *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_update_device(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_update_device(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_update_device_T(buf, start, end);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::acc_copyout_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_copyout_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_copyout_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_copyout_buf_T(buf, start, end);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::acc_destroy_buf(float *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(double *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(uint32_t *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(uint64_t *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+template<>
+void SUCMP_NM::acc_destroy_buf(bool *buf, uint64_t start, uint64_t end) {
+   acc_destroy_buf_T(buf, start, end);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::compute_stripes_totals(
+		float * const __restrict__ dm_stripes_buf,
+		const float * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels) {
+   compute_stripes_totals_T(dm_stripes_buf, dm_stripes_total_buf, bufels);
+}
+
+template<>
+void SUCMP_NM::compute_stripes_totals(
+		double * const __restrict__ dm_stripes_buf,
+		const double * const __restrict__ dm_stripes_total_buf,
+		const uint64_t bufels) {
+   compute_stripes_totals_T(dm_stripes_buf, dm_stripes_total_buf, bufels);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_UnnormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const float * const __restrict__ embedded_proportions,
+		float * const __restrict__ dm_stripes_buf,
+		bool * const __restrict__ zcheck,
+		float * const __restrict__ sums) {
+   run_UnnormalizedWeightedTask_T(
+		   filled_embs,
+		   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf,
+		   zcheck, sums);
+}
+
+template<>
+void SUCMP_NM::run_UnnormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const double * const __restrict__ embedded_proportions,
+		double * const __restrict__ dm_stripes_buf,
+		bool * const __restrict__ zcheck,
+		double * const __restrict__ sums) {
+   run_UnnormalizedWeightedTask_T(
+		   filled_embs,
+		   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf,
+		   zcheck, sums);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_VawUnnormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const float * const __restrict__ embedded_proportions,
+		const float * const __restrict__ embedded_counts,
+		const float * const __restrict__ sample_total_counts,
+		float * const __restrict__ dm_stripes_buf) {
+   run_VawUnnormalizedWeightedTask_T(
+		   filled_embs,
+		   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf);
+}
+
+template<>
+void SUCMP_NM::run_VawUnnormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const double * const __restrict__ embedded_proportions,
+		const double * const __restrict__ embedded_counts,
+		const double * const __restrict__ sample_total_counts,
+		double * const __restrict__ dm_stripes_buf) {
+   run_VawUnnormalizedWeightedTask_T(
+		   filled_embs,
+		   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_NormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const float * const __restrict__ embedded_proportions,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ dm_stripes_total_buf,
+		bool * const __restrict__ zcheck,
+		float * const __restrict__ sums) {
+   run_NormalizedWeightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   zcheck, sums);
+}
+
+template<>
+void SUCMP_NM::run_NormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const double * const __restrict__ embedded_proportions,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ dm_stripes_total_buf,
+		bool * const __restrict__ zcheck,
+		double * const __restrict__ sums) {
+   run_NormalizedWeightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   zcheck, sums);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_VawNormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const float * const __restrict__ embedded_proportions,
+		const float * const __restrict__ embedded_counts,
+		const float * const __restrict__ sample_total_counts,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ dm_stripes_total_buf) {
+   run_VawNormalizedWeightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf, dm_stripes_total_buf);
+}
+
+template<>
+void SUCMP_NM::run_VawNormalizedWeightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const double * const __restrict__ embedded_proportions,
+		const double * const __restrict__ embedded_counts,
+		const double * const __restrict__ sample_total_counts,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ dm_stripes_total_buf) {
+   run_VawNormalizedWeightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf, dm_stripes_total_buf);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_GeneralizedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const float * const __restrict__ embedded_proportions,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ dm_stripes_total_buf,
+		const float g_unifrac_alpha) {
+   run_GeneralizedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   g_unifrac_alpha);
+}
+
+template<>
+void SUCMP_NM::run_GeneralizedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const double * const __restrict__ embedded_proportions,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ dm_stripes_total_buf,
+		const double g_unifrac_alpha) {
+   run_GeneralizedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   g_unifrac_alpha);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_VawGeneralizedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const float * const __restrict__ embedded_proportions,
+		const float * const __restrict__ embedded_counts,
+		const float * const __restrict__ sample_total_counts ,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ dm_stripes_total_buf,
+		const float g_unifrac_alpha) {
+   run_VawGeneralizedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   g_unifrac_alpha);
+}
+
+template<>
+void SUCMP_NM::run_VawGeneralizedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const double * const __restrict__ embedded_proportions,
+		const double * const __restrict__ embedded_counts,
+		const double * const __restrict__ sample_total_counts ,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ dm_stripes_total_buf,
+		const double g_unifrac_alpha) {
+   run_VawGeneralizedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   g_unifrac_alpha);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_UnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const uint64_t * const __restrict__ embedded_proportions,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ dm_stripes_total_buf,
+		float * const __restrict__ sums,
+		bool   * const __restrict__ zcheck,
+		float * const __restrict__ stripe_sums) {
+   run_UnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   sums, zcheck, stripe_sums);
+}
+
+template<>
+void SUCMP_NM::run_UnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const uint64_t * const __restrict__ embedded_proportions,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ dm_stripes_total_buf,
+		double * const __restrict__ sums,
+		bool   * const __restrict__ zcheck,
+		double * const __restrict__ stripe_sums) {
+   run_UnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf, dm_stripes_total_buf,
+		   sums, zcheck, stripe_sums);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_UnnormalizedUnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const uint64_t * const __restrict__ embedded_proportions,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ sums,
+		bool   * const __restrict__ zcheck,
+		float * const __restrict__ stripe_sums) {
+   run_UnnormalizedUnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf,
+		   sums, zcheck, stripe_sums);
+}
+
+template<>
+void SUCMP_NM::run_UnnormalizedUnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const uint64_t * const __restrict__ embedded_proportions,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ sums,
+		bool   * const __restrict__ zcheck,
+		double * const __restrict__ stripe_sums) {
+   run_UnnormalizedUnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions,
+		   dm_stripes_buf,
+		   sums, zcheck, stripe_sums);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_VawUnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const uint32_t * const __restrict__ embedded_proportions,
+		const float  * const __restrict__ embedded_counts,
+		const float  * const __restrict__ sample_total_counts,
+		float * const __restrict__ dm_stripes_buf,
+		float * const __restrict__ dm_stripes_total_buf) {
+   run_VawUnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf, dm_stripes_total_buf);
+}
+
+template<>
+void SUCMP_NM::run_VawUnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const uint32_t * const __restrict__ embedded_proportions,
+		const double  * const __restrict__ embedded_counts,
+		const double  * const __restrict__ sample_total_counts,
+		double * const __restrict__ dm_stripes_buf,
+		double * const __restrict__ dm_stripes_total_buf) {
+   run_VawUnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf, dm_stripes_total_buf);
+}
+
+// ==================================
+
+template<>
+void SUCMP_NM::run_VawUnnormalizedUnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const float * const __restrict__ lengths,
+		const uint32_t * const __restrict__ embedded_proportions,
+		const float  * const __restrict__ embedded_counts,
+		const float  * const __restrict__ sample_total_counts,
+		float * const __restrict__ dm_stripes_buf) {
+   run_VawUnnormalizedUnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf);
+}
+
+template<>
+void SUCMP_NM::run_VawUnnormalizedUnweightedTask(
+		const unsigned int filled_embs,
+		const uint64_t start_idx, const uint64_t stop_idx,
+		const uint64_t n_samples, const uint64_t n_samples_r,
+		const double * const __restrict__ lengths,
+		const uint32_t * const __restrict__ embedded_proportions,
+		const double  * const __restrict__ embedded_counts,
+		const double  * const __restrict__ sample_total_counts,
+		double * const __restrict__ dm_stripes_buf) {
+   run_VawUnnormalizedUnweightedTask_T(
+		   filled_embs,
+                   start_idx, stop_idx, n_samples, n_samples_r,
+		   lengths, embedded_proportions, embedded_counts, sample_total_counts,
+		   dm_stripes_buf);
 }
 
