@@ -177,16 +177,23 @@ lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
 
-unifrac_task_noclass.cpp: unifrac_task_impl.hpp
-	python3 generate_unifrac_task_noclass.py >unifrac_task_noclass.cpp
 
-unifrac_task_cpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
+unifrac_task_noclass_cpu.cpp: unifrac_task_impl.hpp
+	python3 generate_unifrac_task_noclass.py su_cpu direct > $@
+
+unifrac_task_noclass_acc.cpp: unifrac_task_impl.hpp
+	python3 generate_unifrac_task_noclass.py su_acc direct > $@
+
+unifrac_task_noclass_ompgpu.cpp: unifrac_task_impl.hpp
+	python3 generate_unifrac_task_noclass.py su_ompgpu direct > $@
+
+unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 
-unifrac_task_acc.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
+unifrac_task_acc.o: unifrac_task_noclass_acc.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
 
-unifrac_task_ompgpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
+unifrac_task_ompgpu.o: unifrac_task_noclass_ompgpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 
 
@@ -238,7 +245,7 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass.cpp
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp
 
 clean_install:
 	-rm -f ${PREFIX}/lib/lib$(SSU).so ${PREFIX}/bin/$(SSU) ${PREFIX}/bin/$(FPD) ${PREFIX}/include/unifrac/task_parameters.hpp ${PREFIX}/include/unifrac/api.hpp ${PREFIX}/include/unifrac/status_enum.hpp
