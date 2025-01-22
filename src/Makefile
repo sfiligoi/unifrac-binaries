@@ -168,6 +168,9 @@ api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_su
 unifrac_task_cpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 
+unifrac_task_noclass.cpp: unifrac_task_impl.hpp
+	python3 generate_unifrac_task_noclass.py >unifrac_task_noclass.cpp
+
 unifrac_task_acc.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
 unifrac_task_ompgpu.o: unifrac_task_noclass.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
@@ -217,5 +220,5 @@ rapi_test: main
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) test_su test_ska test_api lib$(SSU).so
+	-rm -f *.o $(SSU) $(FPD) test_su test_ska test_api lib$(SSU).so unifrac_task_noclass.cpp
 

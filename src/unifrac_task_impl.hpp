@@ -49,8 +49,10 @@ static inline void acc_wait_T() {
 #endif
 }
 
-template<class T>
-static inline void acc_create_buf_T(T *buf, uint64_t start, uint64_t end) {
+template<class TNum>
+static inline void acc_create_buf_T(
+		TNum *buf,
+		uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target enter data map(alloc:buf[start:end])
 #elif defined(_OPENACC)
@@ -58,8 +60,10 @@ static inline void acc_create_buf_T(T *buf, uint64_t start, uint64_t end) {
 #endif
 }
 
-template<class T>
-static inline void acc_copyin_buf_T(T *buf, uint64_t start, uint64_t end) {
+template<class TNum>
+static inline void acc_copyin_buf_T(
+		TNum *buf,
+		uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target enter data map(to:buf[start:end])
 #elif defined(_OPENACC)
@@ -67,8 +71,10 @@ static inline void acc_copyin_buf_T(T *buf, uint64_t start, uint64_t end) {
 #endif    
 }
 
-template<class T>
-static inline void acc_update_device_T(T *buf, uint64_t start, uint64_t end) {
+template<class TNum>
+static inline void acc_update_device_T(
+		TNum *buf,
+		uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target update to(buf[start:end])
 #elif defined(_OPENACC)
@@ -76,8 +82,10 @@ static inline void acc_update_device_T(T *buf, uint64_t start, uint64_t end) {
 #endif
 }
 
-template<class T>
-static inline void acc_copyout_buf_T(T *buf, uint64_t start, uint64_t end) {
+template<class TNum>
+static inline void acc_copyout_buf_T(
+		TNum *buf,
+		uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target exit data map(from:buf[start:end])
 #elif defined(_OPENACC)
@@ -85,8 +93,10 @@ static inline void acc_copyout_buf_T(T *buf, uint64_t start, uint64_t end) {
 #endif
 }
 
-template<class T>
-static inline void acc_destroy_buf_T(T *buf, uint64_t start, uint64_t end) {
+template<class TNum>
+static inline void acc_destroy_buf_T(
+		TNum *buf,
+		uint64_t start, uint64_t end) {
 #if defined(OMPGPU)
 #pragma omp target exit data map(delete:buf[start:end])
 #elif defined(_OPENACC)
