@@ -4,6 +4,14 @@
 # for all inline functions ending in _T
 #
 
+#
+# Arguments:
+#  $1 - namespace
+#
+
+import sys
+nmspace = sys.argv[1]
+
 # replace template name with concrete type
 def patch_type(s,t):
     return s.replace('TFloat',t).replace('TNum',t)
@@ -11,6 +19,29 @@ def patch_type(s,t):
 # extract argument name from the arg definition
 def get_arg_name(s):
     return s.split()[-1].split('*')[-1]
+
+def print_func_noargs(ftype,nmspace,fname):
+    print('%s %s::%s() {'%(ftype,nmspace,fname))
+    if ftype=='void':
+        print('  %s_T();'%fname);
+    else:
+        print('  return %s_T();'%fname)
+    print('}');
+
+def print_func_args(ftype,nmspace,fname,fargs):
+    print('template<>')
+    print('%s %s::%s('%(ftype,nmspace,fname))
+    for el in fargs[:-1]:
+       print('\t\t\t%s,'%patch_type(el,ft))
+    print('\t\t\t%s) {'%patch_type(fargs[-1],ft))
+
+    print('  %s_T('%fname)
+    for el in fargs[:-1]:
+       print('\t%s,'%get_arg_name(el))
+    print('\t%s);'%get_arg_name(fargs[-1]))
+
+    print('}');
+
 
 # print out the header
 print('// Generated from unifrac_task_impl.hpp');
@@ -40,12 +71,7 @@ while (i<len(lines)):
     print('// ==================================');
     if line.find('_T()')>=0:
         # special case, no arguments
-        print('%s SUCMP_NM::%s() {'%(ftype,fname))
-        if ftype=='void':
-            print('  %s_T();'%fname);
-        else:
-            print('  return %s_T();'%fname)
-        print('}');
+        print_func_noargs(ftype,nmspace,fname)
         print('');
         continue
 
@@ -76,18 +102,7 @@ while (i<len(lines)):
         i+=1
     
     for ft in ftypes:
-        print('template<>')
-        print('%s SUCMP_NM::%s('%(ftype,fname))
-        for el in fargs[:-1]:
-           print('\t\t\t%s,'%patch_type(el,ft))
-        print('\t\t\t%s) {'%patch_type(fargs[-1],ft))
-
-        print('  %s_T('%fname)
-        for el in fargs[:-1]:
-           print('\t%s,'%get_arg_name(el))
-        print('\t%s);'%get_arg_name(fargs[-1]))
-
-        print('}');
-    print('');
+        print_func_args(ftype,nmspace,fname,fargs)
+        print('');
 
 
