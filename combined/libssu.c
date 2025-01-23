@@ -508,4 +508,61 @@ ComputeStatus one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const
    return (*dl_one_dense_pair_v2)(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,result);
 }
 
+/*********************************************************************/
+
+static ComputeStatus (*dl_partial)(const char*, const char*, const char*, bool, double, bool, unsigned int, unsigned int, unsigned int, partial_mat_t**) = NULL;
+static MergeStatus (*dl_merge_partial_to_mmap_matrix)(partial_dyn_mat_t**, int, const char *, mat_full_fp64_t**) = NULL;
+static MergeStatus (*dl_merge_partial_to_mmap_matrix_fp32)(partial_dyn_mat_t**, int, const char *, mat_full_fp32_t**) = NULL;
+static MergeStatus (*dl_validate_partial)(const partial_dyn_mat_t* const *, int);
+static IOStatus (*dl_read_partial_header)(const char*, partial_dyn_mat_t**);
+static IOStatus (*dl_read_partial_one_stripe)(partial_dyn_mat_t*, uint32_t);
+static IOStatus (*dl_write_partial)(const char*, const partial_mat_t*);
+
+
+ComputeStatus partial(const char* biom_filename, const char* tree_filename,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int n_substeps, unsigned int stripe_start,
+                             unsigned int stripe_stop, partial_mat_t** result) {
+   if (dl_partial==NULL) ssu_load("partial", (void **) &dl_partial);
+
+   return (*dl_partial)(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,
+		   bypass_tips,n_substeps,stripe_start,stripe_stop,result);
+}
+
+MergeStatus merge_partial_to_mmap_matrix(partial_dyn_mat_t* * partial_mats, int n_partials, const char *mmap_dir, mat_full_fp64_t** result) {
+   if (dl_merge_partial_to_mmap_matrix==NULL) ssu_load("merge_partial_to_mmap_matrix", (void **) &dl_merge_partial_to_mmap_matrix);
+
+   return (*dl_merge_partial_to_mmap_matrix)(partial_mats,n_partials,mmap_dir,result);
+}
+
+MergeStatus merge_partial_to_mmap_matrix_fp32(partial_dyn_mat_t* * partial_mats, int n_partials, const char *mmap_dir, mat_full_fp32_t** result) {
+   if (dl_merge_partial_to_mmap_matrix_fp32==NULL) ssu_load("merge_partial_to_mmap_matrix_fp32", (void **) &dl_merge_partial_to_mmap_matrix_fp32);
+
+   return (*dl_merge_partial_to_mmap_matrix_fp32)(partial_mats,n_partials,mmap_dir,result);
+}
+
+MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials) {
+   if (dl_validate_partial==NULL) ssu_load("validate_partial", (void **) &dl_validate_partial);
+
+   return (*dl_validate_partial)(partial_mats,n_partials);
+}
+
+IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out) {
+   if (dl_read_partial_header==NULL) ssu_load("read_partial_header", (void **) &dl_read_partial_header);
+
+   return (*dl_read_partial_header)(input_filename,result_out);
+}
+
+IOStatus read_partial_one_stripe(partial_dyn_mat_t* result, uint32_t stripe_idx) {
+   if (dl_read_partial_one_stripe==NULL) ssu_load("read_partial_one_stripe", (void **) &dl_read_partial_one_stripe);
+
+   return (*dl_read_partial_one_stripe)(result,stripe_idx);
+}
+
+IOStatus write_partial(const char* filename, const partial_mat_t* result) {
+   if (dl_write_partial==NULL) ssu_load("write_partial", (void **) &dl_write_partial);
+
+   return (*dl_write_partial)(filename,result);
+}
+
 
