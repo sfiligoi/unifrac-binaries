@@ -7,6 +7,7 @@
 #include "api.hpp"
 #include "cmd.hpp"
 #include "tree.hpp"
+// Using inlined-header-only funtions
 #include "biom.hpp"
 #include "unifrac.hpp"
 
@@ -128,11 +129,11 @@ int mode_partial_report(const std::string table_filename, unsigned int npartials
         exit(EXIT_FAILURE);
     }
 
-    su::biom table(table_filename.c_str());
-    int total_stripes = (table.n_samples + 1) / 2;
+    int n_samples = su::biom::load_n_samples(table_filename.c_str());
+    int total_stripes = (n_samples + 1) / 2;
 
     if(!bare) {
-        std::cout << "Total samples: " << table.n_samples << std::endl;
+        std::cout << "Total samples: " << n_samples << std::endl;
         std::cout << "Total stripes: " << total_stripes << std::endl;
     }
 

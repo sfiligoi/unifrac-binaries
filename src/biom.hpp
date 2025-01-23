@@ -60,6 +60,17 @@ namespace su {
             biom& operator= (const biom&) = delete;
 
         private:
+            /* datasets defined by the BIOM 2.x spec */ 
+            static constexpr const char * OBS_INDPTR  = "/observation/matrix/indptr";
+            static constexpr const char * OBS_INDICES = "/observation/matrix/indices";
+            static constexpr const char * OBS_DATA    = "/observation/matrix/data";
+            static constexpr const char * OBS_IDS     = "/observation/ids";
+
+            static constexpr const char * SAMPLE_INDPTR  = "/sample/matrix/indptr";
+            static constexpr const char * SAMPLE_INDICES = "/sample/matrix/indices";
+            static constexpr const char * SAMPLE_DATA    = "/sample/matrix/data";
+            static constexpr const char * SAMPLE_IDS     = "/sample/ids";
+
             bool has_hdf5_backing = false;
             
             // cache both index pointers into both CSC and CSR representations
@@ -94,6 +105,19 @@ namespace su {
             void set_nnz();
         public:
             uint32_t nnz;        // the total number of nonzero entries
+
+	    // used by ssu for helper messages
+            static inline size_t load_n_samples(const char* filename) {
+                const char* path = SAMPLE_IDS;
+		H5::H5File file(filename, H5F_ACC_RDONLY);
+		H5::DataSet ds_ids = file.openDataSet(path);
+		H5::DataSpace dataspace = ds_ids.getSpace();
+
+                hsize_t dims[1];
+                dataspace.getSimpleExtentDims(dims, NULL);
+
+		return dims[0];
+            }
 
             // for unit testing
             bool is_sample_indptr(const std::vector<uint32_t>& other) const { return sample_indptr==other; }
