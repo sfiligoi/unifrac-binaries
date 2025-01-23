@@ -4,9 +4,6 @@
 #include <iomanip>
 #include "api.hpp"
 #include "cmd.hpp"
-#include "tree.hpp"
-#include "biom.hpp"
-#include "unifrac.hpp"
 
 
 void usage() {
