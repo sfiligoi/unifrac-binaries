@@ -64,7 +64,7 @@ ifndef NOGPU
    ifeq ($(BUILD_OFFLOAD),ompgpu)
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
-                UNIFRAC_FILES += unifrac_task_ompgpu.o unifrac_cmp_ompgpu.o
+                UNIFRAC_FILES += unifrac_task_ompgpu.o unifrac_task_api_ompgpu.o unifrac_cmp_ompgpu.o
 		OMPGPUCPPFLAGS += -mp=gpu -DOMPGPU=1 -noacc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
 	            OMPGPUCPPFLAGS += -gpu=ccall
@@ -79,7 +79,7 @@ ifndef NOGPU
    else 
 	ifneq (,$(findstring pgi,$(COMPILER)))
 		CPPFLAGS += -DUNIFRAC_ENABLE_ACC=1
-                UNIFRAC_FILES += unifrac_task_acc.o unifrac_cmp_acc.o
+                UNIFRAC_FILES += unifrac_task_acc.o unifrac_task_api_acc.o unifrac_cmp_acc.o
 		ACCCPPFLAGS += -acc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
 	            ACCCPPFLAGS += -gpu=ccall
@@ -178,22 +178,37 @@ api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_su
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
 
 
-unifrac_task_noclass_cpu.cpp: unifrac_task_impl.hpp
-	python3 generate_unifrac_task_noclass.py su_cpu direct > $@
+unifrac_task_noclass_cpu.cpp: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
+	# Use the same compiler for CPU-based code
+	# So no need for futher levels of indirection
+	python3 generate_unifrac_task_noclass.py cpu direct > $@
 
-unifrac_task_noclass_acc.cpp: unifrac_task_impl.hpp
-	python3 generate_unifrac_task_noclass.py su_acc direct > $@
+unifrac_task_api_acc.h: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py acc api_h > $@
+unifrac_task_api_acc.cpp: unifrac_task_impl.hpp unifrac_task_api_acc.h generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py acc api > $@
+unifrac_task_noclass_acc.cpp: unifrac_task_impl.hpp unifrac_task_api_acc.h generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py acc indirect > $@
 
-unifrac_task_noclass_ompgpu.cpp: unifrac_task_impl.hpp
-	python3 generate_unifrac_task_noclass.py su_ompgpu direct > $@
+unifrac_task_api_ompgpu.h: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py ompgpu api_h > $@
+unifrac_task_api_ompgpu.cpp: unifrac_task_impl.hpp unifrac_task_api_ompgpu.h generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py ompgpu api > $@
+unifrac_task_noclass_ompgpu.cpp: unifrac_task_impl.hpp unifrac_task_api_ompgpu.h generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py ompgpu indirect > $@
 
 unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
+# no separate task_api 
 
-unifrac_task_acc.o: unifrac_task_noclass_acc.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
-	$(CXX) $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
+unifrac_task_acc.o: unifrac_task_noclass_acc.cpp unifrac_task_noclass.hpp unifrac_task_api_acc.h
+	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
+unifrac_task_api_acc.o: unifrac_task_api_acc.cpp unifrac_task_api_acc.h unifrac_task_impl.hpp
+	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
 
-unifrac_task_ompgpu.o: unifrac_task_noclass_ompgpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
+unifrac_task_ompgpu.o: unifrac_task_noclass_ompgpu.cpp unifrac_task_noclass.hpp unifrac_task_api_ompgpu.h
+	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
+unifrac_task_api_ompgpu.o: unifrac_task_api_ompgpu.cpp unifrac_task_api_ompgpu.h unifrac_task_impl.hpp
 	$(CXX) $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 
 
@@ -245,7 +260,7 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp unifrac_task_api_*.h
 
 clean_install:
 	-rm -f ${PREFIX}/lib/lib$(SSU).so ${PREFIX}/bin/$(SSU) ${PREFIX}/bin/$(FPD) ${PREFIX}/include/unifrac/task_parameters.hpp ${PREFIX}/include/unifrac/api.hpp ${PREFIX}/include/unifrac/status_enum.hpp
