@@ -6,10 +6,8 @@
 #include <signal.h>
 #include "api.hpp"
 #include "cmd.hpp"
-#include "tree.hpp"
 // Using inlined-header-only funtions
 #include "biom.hpp"
-#include "unifrac.hpp"
 
 enum Format {format_invalid,format_ascii, format_hdf5_fp32, format_hdf5_fp64, format_hdf5_nodist};
 
