@@ -780,7 +780,7 @@ IOStatus read_partial(const char* filename, partial_mat_t** result);
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out);
+EXTERN IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out);
 
 /* Read a stripe of a partial matrix
  *

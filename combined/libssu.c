@@ -108,6 +108,8 @@ static void (*dl_destroy_partial_dyn_mat)(partial_dyn_mat_t**) = NULL;
 static void (*dl_destroy_results_vec)(r_vec**) = NULL;
 static void (*dl_destroy_bptree_opaque)(opaque_bptree_t**) = NULL;
 
+static IOStatus (*dl_read_partial_header)(const char*, partial_dyn_mat_t**) = NULL;
+
 static IOStatus (*dl_read_bptree_opaque)(const char*, opaque_bptree_t**) = NULL;
 static void (*dl_load_bptree_opaque)(const char*, opaque_bptree_t**) = NULL;
 static void (*dl_convert_bptree_opaque)(const support_bptree_t*, opaque_bptree_t**) = NULL;
@@ -153,6 +155,12 @@ void destroy_bptree_opaque(opaque_bptree_t** tree_data) {
    if (dl_destroy_bptree_opaque==NULL) ssu_load("destroy_bptree_opaque", (void **) &dl_destroy_bptree_opaque);
 
    (*dl_destroy_bptree_opaque)(tree_data);
+}
+
+IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out) {
+   if (dl_read_partial_header==NULL) ssu_load("read_partial_header", (void **) &dl_read_partial_header);
+
+   return (*dl_read_partial_header)(input_filename,result_out);
 }
 
 IOStatus read_bptree_opaque(const char* tree_filename, opaque_bptree_t** tree_data) {
