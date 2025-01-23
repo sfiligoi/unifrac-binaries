@@ -83,6 +83,8 @@ mkdir setup_scripts
 cat > setup_scripts/setup_nv_hpc_bins.sh << EOF
 PATH=$PWD/conda_nv_bins:`ls -d $PWD/hpc_sdk/*/202*/compilers/bin`:\$PATH
 
+export CXX=pgc++
+
 # pgc++ does not define it, but gcc libraries expect it
 # also remove the existing conda flags, which are not compatible
 export CPPFLAGS=-D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=0
