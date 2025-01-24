@@ -12,6 +12,10 @@ ifeq ($(PREFIX),)
     PREFIX := $(CONDA_PREFIX)
 endif
 
+ifdef NOGPU
+    CFLAGS += -DBASIC_ONLY
+endif
+
 libssu.o: libssu.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c libssu.c -fPIC
 

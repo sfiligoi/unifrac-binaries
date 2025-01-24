@@ -26,6 +26,7 @@ static pthread_mutex_t dl_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*********************************************************************/
 
 /* Pick the right libssu implementation */
+#ifndef BASIC_ONLY
 static const char *ssu_get_lib_name() {
    __builtin_cpu_init ();
    bool has_avx  = __builtin_cpu_supports ("avx");
@@ -62,6 +63,25 @@ static const char *ssu_get_lib_name() {
    }
    return ssu;
 }
+
+#else
+static const char *ssu_get_lib_name() {
+   const char *ssu = "libssu_cpu_basic.so";
+
+   const char* env_gpu_info = getenv("UNIFRAC_GPU_INFO");
+   if ((env_gpu_info!=NULL) && (env_gpu_info[0]=='Y')) {
+         printf("INFO (unifrac): No GPU support in this version\n");
+   }
+
+   const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
+   if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
+      printf("INFO (unifrac): Using shared library %s\n",ssu);
+   }
+   return ssu;
+}
+
+
+#endif
 
 /*********************************************************************/
 
