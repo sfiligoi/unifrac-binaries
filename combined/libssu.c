@@ -525,6 +525,7 @@ static ComputeStatus (*dl_partial)(const char*, const char*, const char*, bool, 
 static MergeStatus (*dl_merge_partial_to_mmap_matrix)(partial_dyn_mat_t**, int, const char *, mat_full_fp64_t**) = NULL;
 static MergeStatus (*dl_merge_partial_to_mmap_matrix_fp32)(partial_dyn_mat_t**, int, const char *, mat_full_fp32_t**) = NULL;
 static MergeStatus (*dl_validate_partial)(const partial_dyn_mat_t* const *, int);
+static IOStatus (*dl_read_partial)(const char*, partial_mat_t**);
 static IOStatus (*dl_read_partial_header)(const char*, partial_dyn_mat_t**);
 static IOStatus (*dl_read_partial_one_stripe)(partial_dyn_mat_t*, uint32_t);
 static IOStatus (*dl_write_partial)(const char*, const partial_mat_t*);
@@ -556,6 +557,12 @@ MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int 
    cond_ssu_load("validate_partial", (void **) &dl_validate_partial);
 
    return (*dl_validate_partial)(partial_mats,n_partials);
+}
+
+IOStatus read_partial(const char* input_filename, partial_mat_t** result_out) {
+   cond_ssu_load("read_partial", (void **) &dl_read_partial);
+
+   return (*dl_read_partial)(input_filename,result_out);
 }
 
 IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out) {

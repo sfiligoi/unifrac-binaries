@@ -765,7 +765,7 @@ EXTERN IOStatus write_partial(const char* filename, const partial_mat_t* result)
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-IOStatus read_partial(const char* filename, partial_mat_t** result);
+EXTERN IOStatus read_partial(const char* filename, partial_mat_t** result);
 
 /* Read a partial matrix object header
  *

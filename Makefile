@@ -31,7 +31,7 @@ clean:
 ########### api
 
 api:
-	cd src && make api
+	cd src && make clean && make api
 
 api_cpu_basic:
 	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make clean && make api
@@ -43,12 +43,12 @@ api_nv_avx2:
 	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && make clean && make api
 
 api_combined:
-	cd combined && make api
+	cd combined && make clean && make api
 
 ########### main
 
 main:
-	cd src && make main
+	cd src && make clean && make main
 
 install_main:
 	cd src && make install
@@ -73,13 +73,13 @@ install_combined:
 ########### test
 
 test_binaries:
-	cd src && make test_binaries
-	cd test && make test_binaries
+	cd src && make clean && make test_binaries
+	cd test && make clean && make test_binaries
 
 test_binaries_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make test_binaries
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make clean && make test_binaries
 	# use the default compiler for the test subdir as it tests the combined shlib
-	cd test && make test_binaries
+	cd test && make clean && make test_binaries
 
 test:
 	cd src && make test
