@@ -153,10 +153,10 @@ test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsamp
 test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 
-$(SSU): su.cpp $(PREFIX)/lib/lib$(SSU).so
+$(SSU): su.cpp api.hpp biom.hpp $(PREFIX)/lib/lib$(SSU).so
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $@ -l$(SSU)
 
-$(FPD): faithpd.cpp $(PREFIX)/lib/lib$(SSU).so
+$(FPD): faithpd.cpp api.hpp $(PREFIX)/lib/lib$(SSU).so
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $@ -l$(SSU)
 
 lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
@@ -207,7 +207,7 @@ install: $(SSU) $(FPD)
 	rm -f ${PREFIX}/include/unifrac/api.hpp; cp api.hpp ${PREFIX}/include/unifrac/
 	rm -f ${PREFIX}/include/unifrac/status_enum.hpp; cp status_enum.hpp ${PREFIX}/include/unifrac/
 
-rapi_test: main
+rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	mkdir -p ~/.R
 	if [ -e ~/.R/Makevars ] ; \
 	then \
