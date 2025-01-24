@@ -240,3 +240,6 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 clean:
 	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass.cpp
 
+clean_install:
+	-rm -f ${PREFIX}/lib/lib$(SSU).so ${PREFIX}/bin/$(SSU) ${PREFIX}/bin/$(FPD) ${PREFIX}/include/unifrac/task_parameters.hpp ${PREFIX}/include/unifrac/api.hpp ${PREFIX}/include/unifrac/status_enum.hpp
+

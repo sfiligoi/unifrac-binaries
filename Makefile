@@ -1,4 +1,4 @@
-.PHONY: test clean all
+.PHONY: test clean all clean_install
 
 # Note: This Makefile will NOT properly work with the -j option 
 
@@ -14,6 +14,13 @@ all:
 	$(MAKE) install_main
 	$(MAKE) test_binaries
 
+clean:
+	-cd test && $(MAKE) clean
+	-cd src && $(MAKE) clean
+
+clean_install:
+	-cd src && $(MAKE) clean_install
+
 else
 # Linux with optional GPU support
 
@@ -26,12 +33,34 @@ all:
 	$(MAKE) all_combined
 	$(MAKE) test_binaries
 
+clean:
+	-cd test && $(MAKE) clean
+	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
+	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean
+	-export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean
+	-cd combined && $(MAKE) clean
+
+clean_install:
+	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
+	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install
+	-export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean_install
+	-cd combined && $(MAKE) clean_install
+
 else
 
 all: 
 	$(MAKE) all_cpu_basic
 	$(MAKE) all_combined
 	$(MAKE) test_binaries
+
+clean:
+	-cd test && $(MAKE) clean
+	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
+	-cd combined && $(MAKE) clean
+
+clean_install:
+	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
+	-cd combined && $(MAKE) clean_install
 
 endif
 
@@ -54,11 +83,6 @@ all_combined:
 	$(MAKE) install_main
 
 endif
-
-clean:
-	-cd test && $(MAKE) clean
-	-cd src && $(MAKE) clean
-	-cd combined && $(MAKE) clean
 
 ########### api
 

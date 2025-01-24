@@ -1,4 +1,4 @@
-.PHONY: all api main install clean
+.PHONY: all api main install clean clean_install
 
 all: api install
 
@@ -26,4 +26,7 @@ install: libssu.so
 	rm -f ${PREFIX}/lib/libssu.so; cp libssu.so ${PREFIX}/lib/
 
 clean:
-	rm -f libssu.o libssu.so
+	rm -f libssu.o
+
+clean_install:
+	rm -f ${PREFIX}/lib/libssu.so
