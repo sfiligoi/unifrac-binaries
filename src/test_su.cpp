@@ -1610,6 +1610,16 @@ void test_faith_pd() {
     for (unsigned int i = 0; i < 6; i++){
         ASSERT(fabs(exp[i]-obs[i]) < 0.000001)
     }
+
+    // repeat using the API
+    r_vec *res = NULL;
+    ComputeStatus rc = faith_pd_one_off("test.biom", "test_faith.tre", &res);
+    ASSERT(rc == okay);
+    for(unsigned int i = 0; i < 6; i++) {
+       ASSERT(fabs(res->values[i] - exp[i]) < 0.000001);
+    }
+    destroy_results_vec(&res);
+
     SUITE_END();
 }
 
@@ -1634,6 +1644,16 @@ void test_faith_pd_shear(){
     for (unsigned int i = 0; i < 6; i++){
         ASSERT(fabs(exp[i]-obs[i]) < 0.000001)
     }
+
+    // repeat using the API
+    r_vec *res = NULL;
+    ComputeStatus rc = faith_pd_one_off("test.biom", "test_faith_shear.tre", &res);
+    ASSERT(rc == okay);
+    for(unsigned int i = 0; i < 6; i++) {
+       ASSERT(fabs(res->values[i] - exp[i]) < 0.000001);
+    }
+    destroy_results_vec(&res);
+
     SUITE_END();
 }
 
