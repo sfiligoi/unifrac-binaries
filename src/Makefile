@@ -148,8 +148,16 @@ test_binaries: test_su test_ska test_api
 
 test_su: test_su.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
-test_ska: test_ska.cpp skbio_alt.hpp api.hpp test_helper.hpp biom.hpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o skbio_alt.o api.o
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o api.o -llz4 $(BLASLIB) -lpthread
+
+# Create an archive, so we do not need dependencies for functions we do not use
+test_ska_deps.a: tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o skbio_alt.o api.o
+	rm -f $@
+	ar -r $@ $^
+ 
+# Not invoking the unifrac acc code, so we do not need to use the shlib
+test_ska: test_ska.cpp skbio_alt.hpp api.hpp test_helper.hpp biom.hpp test_ska_deps.a
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska test_ska_deps.a -llz4 $(BLASLIB) -lpthread
+
 test_api: test_api.cpp api.hpp test_helper.hpp biom.hpp $(PREFIX)/lib/lib$(SSU).so
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o $@ -l$(SSU)
 
@@ -164,7 +172,6 @@ lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
-
 
 unifrac_task_noclass.cpp: unifrac_task_impl.hpp
 	python3 generate_unifrac_task_noclass.py >unifrac_task_noclass.cpp
@@ -226,5 +233,5 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) test_su test_ska test_api lib$(SSU).so unifrac_task_noclass.cpp
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api lib$(SSU).so unifrac_task_noclass.cpp
 
