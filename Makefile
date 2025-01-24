@@ -11,7 +11,7 @@ all: api install main install_main test_binaries
 else
 
 # Note: important that all_nv is after all_cpu_basic and all_nv_avx2 for tests to work
-all: all_cpu_basic all_nv_avx2 all_nv all_combined test_binaries_nv
+all: all_cpu_basic all_nv_avx2 all_nv all_combined test_binaries
 
 all_cpu_basic: api_cpu_basic install_cpu_basic
 
@@ -74,11 +74,6 @@ install_combined:
 
 test_binaries:
 	cd src && make clean && make test_binaries
-	cd test && make clean && make test_binaries
-
-test_binaries_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make clean && make test_binaries
-	# use the default compiler for the test subdir as it tests the combined shlib
 	cd test && make clean && make test_binaries
 
 test:

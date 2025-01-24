@@ -242,6 +242,8 @@ void test_read_write_partial_mat() {
     SUITE_END();
 }
 
+#if 0
+// DEPRECATED: Not used by anyone anymore
 void test_merge_partial_mat() {
     SUITE_START("test merge partial_mat_t");
 
@@ -336,6 +338,7 @@ void test_merge_partial_mat() {
     
     SUITE_END();
 }
+#endif
 
 void test_merge_partial_dyn_mat() {
     SUITE_START("test merge partial_dyn_mat_t");
@@ -351,7 +354,7 @@ void test_merge_partial_dyn_mat() {
     pms[1] = pm2;
 
     mat_full_fp64_t* obs = NULL;
-    merge_status err = merge_partial_to_matrix(pms, 2, &obs);
+    merge_status err = merge_partial_to_mmap_matrix(pms, 2, NULL, &obs);
     ASSERT(err == merge_okay);
     ASSERT(obs->n_samples == exp->n_samples);
     for(unsigned int i = 0; i < (obs->n_samples*obs->n_samples); i++) {
@@ -378,7 +381,7 @@ void test_merge_partial_dyn_mat() {
 
     mat_full_fp32_t* exp2 = mat_full_three_rep<mat_full_fp32_t,float>();
     mat_full_fp32_t *obs2 = NULL;
-    err = merge_partial_to_matrix_fp32(pms, 2, &obs2);
+    err = merge_partial_to_mmap_matrix_fp32(pms, 2, NULL, &obs2);
     ASSERT(err == merge_okay);
     ASSERT(obs2->n_samples == exp2->n_samples);
     for(unsigned int i = 0; i < (obs2->n_samples*obs2->n_samples); i++) {
@@ -421,27 +424,27 @@ void test_merge_partial_dyn_mat() {
     pms_err[0] = pm2;
     pms_err[1] = pm3;
 
-    err = merge_partial_to_matrix(pms_err, 3, &obs);
+    err = merge_partial_to_mmap_matrix(pms_err, 3, NULL, &obs);
     ASSERT(err == incomplete_stripe_set);
 
     pm2->stripe_start = 2;
     pm2->stripe_stop = 6;
-    err = merge_partial_to_matrix(pms_err, 3, &obs);
+    err = merge_partial_to_mmap_matrix(pms_err, 3, NULL, &obs);
     ASSERT(err == stripes_overlap);
 
     pm2->stripe_start = 3;
     pm2->sample_ids[2][0] = 'X';
-    err = merge_partial_to_matrix(pms_err, 3, &obs);
+    err = merge_partial_to_mmap_matrix(pms_err, 3, NULL, &obs);
     ASSERT(err == sample_id_consistency);
 
     pm2->sample_ids[2][0] = 'C';
     pm3->n_samples = 2;
-    err = merge_partial_to_matrix(pms_err, 3, &obs);
+    err = merge_partial_to_mmap_matrix(pms_err, 3, NULL, &obs);
     ASSERT(err == partials_mismatch);
 
     pm3->n_samples = 6;
     pm3->stripe_total = 12;
-    err = merge_partial_to_matrix(pms_err, 3, &obs);
+    err = merge_partial_to_mmap_matrix(pms_err, 3, NULL, &obs);
     ASSERT(err == partials_mismatch);
     
     /*
@@ -449,7 +452,7 @@ void test_merge_partial_dyn_mat() {
 
     pm3->is_upper_triangle = false;
     pm3->stripe_total = 9;
-    err = merge_partial_to_matrix(pms_err, 3, &obs);
+    err = merge_partial_to_mmap_matrix(pms_err, 3, NULL, &obs);
     ASSERT(err == square_mismatch);
     */
    
@@ -490,7 +493,7 @@ void test_merge_partial_io() {
     pms[1] = pm2;
 
     mat_full_fp64_t* obs = NULL;
-    merge_status err = merge_partial_to_matrix(pms, 2, &obs);
+    merge_status err = merge_partial_to_mmap_matrix(pms, 2, NULL, &obs);
     ASSERT(err == merge_okay);
     ASSERT(obs->n_samples == exp->n_samples);
     for(unsigned int i = 0; i < (obs->n_samples*obs->n_samples); i++) {
@@ -522,7 +525,7 @@ void test_merge_partial_io() {
 
     mat_full_fp32_t* exp2 = mat_full_three_rep<mat_full_fp32_t,float>();
     mat_full_fp32_t *obs2 = NULL;
-    err = merge_partial_to_matrix_fp32(pms, 2, &obs2);
+    err = merge_partial_to_mmap_matrix_fp32(pms, 2, NULL, &obs2);
     ASSERT(err == merge_okay);
     ASSERT(obs2->n_samples == exp2->n_samples);
     for(unsigned int i = 0; i < (obs2->n_samples*obs2->n_samples); i++) {
@@ -690,7 +693,7 @@ int main(int argc, char** argv) {
     //test_write_mat();
     //test_read_mat();
     test_read_write_partial_mat();
-    test_merge_partial_mat();
+    //test_merge_partial_mat();
     test_merge_partial_dyn_mat();
     test_merge_partial_io();
     test_merge_partial_mmap();
