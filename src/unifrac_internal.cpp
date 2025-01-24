@@ -20,7 +20,7 @@
 
 #include "unifrac_internal.hpp"
 
-static pthread_mutex_t printf_mutex;
+static pthread_mutex_t printf_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool* report_status;
 
 static int sync_printf(const char *format, ...) {
