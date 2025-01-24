@@ -5,6 +5,53 @@
 #include "unifrac_internal.hpp"
 #include "test_helper.hpp"
 
+// copy of internal function in api... repeated here for testing
+uint64_t _testv_comb_2(uint64_t N) {
+            // based off of _comb_int_long
+            // https://github.com/scipy/scipy/blob/v0.19.1/scipy/special/_comb.pyx
+            
+            // Compute binom(N, k) for integers.
+            //
+            // we're disregarding overflow as that practically should not
+            // happen unless the number of samples processed is in excess
+            // of 4 billion 
+            uint64_t val, j, M, nterms;
+            uint64_t k = 2;
+
+            M = N + 1;
+            nterms = k < (N - k) ? k : N - k;
+
+            val = 1;
+
+            for(j = 1; j < nterms + 1; j++) {
+                val *= M - j;
+                val /= j;
+            }
+            return val;
+}
+
+// minor variant of internal function in api... repeated here for testing
+void _testv_stripes_to_condensed_form(double* stripes[], uint32_t n, uint32_t m, double* cf) {
+    uint64_t comb_N = _testv_comb_2(n);
+    for(unsigned int stripe = 0; stripe < m; stripe++) {
+        // compute the (i, j) position of each element in each stripe
+        uint64_t i = 0;
+        uint64_t j = stripe + 1;
+        for(uint64_t k = 0; k < n; k++, i++, j++) {
+            if(j == n) {
+                i = 0;
+                j = n - (stripe + 1);
+            }
+            // determine the position in the condensed form vector for a given (i, j)
+            // based off of
+            // https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.squareform.html
+            uint64_t comb_N_minus_i = _testv_comb_2(n - i);
+            cf[comb_N - comb_N_minus_i + (j - i - 1)] = stripes[stripe][k];
+        }
+    }
+}
+
+
 void test_bptree_simple_result(const su::BPTree &tree) {
     unsigned int exp_nparens = 8;
 
@@ -853,8 +900,17 @@ void test_unifrac_stripes_to_condensed_form_even() {
                       /* *,  *,  *,  *,  *,  *,  *,  *,  0, */ 44};
                       /* *,  *,  *,  *,  *,  *,  *,  *,  *, *,  0 */
 
-    double *obs = (double*)malloc(sizeof(double) * 45);
+    double *obs = NULL;
+    obs = (double*)malloc(sizeof(double) * 45);
     su::stripes_to_condensed_form(stripes, 10, obs, 0, 5);
+    for(unsigned int i = 0; i < 45; i++) {
+        ASSERT(exp[i] == obs[i]);
+    }
+    free(obs);
+    // test internal version, too
+    double* cstripes[] = {s1, s2, s3, s4 ,s5};
+    obs = (double*)malloc(sizeof(double) * 45);
+    _testv_stripes_to_condensed_form(cstripes, 10, 5, obs);
     for(unsigned int i = 0; i < 45; i++) {
         ASSERT(exp[i] == obs[i]);
     }
@@ -887,8 +943,17 @@ void test_unifrac_stripes_to_condensed_form_odd() {
                       /*29, 32, 49, 44, 36, 26, 14,  8,  0, */ 9, 12,
                       /*11, 30, 31, 50, 45, 35, 27, 13,  9,  0,*/ 10};
                       /* 0,  1,  2,  3,  4, 46, 34, 28, 12, 10,  0}; */
-    double *obs = (double*)malloc(sizeof(double) * 55);
+    double *obs = NULL;
+    obs = (double*)malloc(sizeof(double) * 55);
     su::stripes_to_condensed_form(stripes, 11, obs, 0, 5);
+    for(unsigned int i = 0; i < 55; i++) {
+        ASSERT(exp[i] == obs[i]);
+    }
+    free(obs);
+    // test internal version, too
+    double* cstripes[] = {s1, s2, s3, s4 ,s5};
+    obs = (double*)malloc(sizeof(double) * 55);
+    _testv_stripes_to_condensed_form(cstripes, 11, 5, obs);
     for(unsigned int i = 0; i < 55; i++) {
         ASSERT(exp[i] == obs[i]);
     }
@@ -919,8 +984,17 @@ void test_unifrac_stripes_to_condensed_form_odd2() {
                       /*47, 42, 38, 24, 16,  6,  0, */ 7, 12,
                       /*47, 42, 38, 24, 16,  6,  7, 0, */  8};
                       /* 0,  1,  2,  3,  4, 46, 34, 8,  8, 0}; */
-    double *obs = (double*)malloc(sizeof(double) * 36);
+    double *obs = NULL;
+    obs = (double*)malloc(sizeof(double) * 36);
     su::stripes_to_condensed_form(stripes, 9, obs, 0, 5);
+    for(unsigned int i = 0; i < 36; i++) {
+        ASSERT(exp[i] == obs[i]);
+    }
+    free(obs);
+    // test internal version, too
+    double* cstripes[] = {s1, s2, s3, s4 ,s5};
+    obs = (double*)malloc(sizeof(double) * 36);
+    _testv_stripes_to_condensed_form(cstripes, 9, 5, obs);
     for(unsigned int i = 0; i < 36; i++) {
         ASSERT(exp[i] == obs[i]);
     }
@@ -1261,6 +1335,22 @@ void test_unnormalized_weighted_unifrac() {
         }
         free(strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[] = {stride1, stride2, stride3};
+    mat_t *res = NULL;
+    ComputeStatus rc = one_off("test.biom", "test.tre",
+		               "weighted_unnormalized", false, 0.0,
+			       false, 1, &res);
+    ASSERT(rc == okay);
+    double *expS = (double*)malloc(sizeof(double) * 18);
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    free(expS);
+    destroy_mat(&res);
+
     SUITE_END();
 }
 
@@ -1370,6 +1460,49 @@ void test_generalized_unifrac() {
         free(d0_strides[i]);
         free(d05_strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[3];
+    double *expS = (double*)malloc(sizeof(double) * 18);
+
+    mat_t *res = NULL;
+    ComputeStatus rc;
+
+    rc =  one_off("test.biom", "test.tre",
+	               "generalized", false, 1.0,
+		       false, 1, &res);
+    ASSERT(rc == okay);
+    cstripes[0] = w_stride1; cstripes[1] = w_stride2; cstripes[2] = w_stride3;
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    destroy_mat(&res);
+
+    rc =  one_off("test.biom", "test.tre",
+	               "generalized", false, 0.0,
+		       false, 1, &res);
+    ASSERT(rc == okay);
+    cstripes[0] = d0_stride1; cstripes[1] = d0_stride2; cstripes[2] = d0_stride3;
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    destroy_mat(&res);
+
+    rc =  one_off("test.biom", "test.tre",
+	               "generalized", false, 0.5,
+		       false, 1, &res);
+    ASSERT(rc == okay);
+    cstripes[0] = d05_stride1; cstripes[1] = d05_stride2; cstripes[2] = d05_stride3;
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    destroy_mat(&res);
+
+    free(expS);
+
     SUITE_END();
 }
 
@@ -1421,6 +1554,22 @@ void test_vaw_unifrac_weighted_normalized() {
         }
         free(w_strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[] = {w_stride1, w_stride2, w_stride3};
+    mat_t *res = NULL;
+    ComputeStatus rc = one_off("test.biom", "test.tre",
+		               "weighted_normalized", true, 1.0,
+			       false, 1, &res);
+    ASSERT(rc == okay);
+    double *expS = (double*)malloc(sizeof(double) * 18);
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    free(expS);
+    destroy_mat(&res);
+
     SUITE_END();
 }
 
@@ -1524,6 +1673,22 @@ void test_unweighted_unifrac() {
         }
         free(strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[] = {stride1, stride2, stride3};
+    mat_t *res = NULL;
+    ComputeStatus rc = one_off("test.biom", "test.tre",
+		               "unweighted", false, 0.0,
+			       false, 1, &res);
+    ASSERT(rc == okay);
+    double *expS = (double*)malloc(sizeof(double) * 18);
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    free(expS);
+    destroy_mat(&res);
+
     SUITE_END();
 }
 
@@ -1563,6 +1728,22 @@ void test_unweighted_unifrac_fast() {
         }
         free(strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[] = {stride1, stride2, stride3};
+    mat_t *res = NULL;
+    ComputeStatus rc = one_off("test.biom", "test.tre",
+		               "unweighted", false, 0.0,
+			       true, 1, &res);
+    ASSERT(rc == okay);
+    double *expS = (double*)malloc(sizeof(double) * 18);
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    free(expS);
+    destroy_mat(&res);
+
     SUITE_END();
 }
 
@@ -1602,6 +1783,22 @@ void test_unnormalized_unweighted_unifrac() {
         }
         free(strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[] = {stride1, stride2, stride3};
+    mat_t *res = NULL;
+    ComputeStatus rc = one_off("test.biom", "test.tre",
+		               "unweighted_unnormalized", false, 0.0,
+			       false, 1, &res);
+    ASSERT(rc == okay);
+    double *expS = (double*)malloc(sizeof(double) * 18);
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    free(expS);
+    destroy_mat(&res);
+
     SUITE_END();
 }
 
@@ -1642,6 +1839,22 @@ void test_normalized_weighted_unifrac() {
         }
         free(strides[i]);
     }
+
+    // repeat using the API
+    double* cstripes[] = {stride1, stride2, stride3};
+    mat_t *res = NULL;
+    ComputeStatus rc = one_off("test.biom", "test.tre",
+		               "weighted_normalized", false, 0.0,
+			       false, 1, &res);
+    ASSERT(rc == okay);
+    double *expS = (double*)malloc(sizeof(double) * 18);
+    _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
+    for(unsigned int i = 0; i < 18; i++) {
+       ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
+    }
+    free(expS);
+    destroy_mat(&res);
+
     SUITE_END();
 }
 
