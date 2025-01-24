@@ -1,4 +1,4 @@
-.PHONY: all main api test test_binaries install clean rapi_test
+.PHONY: all main api test test_binaries install install_lib clean rapi_test
 
 CXX := h5c++
 
@@ -138,7 +138,7 @@ endif
 
 CPPFLAGS += -Wall  -std=c++17 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
-all: api main install
+all: api install_lib main install
 
 main: $(SSU) $(FPD)
 
@@ -153,11 +153,11 @@ test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsamp
 test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
 
-$(SSU): su.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $(SSU) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+$(SSU): su.cpp $(PREFIX)/lib/lib$(SSU).so
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $@ -l$(SSU)
 
-$(FPD): faithpd.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $(FPD) tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lhdf5_cpp -llz4 $(BLASLIB) -lpthread
+$(FPD): faithpd.cpp $(PREFIX)/lib/lib$(SSU).so
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $@ -l$(SSU)
 
 lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	$(CXX) $(LDDFLAGS) -o lib$(SSU).so tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
@@ -195,8 +195,11 @@ test: test_binaries
 	./test_ska
 	./test_api
 
-install: lib$(SSU).so $(SSU) $(FPD)
-	rm -f ${PREFIX}/lib//lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
+install_lib: lib$(SSU).so
+	rm -f ${PREFIX}/lib/lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
+
+
+install: $(SSU) $(FPD)
 	rm -f ${PREFIX}/bin/$(SSU); cp $(SSU) ${PREFIX}/bin/
 	rm -f ${PREFIX}/bin/$(FPD); cp $(FPD) ${PREFIX}/bin/
 	mkdir -p ${PREFIX}/include/unifrac
