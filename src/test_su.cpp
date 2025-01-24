@@ -1,8 +1,12 @@
 #include "api.hpp"
+
+#ifndef API_ONLY
 #include "tree.hpp"
 #include "biom.hpp"
 #include "unifrac.hpp"
 #include "unifrac_internal.hpp"
+#endif
+
 #include "test_helper.hpp"
 
 // copy of internal function in api... repeated here for testing
@@ -52,6 +56,7 @@ void _testv_stripes_to_condensed_form(double* stripes[], uint32_t n, uint32_t m,
 }
 
 
+#ifndef API_ONLY
 void test_bptree_simple_result(const su::BPTree &tree) {
     unsigned int exp_nparens = 8;
 
@@ -874,6 +879,7 @@ void test_unifrac_deconvolute_stripes() {
     free(obs);
     SUITE_END();
 }
+#endif
 
 void test_unifrac_stripes_to_condensed_form_even() {
     SUITE_START("test stripes_to_condensed_form even samples");
@@ -901,12 +907,14 @@ void test_unifrac_stripes_to_condensed_form_even() {
                       /* *,  *,  *,  *,  *,  *,  *,  *,  *, *,  0 */
 
     double *obs = NULL;
+#ifndef API_ONLY
     obs = (double*)malloc(sizeof(double) * 45);
     su::stripes_to_condensed_form(stripes, 10, obs, 0, 5);
     for(unsigned int i = 0; i < 45; i++) {
         ASSERT(exp[i] == obs[i]);
     }
     free(obs);
+#endif
     // test internal version, too
     double* cstripes[] = {s1, s2, s3, s4 ,s5};
     obs = (double*)malloc(sizeof(double) * 45);
@@ -944,12 +952,14 @@ void test_unifrac_stripes_to_condensed_form_odd() {
                       /*11, 30, 31, 50, 45, 35, 27, 13,  9,  0,*/ 10};
                       /* 0,  1,  2,  3,  4, 46, 34, 28, 12, 10,  0}; */
     double *obs = NULL;
+#ifndef API_ONLY
     obs = (double*)malloc(sizeof(double) * 55);
     su::stripes_to_condensed_form(stripes, 11, obs, 0, 5);
     for(unsigned int i = 0; i < 55; i++) {
         ASSERT(exp[i] == obs[i]);
     }
     free(obs);
+#endif
     // test internal version, too
     double* cstripes[] = {s1, s2, s3, s4 ,s5};
     obs = (double*)malloc(sizeof(double) * 55);
@@ -985,12 +995,14 @@ void test_unifrac_stripes_to_condensed_form_odd2() {
                       /*47, 42, 38, 24, 16,  6,  7, 0, */  8};
                       /* 0,  1,  2,  3,  4, 46, 34, 8,  8, 0}; */
     double *obs = NULL;
+#ifndef API_ONLY
     obs = (double*)malloc(sizeof(double) * 36);
     su::stripes_to_condensed_form(stripes, 9, obs, 0, 5);
     for(unsigned int i = 0; i < 36; i++) {
         ASSERT(exp[i] == obs[i]);
     }
     free(obs);
+#endif
     // test internal version, too
     double* cstripes[] = {s1, s2, s3, s4 ,s5};
     obs = (double*)malloc(sizeof(double) * 36);
@@ -1002,6 +1014,7 @@ void test_unifrac_stripes_to_condensed_form_odd2() {
     SUITE_END();
 }
 
+#ifndef API_ONLY
 class ValidatedMemoryStripes : public su::MemoryStripes {
         private:
            const uint32_t n_stripes;
@@ -1296,19 +1309,23 @@ void test_unifrac_stripes_to_matrix_odd2() {
     free(obsC);
     SUITE_END();
 }
+#endif
 
 
 void test_unnormalized_weighted_unifrac() {
     SUITE_START("test unnormalized weighted unifrac");
 
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     std::vector<double*> exp;
     double stride1[] = {1.52380952, 1.25, 2.75, 1.33333333, 2., 1.07142857};
     double stride2[] = {2.17857143, 2.66666667, 3.25, 1.0, 1.14285714, 1.83333333};
     double stride3[] = {1.9047619, 2.66666667, 1.75, 1.9047619, 2.66666667, 1.75};
+#ifndef API_ONLY
     exp.push_back(stride1);
     exp.push_back(stride2);
     exp.push_back(stride3);
@@ -1335,6 +1352,7 @@ void test_unnormalized_weighted_unifrac() {
         }
         free(strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[] = {stride1, stride2, stride3};
@@ -1357,15 +1375,18 @@ void test_unnormalized_weighted_unifrac() {
 void test_generalized_unifrac() {
     SUITE_START("test generalized unifrac");
 
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     // weighted normalized unifrac as computed above
     std::vector<double*> w_exp;
     double w_stride1[] = {0.38095238, 0.33333333, 0.73333333, 0.33333333, 0.5, 0.26785714};
     double w_stride2[] = {0.58095238, 0.66666667, 0.86666667, 0.25, 0.28571429, 0.45833333};
     double w_stride3[] = {0.47619048, 0.66666667, 0.46666667, 0.47619048, 0.66666667, 0.46666667};
+#ifndef API_ONLY
     w_exp.push_back(w_stride1);
     w_exp.push_back(w_stride2);
     w_exp.push_back(w_stride3);
@@ -1385,6 +1406,7 @@ void test_generalized_unifrac() {
                         std::ref(w_strides_total),
                         std::ref(threads),
                         std::ref(tasks));
+#endif
 
     // as computed by GUniFrac v1.0
     //          Sample1   Sample2   Sample3   Sample4   Sample5   Sample6
@@ -1398,6 +1420,7 @@ void test_generalized_unifrac() {
     double d0_stride1[] = {0.4408392, 0.5102041, 0.8649351, 0.5000000, 0.7485714, 0.3278410};
     double d0_stride2[] = {0.6886965, 0.7500000, 0.9428571, 0.4857143, 0.5833333, 0.5208125};
     double d0_stride3[] = {0.7060606, 0.8000000, 0.5952381, 0.7060606, 0.8000000, 0.5952381};
+#ifndef API_ONLY
     d0_exp.push_back(d0_stride1);
     d0_exp.push_back(d0_stride2);
     d0_exp.push_back(d0_stride3);
@@ -1417,6 +1440,7 @@ void test_generalized_unifrac() {
                         std::ref(d0_strides_total),
                         std::ref(threads),
                         std::ref(tasks));
+#endif
 
     // as computed by GUniFrac v1.0
     //          Sample1   Sample2   Sample3   Sample4   Sample5   Sample6
@@ -1430,6 +1454,7 @@ void test_generalized_unifrac() {
     double d05_stride1[] = {0.4040518, 0.4160597, 0.8005220, 0.4117216, 0.6188282, 0.2995673};
     double d05_stride2[] = {0.6285560, 0.7071068, 0.9073159, 0.3485667, 0.4082483, 0.4860856};
     double d05_stride3[] = {0.5869439, 0.7302479, 0.5218198, 0.5869439, 0.7302479, 0.5218198};
+#ifndef API_ONLY
     d05_exp.push_back(d05_stride1);
     d05_exp.push_back(d05_stride2);
     d05_exp.push_back(d05_stride3);
@@ -1460,6 +1485,7 @@ void test_generalized_unifrac() {
         free(d0_strides[i]);
         free(d05_strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[3];
@@ -1509,9 +1535,11 @@ void test_generalized_unifrac() {
 void test_vaw_unifrac_weighted_normalized() {
     SUITE_START("test vaw weighted normalized unifrac");
 
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     // as computed by GUniFrac, the original implementation of VAW-UniFrac
     // could not be found.
@@ -1528,6 +1556,7 @@ void test_vaw_unifrac_weighted_normalized() {
     double w_stride1[] = {0.4086040, 0.3798594, 0.7713254, 0.6666667, 0.4735991, 0.2766318};
     double w_stride2[] = {0.6240185, 0.6884992, 0.8812897, 0.2709298, 0.2857143, 0.4735781};
     double w_stride3[] = {0.4639481, 0.6807616, 0.5047114, 0.4639481, 0.6807616, 0.5047114};
+#ifndef API_ONLY
     w_exp.push_back(w_stride1);
     w_exp.push_back(w_stride2);
     w_exp.push_back(w_stride3);
@@ -1554,6 +1583,7 @@ void test_vaw_unifrac_weighted_normalized() {
         }
         free(w_strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[] = {w_stride1, w_stride2, w_stride3};
@@ -1574,6 +1604,7 @@ void test_vaw_unifrac_weighted_normalized() {
 }
 
 
+#ifndef API_ONLY
 void test_make_strides() {
     SUITE_START("test make stripes");
     std::vector<double*> exp;
@@ -1590,13 +1621,16 @@ void test_make_strides() {
         free(obs[i]);
     }
 }
+#endif
 
 void test_faith_pd() {
     SUITE_START("test faith PD");
 
+#ifndef API_ONLY
     // Note this tree is binary (opposed to example below)
     su::BPTree tree("((GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1):2,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
@@ -1604,12 +1638,14 @@ void test_faith_pd() {
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
+#ifndef API_ONLY
     su::faith_pd(table, tree, obs);
 
     // ASSERT that results = expectation
     for (unsigned int i = 0; i < 6; i++){
         ASSERT(fabs(exp[i]-obs[i]) < 0.000001)
     }
+#endif
 
     // repeat using the API
     r_vec *res = NULL;
@@ -1626,8 +1662,10 @@ void test_faith_pd() {
 void test_faith_pd_shear(){
     SUITE_START("test faith PD extra OTUs in tree");
 
+#ifndef API_ONLY
     su::BPTree tree("((GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1,GG_OTU_ex:9):1):2,(GG_OTU_5:1,GG_OTU_4:1,GG_OTU_ex2:12):1);");
     su::biom table("test.biom");
+#endif
 
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
@@ -1635,6 +1673,7 @@ void test_faith_pd_shear(){
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
+#ifndef API_ONLY
     std::unordered_set<std::string> to_keep(table.get_obs_ids().begin(),           \
                                             table.get_obs_ids().end());            \
     su::BPTree tree_sheared = tree.shear(to_keep).collapse();
@@ -1644,6 +1683,7 @@ void test_faith_pd_shear(){
     for (unsigned int i = 0; i < 6; i++){
         ASSERT(fabs(exp[i]-obs[i]) < 0.000001)
     }
+#endif
 
     // repeat using the API
     r_vec *res = NULL;
@@ -1659,14 +1699,17 @@ void test_faith_pd_shear(){
 
 void test_unweighted_unifrac() {
     SUITE_START("test unweighted unifrac");
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     std::vector<double*> exp;
     double stride1[] = {0.2, 0.42857143, 0.71428571, 0.33333333, 0.6, 0.2};
     double stride2[] = {0.57142857, 0.66666667, 0.85714286, 0.4, 0.5, 0.33333333};
     double stride3[] = {0.6, 0.6, 0.42857143, 0.6, 0.6, 0.42857143};
+#ifndef API_ONLY
     exp.push_back(stride1);
     exp.push_back(stride2);
     exp.push_back(stride3);
@@ -1693,6 +1736,7 @@ void test_unweighted_unifrac() {
         }
         free(strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[] = {stride1, stride2, stride3};
@@ -1714,14 +1758,17 @@ void test_unweighted_unifrac() {
 
 void test_unweighted_unifrac_fast() {
     SUITE_START("test unweighted unifrac no tips");
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     std::vector<double*> exp;
     double stride1[] = {0., 0., 0.5, 0., 0.5, 0.};
     double stride2[] = {0., 0.5, 0.5, 0.5, 0.5, 0.};
     double stride3[] = {0.5, 0.5, 0., 0.5, 0.5, 0.};
+#ifndef API_ONLY
     exp.push_back(stride1);
     exp.push_back(stride2);
     exp.push_back(stride3);
@@ -1748,6 +1795,7 @@ void test_unweighted_unifrac_fast() {
         }
         free(strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[] = {stride1, stride2, stride3};
@@ -1769,14 +1817,17 @@ void test_unweighted_unifrac_fast() {
 
 void test_unnormalized_unweighted_unifrac() {
     SUITE_START("test unnormalized unweighted unifrac");
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     std::vector<double*> exp;
     double stride1[] = {1,3,5,1,3,1};
     double stride2[] = {4,4,6,2,2,2};
     double stride3[] = {3,3,3,3,3,3};
+#ifndef API_ONLY
     exp.push_back(stride1);
     exp.push_back(stride2);
     exp.push_back(stride3);
@@ -1803,6 +1854,7 @@ void test_unnormalized_unweighted_unifrac() {
         }
         free(strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[] = {stride1, stride2, stride3};
@@ -1824,14 +1876,17 @@ void test_unnormalized_unweighted_unifrac() {
 
 void test_normalized_weighted_unifrac() {
     SUITE_START("test normalized weighted unifrac");
+#ifndef API_ONLY
     std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
+#endif
 
     std::vector<double*> exp;
     double stride1[] = {0.38095238, 0.33333333, 0.73333333, 0.33333333, 0.5, 0.26785714};
     double stride2[] = {0.58095238, 0.66666667, 0.86666667, 0.25, 0.28571429, 0.45833333};
     double stride3[] = {0.47619048, 0.66666667, 0.46666667, 0.47619048, 0.66666667, 0.46666667};
+#ifndef API_ONLY
     exp.push_back(stride1);
     exp.push_back(stride2);
     exp.push_back(stride3);
@@ -1859,6 +1914,7 @@ void test_normalized_weighted_unifrac() {
         }
         free(strides[i]);
     }
+#endif
 
     // repeat using the API
     double* cstripes[] = {stride1, stride2, stride3};
@@ -1878,6 +1934,7 @@ void test_normalized_weighted_unifrac() {
     SUITE_END();
 }
 
+#ifndef API_ONLY
 void test_bptree_shear_simple() {
     SUITE_START("test bptree shear simple");
     su::BPTree tree("((3:2,4:3,(6:5)5:4)2:1,7:6,((10:9,11:10)9:8)8:7)r");
@@ -2172,8 +2229,10 @@ void test_bptree_constructor_newline_bug() {
     su::BPTree tree("((362be41f31fd26be95ae43a8769b91c0:0.116350803,(a16679d5a10caa9753f171977552d920:0.105836235,((a7acc2abb505c3ee177a12e514d3b994:0.008268754,(4e22aa3508b98813f52e1a12ffdb74ad:0.03144211,8139c4ac825dae48454fb4800fb87896:0.043622957)0.923:0.046588301)0.997:0.120902074,((2d3df7387323e2edcbbfcb6e56a02710:0.031543994,3f6752aabcc291b67a063fb6492fd107:0.091571442)0.759:0.016335166,((d599ebe277afb0dfd4ad3c2176afc50e:5e-09,84d0affc7243c7d6261f3a7d680b873f:0.010245188)0.883:0.048993011,51121722488d0c3da1388d1b117cd239:0.119447926)0.763:0.035660204)0.921:0.058191474)0.776:0.02854575)0.657:0.052060833)0.658:0.032547569,(99647b51f775c8ddde8ed36a7d60dbcd:0.173334268,(f18a9c8112372e2916a66a9778f3741b:0.194813398,(5833416522de0cca717a1abf720079ac:5e-09,(2bf1067d2cd4f09671e3ebe5500205ca:0.031692682,(b32621bcd86cb99e846d8f6fee7c9ab8:0.031330707,1016319c25196d73bdb3096d86a9df2f:5e-09)0.058:0.01028612)0.849:0.010284866)0.791:0.041353384)0.922:0.109470534):0.022169824000000005)root;\n\n");
     SUITE_END();
 }
+#endif
 
 int main(int argc, char** argv) {
+#ifndef API_ONLY
     test_bptree_constructor_simple();
     test_bptree_constructor_simple_cpp();
     test_bptree_constructor_newline_bug();
@@ -2215,12 +2274,18 @@ int main(int argc, char** argv) {
     test_unifrac_set_proportions_range();
     test_unifrac_set_proportions_range_float();
     test_unifrac_deconvolute_stripes();
+#endif
+
     test_unifrac_stripes_to_condensed_form_even();
     test_unifrac_stripes_to_condensed_form_odd();
     test_unifrac_stripes_to_condensed_form_odd2();
+
+#ifndef API_ONLY
     test_unifrac_stripes_to_matrix_even();
     test_unifrac_stripes_to_matrix_odd();
     test_unifrac_stripes_to_matrix_odd2();
+#endif
+
     test_unweighted_unifrac();
     test_unweighted_unifrac_fast();
     test_unnormalized_unweighted_unifrac();
@@ -2228,9 +2293,12 @@ int main(int argc, char** argv) {
     test_normalized_weighted_unifrac();
     test_generalized_unifrac();
     test_vaw_unifrac_weighted_normalized();
+
+#ifndef API_ONLY
     test_unifrac_sample_counts();
     test_set_tasks();
     test_test_table_ids_are_subset_of_tree();
+#endif
 
     test_faith_pd();
     test_faith_pd_shear();

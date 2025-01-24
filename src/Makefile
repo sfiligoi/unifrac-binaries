@@ -144,10 +144,14 @@ main: $(SSU) $(FPD)
 
 api: lib$(SSU).so
 
-test_binaries: test_su test_ska test_api
+test_binaries: test_su test_ska test_api test_su_api
 
-test_su: test_su.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+# first test the internal structures
+test_su: test_su.cpp api.hpp tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o $@ tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+# then exercise the optimized code through the API interface
+test_su_api: test_su.cpp test_helper.hpp api.hpp $(PREFIX)/lib/lib$(SSU).so
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) -DAPI_ONLY=1 test_su.cpp -o $@ -l$(SSU)
 
 # Create an archive, so we do not need dependencies for functions we do not use
 test_ska_deps.a: tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o skbio_alt.o api.o
@@ -201,6 +205,7 @@ test: test_binaries
 	./test_su
 	./test_ska
 	./test_api
+	./test_su_api
 
 install_lib: lib$(SSU).so
 	rm -f ${PREFIX}/lib/lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
@@ -233,5 +238,5 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api lib$(SSU).so unifrac_task_noclass.cpp
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass.cpp
 
