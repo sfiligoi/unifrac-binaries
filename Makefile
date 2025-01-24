@@ -8,11 +8,11 @@ COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
 ifeq ($(PLATFORM),Darwin)
 # no GPU support for MacOS
 all:
-	make api
-	make install
-	make main
-	make install_main
-	make test_binaries
+	$(MAKE) api
+	$(MAKE) install
+	$(MAKE) main
+	$(MAKE) install_main
+	$(MAKE) test_binaries
 
 else
 # Linux with optional GPU support
@@ -20,95 +20,95 @@ else
 ifndef NOGPU
 
 all: 
-	make all_cpu_basic
-	make all_nv_avx2
-	make all_nv
-	make all_combined
-	make test_binaries
+	$(MAKE) all_cpu_basic
+	$(MAKE) all_nv_avx2
+	$(MAKE) all_nv
+	$(MAKE) all_combined
+	$(MAKE) test_binaries
 
 else
 
 all: 
-	make all_cpu_basic
-	make all_combined
-	make test_binaries
+	$(MAKE) all_cpu_basic
+	$(MAKE) all_combined
+	$(MAKE) test_binaries
 
 endif
 
 all_cpu_basic:
-	make api_cpu_basic
-	make install_cpu_basic
+	$(MAKE) api_cpu_basic
+	$(MAKE) install_cpu_basic
 
 all_nv: 
-	make api_nv
-	make install_nv
+	$(MAKE) api_nv
+	$(MAKE) install_nv
 
 all_nv_avx2: 
-	make api_nv_avx2
-	make install_nv_avx2
+	$(MAKE) api_nv_avx2
+	$(MAKE) install_nv_avx2
 
 all_combined:
-	make api_combined
-	make install_combined
-	make main
-	make install_main
+	$(MAKE) api_combined
+	$(MAKE) install_combined
+	$(MAKE) main
+	$(MAKE) install_main
 
 endif
 
 clean:
-	-cd test && make clean
-	-cd src && make clean
-	-cd combined && make clean
+	-cd test && $(MAKE) clean
+	-cd src && $(MAKE) clean
+	-cd combined && $(MAKE) clean
 
 ########### api
 
 api:
-	cd src && make clean && make api
+	cd src && $(MAKE) clean && $(MAKE) api
 
 api_cpu_basic:
-	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make clean && make api
+	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api
 
 api_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make clean && make api
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api
 
 api_nv_avx2:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && make clean && make api
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && $(MAKE) clean && $(MAKE) api
 
 api_combined:
-	cd combined && make clean && make api
+	cd combined && $(MAKE) clean && $(MAKE) api
 
 ########### main
 
 main:
-	cd src && make clean && make main
+	cd src && $(MAKE) clean && $(MAKE) main
 
 install_main:
-	cd src && make install
+	cd src && $(MAKE) install
 
 ########### install
 
 install:
-	cd src && make install_lib
+	cd src && $(MAKE) install_lib
 
 install_cpu_basic:
-	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make install_lib
+	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib
 
 install_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make install_lib
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib
 
 install_nv_avx2:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && make install_lib
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && $(MAKE) install_lib
 
 install_combined:
-	cd combined && make install
+	cd combined && $(MAKE) install
 
 ########### test
 
 test_binaries:
-	cd src && make clean && make test_binaries
-	cd test && make clean && make test_binaries
+	cd src && $(MAKE) clean && $(MAKE) test_binaries
+	cd test && $(MAKE) clean && $(MAKE) test_binaries
 
 test:
-	cd src && make test
-	cd test && make test
+	cd src && $(MAKE) test
+	cd test && $(MAKE) test
 
