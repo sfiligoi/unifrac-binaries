@@ -1361,9 +1361,9 @@ void test_unnormalized_weighted_unifrac() {
 		               "weighted_unnormalized", false, 0.0,
 			       false, 1, &res);
     ASSERT(rc == okay);
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     free(expS);
@@ -1489,7 +1489,7 @@ void test_generalized_unifrac() {
 
     // repeat using the API
     double* cstripes[3];
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
 
     mat_t *res = NULL;
     ComputeStatus rc;
@@ -1500,7 +1500,7 @@ void test_generalized_unifrac() {
     ASSERT(rc == okay);
     cstripes[0] = w_stride1; cstripes[1] = w_stride2; cstripes[2] = w_stride3;
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     destroy_mat(&res);
@@ -1511,7 +1511,7 @@ void test_generalized_unifrac() {
     ASSERT(rc == okay);
     cstripes[0] = d0_stride1; cstripes[1] = d0_stride2; cstripes[2] = d0_stride3;
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     destroy_mat(&res);
@@ -1522,7 +1522,7 @@ void test_generalized_unifrac() {
     ASSERT(rc == okay);
     cstripes[0] = d05_stride1; cstripes[1] = d05_stride2; cstripes[2] = d05_stride3;
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     destroy_mat(&res);
@@ -1592,9 +1592,9 @@ void test_vaw_unifrac_weighted_normalized() {
 		               "weighted_normalized", true, 1.0,
 			       false, 1, &res);
     ASSERT(rc == okay);
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     free(expS);
@@ -1745,9 +1745,9 @@ void test_unweighted_unifrac() {
 		               "unweighted", false, 0.0,
 			       false, 1, &res);
     ASSERT(rc == okay);
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     free(expS);
@@ -1804,9 +1804,9 @@ void test_unweighted_unifrac_fast() {
 		               "unweighted", false, 0.0,
 			       true, 1, &res);
     ASSERT(rc == okay);
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     free(expS);
@@ -1863,9 +1863,9 @@ void test_unnormalized_unweighted_unifrac() {
 		               "unweighted_unnormalized", false, 0.0,
 			       false, 1, &res);
     ASSERT(rc == okay);
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     free(expS);
@@ -1923,9 +1923,9 @@ void test_normalized_weighted_unifrac() {
 		               "weighted_normalized", false, 0.0,
 			       false, 1, &res);
     ASSERT(rc == okay);
-    double *expS = (double*)malloc(sizeof(double) * 18);
+    double *expS = (double*)malloc(sizeof(double) * 15);
     _testv_stripes_to_condensed_form(cstripes, 6, 3, expS);
-    for(unsigned int i = 0; i < 18; i++) {
+    for(unsigned int i = 0; i < 15; i++) {
        ASSERT(fabs(res->condensed_form[i] - expS[i]) < 0.000001);
     }
     free(expS);
