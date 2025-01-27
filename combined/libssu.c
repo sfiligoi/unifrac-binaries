@@ -53,10 +53,6 @@ static const char *ssu_get_lib_name() {
       ssu="libssu_cpu_basic.so";
    }
 
-   const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
-   if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
-      printf("INFO (unifrac): Using shared library %s\n",ssu);
-   }
    return ssu;
 }
 
@@ -69,10 +65,6 @@ static const char *ssu_get_lib_name() {
          printf("INFO (unifrac): No GPU support in this version\n");
    }
 
-   const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
-   if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
-      printf("INFO (unifrac): Using shared library %s\n",ssu);
-   }
    return ssu;
 }
 

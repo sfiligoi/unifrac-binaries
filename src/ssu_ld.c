@@ -22,7 +22,12 @@ static void ssu_load(const char *fncname,
    char *error;
 
    if (dl_handle==NULL) {
-       dl_handle = dlopen(ssu_get_lib_name(), RTLD_LAZY);
+       const char* lib_name = ssu_get_lib_name();
+       const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
+       if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
+           printf("INFO (unifrac): Using shared library %s\n",lib_name);
+       }
+       dl_handle = dlopen(lib_name, RTLD_LAZY);
        if (!dl_handle) {
           fputs(dlerror(), stderr);
           exit(1);
