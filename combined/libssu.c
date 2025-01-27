@@ -1,19 +1,11 @@
 /*
  * BSD 3-Clause License
  *
- * Copyright (c) 2023, UniFrac development team.
+ * Copyright (c) 2023-2025, UniFrac development team.
  * All rights reserved.
  *
  * See LICENSE file for more details
  */
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <dlfcn.h>
-#include <pthread.h>
-
-#include "../src/api.hpp"
 
 /*
  * Implement wrappers around all the EXTERN functions
@@ -21,11 +13,15 @@
  *
  */
 
-static pthread_mutex_t dl_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 /*********************************************************************/
 
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 /* Pick the right libssu implementation */
+/* Must be before the include of ssu_ld */
 #ifndef BASIC_ONLY
 static const char *ssu_get_lib_name() {
    __builtin_cpu_init ();
@@ -83,38 +79,11 @@ static const char *ssu_get_lib_name() {
 
 #endif
 
-/*********************************************************************/
+/* Import the actual implementation of ld handling */
+#include "../src/ssu_ld.c"
 
-/* Handle pointing to the approriate libssu implementing the functionality
- * Initialized on first use. */
-static void *dl_handle = NULL;
-
-static void ssu_load(const char *fncname,
-                     void **dl_ptr) {
-   char *error;
-
-   if (dl_handle==NULL) {
-       dl_handle = dlopen(ssu_get_lib_name(), RTLD_LAZY);
-       if (!dl_handle) {
-          fputs(dlerror(), stderr);
-          exit(1);
-       }
-   }
-
-   *dl_ptr = dlsym(dl_handle, fncname);
-   if ((error = dlerror()) != NULL)  {
-       fputs(error, stderr);
-       exit(1);
-   }
-}
-
-static void cond_ssu_load(const char *fncname,
-                     void **dl_ptr) {
-
-   pthread_mutex_lock(&dl_mutex);
-   if ((*dl_ptr)==NULL) ssu_load(fncname,dl_ptr);
-   pthread_mutex_unlock(&dl_mutex);
-}
+/* And we will need the headers for implemenation of the wrappers */
+#include "../src/api.hpp"
 
 /*********************************************************************/
 /* All the functons below are wrappers
