@@ -204,6 +204,10 @@ unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifra
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 # no separate task_api 
 
+# create symlink to make R (and any autodeduct system) happy
+unifrac_task.cpp: unifrac_task_noclass_cpu.cpp
+	ln -s unifrac_task_noclass_cpu.cpp unifrac_task.cpp
+
 unifrac_task_acc.o: unifrac_task_noclass_acc.cpp unifrac_task_noclass.hpp unifrac_task_api_acc.h
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
 unifrac_task_api_acc.o: unifrac_task_api_acc.cpp unifrac_task_api_acc.h unifrac_task_impl.hpp
@@ -250,7 +254,7 @@ install: $(SSU) $(FPD)
 	rm -f ${PREFIX}/include/unifrac/api.hpp; cp api.hpp ${PREFIX}/include/unifrac/
 	rm -f ${PREFIX}/include/unifrac/status_enum.hpp; cp status_enum.hpp ${PREFIX}/include/unifrac/
 
-rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+rapi_test: unifrac_task.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	mkdir -p ~/.R
 	if [ -e ~/.R/Makevars ] ; \
 	then \
@@ -269,7 +273,7 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp unifrac_task_api_*.h $(UNIFRAC_SHLIBS)
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp unifrac_task_api_*.h unifrac_task.cpp $(UNIFRAC_SHLIBS)
 
 clean_install:
 	-(cd ${PREFIX}/lib && rm -f lib$(SSU).so $(UNIFRAC_SHLIBS))
