@@ -62,6 +62,9 @@ def print_func_direct_args(ftype,nmspace,fname,ttype,fargs):
 def print_func_indirect_noargs(ftype,nmspace,fname):
     print('static %s (*dl_%s_%s)() = NULL;'%(ftype,nmspace,fname))
     print('%s %s::%s() {'%(ftype,nmspace,fname))
+    if (ftype=='bool') and (fname.find('found_gpu')>=0):
+        #this is the initial check, allow for the shared library to not being avaialble
+        print('  if (!ssu_load_check()) return false; /* shlib not found */')
     print('  cond_ssu_load("%s_%s", (void **) &dl_%s_%s);'%(nmspace,fname,nmspace,fname))
     if ftype=='void':
         print('  (*dl_%s_%s)();'%(nmspace,fname));

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <dlfcn.h>
 #include <pthread.h>
 
@@ -49,6 +50,27 @@ static void cond_ssu_load(const char *fncname,
    pthread_mutex_lock(&dl_mutex);
    if ((*dl_ptr)==NULL) ssu_load(fncname,dl_ptr);
    pthread_mutex_unlock(&dl_mutex);
+}
+
+static bool ssu_load_check() {
+
+   pthread_mutex_lock(&dl_mutex);
+   if (dl_handle==NULL) {
+       const char* lib_name = ssu_get_lib_name();
+       dl_handle = dlopen(lib_name, RTLD_LAZY);
+       if (!dl_handle) {
+          // no such shared library
+          pthread_mutex_unlock(&dl_mutex);
+	  return false;
+       }
+       // only print out if the library exists
+       const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
+       if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
+           printf("INFO (unifrac): Using shared library %s\n",lib_name);
+       }
+   }
+   pthread_mutex_unlock(&dl_mutex);
+   return true;
 }
 
 
