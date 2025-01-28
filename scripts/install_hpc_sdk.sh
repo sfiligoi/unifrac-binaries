@@ -88,11 +88,11 @@ export NV_CXX=pgc++
 # pgc++ does not define it, but gcc libraries expect it
 # also remove the existing conda flags, which are not compatible
 export NV_CPPFLAGS=-D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=0
-export NV_CXXFLAGS=${NV_CPPFLAGS}
-export NV_CFLAGS=${NV_CPPFLAGS}
+export NV_CXXFLAGS=\${NV_CPPFLAGS}
+export NV_CFLAGS=\${NV_CPPFLAGS}
 
 # reuse the same top-level LDFLAGS
-export NV_LDFLAGS=${LDFLAGS}
+export NV_LDFLAGS=\${LDFLAGS}
 
 EOF
 
