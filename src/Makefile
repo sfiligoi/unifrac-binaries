@@ -57,13 +57,17 @@ LDDFLAGS += $(MPFLAG)
 CPPFLAGS += $(MPFLAG)
 
 UNIFRAC_FILES = unifrac_internal.o unifrac_task_cpu.o unifrac_cmp_cpu.o
+UNIFRAC_SHLIBS =
 
 ifndef NOGPU
+   # assuming NV only GPU-enabled compiler available
+   NV_COMPILER := $(shell ($(NV_CXX) -v 2>&1) | tr A-Z a-z )
    ifeq ($(BUILD_OFFLOAD),ompgpu)
 	ifneq (,$(findstring pgi,$(COMPILER)))
-		OMPGPUCXX=$(CXX)
+		OMPGPUCXX=$(NV_CXX)
 		CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
-                UNIFRAC_FILES += unifrac_task_ompgpu.o unifrac_task_api_ompgpu.o unifrac_cmp_ompgpu.o
+		UNIFRAC_FILES += unifrac_task_ompgpu.o unifrac_cmp_ompgpu.o
+		UNIFRAC_SHLIBS += libssu_ompgpu.so
 		OMPGPUCPPFLAGS += -mp=gpu -DOMPGPU=1 -noacc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
 	            OMPGPUCPPFLAGS += -gpu=ccall
@@ -72,14 +76,14 @@ ifndef NOGPU
 		    # optional info
 		    OMPGPUCPPFLAGS += -Minfo=accel
                 endif
-	        LDDFLAGS += -shlib -mp=gpu -Bstatic_pgi
-	        EXEFLAGS += -mp=gpu -Bstatic_pgi
+		OMPGPULDDFLAGS := $(NV_LDFLAGS) -shared -mp=gpu -Bstatic_pgi
 	endif
    else 
-	ifneq (,$(findstring pgi,$(COMPILER)))
-		ACCCXX=$(CXX)
+	ifneq (,$(findstring pgi,$(NV_COMPILER)))
+		ACCCXX=$(NV_CXX)
 		CPPFLAGS += -DUNIFRAC_ENABLE_ACC=1
-                UNIFRAC_FILES += unifrac_task_acc.o unifrac_task_api_acc.o unifrac_cmp_acc.o
+		UNIFRAC_FILES += unifrac_task_acc.o unifrac_cmp_acc.o
+		UNIFRAC_SHLIBS += libssu_acc.so
 		ACCCPPFLAGS += -acc
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
 	            ACCCPPFLAGS += -gpu=ccall
@@ -88,8 +92,7 @@ ifndef NOGPU
 		    # optional info
 		    ACCCPPFLAGS += -Minfo=accel
                 endif
-	        LDDFLAGS += -shlib -acc -Bstatic_pgi
-	        EXEFLAGS += -acc -Bstatic_pgi
+		ACCLDDFLAGS := $(NV_LDFLAGS) -shared -acc -Bstatic_pgi
 	endif
    endif
 endif
@@ -142,7 +145,7 @@ all: api install_lib main install
 
 main: $(SSU) $(FPD)
 
-api: lib$(SSU).so
+api: $(UNIFRAC_SHLIBS) lib$(SSU).so
 
 test_binaries: test_su test_ska test_api test_su_api
 
@@ -171,7 +174,7 @@ $(SSU): su.cpp api.hpp biom.hpp $(PREFIX)/lib/lib$(SSU).so
 $(FPD): faithpd.cpp api.hpp $(PREFIX)/lib/lib$(SSU).so
 	h5c++ $(CPPFLAGS) $(EXEFLAGS) faithpd.cpp -o $@ -l$(SSU)
 
-lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES) $(UNIFRAC_SHLIBS)
 	h5c++ $(LDDFLAGS) -o lib$(SSU).so tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o cmd.o skbio_alt.o api.o -lc -llz4 $(BLASLIB) -L$(PREFIX)/lib -noshlib -lhdf5_cpp -lhdf5_hl_cpp -lhdf5_hl -lhdf5
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
@@ -206,10 +209,16 @@ unifrac_task_acc.o: unifrac_task_noclass_acc.cpp unifrac_task_noclass.hpp unifra
 unifrac_task_api_acc.o: unifrac_task_api_acc.cpp unifrac_task_api_acc.h unifrac_task_impl.hpp
 	${ACCCXX} $(CPPFLAGS) $(ACCCPPFLAGS) -DSUCMP_NM=su_acc -c $< -o $@
 
+libssu_acc.so: unifrac_task_api_acc.o
+	${ACCCXX} $(ACCLDDFLAGS) -o $@ unifrac_task_api_acc.o
+
 unifrac_task_ompgpu.o: unifrac_task_noclass_ompgpu.cpp unifrac_task_noclass.hpp unifrac_task_api_ompgpu.h
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 unifrac_task_api_ompgpu.o: unifrac_task_api_ompgpu.cpp unifrac_task_api_ompgpu.h unifrac_task_impl.hpp
 	${OMPGPUCXX} $(CPPFLAGS) $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
+
+libssu_ompgpu.so: unifrac_task_api_ompgpu.o
+	${OMPGPUCXX} $(OMPGPULDDFLAGS) -o $@ unifrac_task_api_ompgpu.o
 
 
 unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
@@ -230,7 +239,7 @@ test: test_binaries
 	./test_su_api
 
 install_lib: lib$(SSU).so
-	rm -f ${PREFIX}/lib/lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
+	for f in lib$(SSU).so $(UNIFRAC_SHLIBS); do rm -f "${PREFIX}/lib/$${f}"; cp "$${f}" ${PREFIX}/lib/; done
 
 
 install: $(SSU) $(FPD)
@@ -260,8 +269,10 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp unifrac_task_api_*.h
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass_*.cpp unifrac_task_api_*.h $(UNIFRAC_SHLIBS)
 
 clean_install:
-	-rm -f ${PREFIX}/lib/lib$(SSU).so ${PREFIX}/bin/$(SSU) ${PREFIX}/bin/$(FPD) ${PREFIX}/include/unifrac/task_parameters.hpp ${PREFIX}/include/unifrac/api.hpp ${PREFIX}/include/unifrac/status_enum.hpp
+	-(cd ${PREFIX}/lib && rm -f lib$(SSU).so $(UNIFRAC_SHLIBS))
+	-(cd ${PREFIX}/bin && rm -f $(SSU) $(FPD))
+	-(cd ${PREFIX}/include/unifrac && rm -f task_parameters.hpp api.hpp status_enum.hpp)
 

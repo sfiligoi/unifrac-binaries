@@ -36,14 +36,14 @@ all:
 clean:
 	-cd test && $(MAKE) clean
 	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
-	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean
-	-export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean
+	-. ./setup_nv_h5.sh; export BUILD_VARIANT=nv; cd src && $(MAKE) clean
+	-. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean
 	-cd combined && $(MAKE) clean
 
 clean_install:
 	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
-	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install
-	-export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean_install
+	-. ./setup_nv_h5.sh; export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install
+	-. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean_install
 	-cd combined && $(MAKE) clean_install
 
 else

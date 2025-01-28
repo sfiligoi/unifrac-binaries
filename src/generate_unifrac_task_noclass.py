@@ -24,6 +24,11 @@ def patch_type(s,t):
 def get_arg_name(s):
     return s.split()[-1].split('*')[-1]
 
+# extract type from the arg definition
+def get_arg_type(s):
+    arg_name = get_arg_name(s)
+    return s[:-len(arg_name)]
+
 #
 # ==========================
 #
@@ -55,21 +60,28 @@ def print_func_direct_args(ftype,nmspace,fname,ttype,fargs):
 #
 
 def print_func_indirect_noargs(ftype,nmspace,fname):
+    print('static %s (*dl_%s_%s)() = NULL;'%(ftype,nmspace,fname))
     print('%s %s::%s() {'%(ftype,nmspace,fname))
+    print('  cond_ssu_load("%s_%s", (void **) &dl_%s_%s);'%(nmspace,fname,nmspace,fname))
     if ftype=='void':
-        print('  %s_%s();'%(nmspace,fname));
+        print('  (*dl_%s_%s)();'%(nmspace,fname));
     else:
-        print('  return %s_%s();'%(nmspace,fname))
+        print('  return (*dl_%s_%s)();'%(nmspace,fname))
     print('}');
 
 def print_func_indirect_args(ftype,nmspace,fname,ttype,fargs):
+    print('static void (*dl_%s_%s_%s)('%(nmspace,fname,ttype))
+    for el in fargs[:-1]:
+       print('\t\t\t%s,'%get_arg_type(patch_type(el,ttype)))
+    print('\t\t\t%s) = NULL;'%get_arg_type(patch_type(fargs[-1],ttype)))
     print('template<>')
     print('%s %s::%s('%(ftype,nmspace,fname))
     for el in fargs[:-1]:
        print('\t\t\t%s,'%patch_type(el,ttype))
     print('\t\t\t%s) {'%patch_type(fargs[-1],ttype))
 
-    print('  %s_%s_%s('%(nmspace,fname,ttype))
+    print('  cond_ssu_load("%s_%s_%s", (void **) &dl_%s_%s_%s);'%(nmspace,fname,ttype,nmspace,fname,ttype))
+    print('  (*dl_%s_%s_%s)('%(nmspace,fname,ttype))
     for el in fargs[:-1]:
        print('\t%s,'%get_arg_name(el))
     print('\t%s);'%get_arg_name(fargs[-1]))
@@ -176,6 +188,11 @@ if sys.argv[2] in ('api_h',):
     # bool and unit_t are not standard in C without these header
     print('#include <stdbool.h>')
     print('#include <stdint.h>')
+
+if sys.argv[2] in ('indirect',):
+    # function expected by ssu_ld
+    print('static const char *ssu_get_lib_name() { return "libssu_%s.so";}'%sys.argv[1])
+    print('#include "ssu_ld.c"')
 
 print('');
 
