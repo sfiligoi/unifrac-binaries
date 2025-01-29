@@ -109,7 +109,7 @@ ifeq ($(BUILD_FULL_OPTIMIZATION),False)
 	else
 		# assuming x86 for now... may want to check for architecture
 		# x86-64 the most generic option avaialable in modern gcc
-		CPPFLAGS += -march=x86-64
+		CPPFLAGS += -march=x86-64 -mtune=generic
 	endif
     endif
 else
@@ -118,6 +118,9 @@ else
 	CPPFLAGS += -tp=$(BUILD_FULL_OPTIMIZATION)
     else
 	CPPFLAGS += -march=$(BUILD_FULL_OPTIMIZATION)
+        ifneq ($(BUILD_TUNE_OPTIMIZATION),)
+	  CPPFLAGS += -mtune=$(BUILD_TUNE_OPTIMIZATION)
+        endif
     endif
   else
     # no preference from the user

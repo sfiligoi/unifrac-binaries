@@ -107,13 +107,13 @@ api_cpu_basic:
 	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api
 
 api_cpu_x86_v2:
-	export BUILD_VARIANT=cpu_x86_v2 ; export BUILD_FULL_OPTIMIZATION=x86-64-v2 ; cd src && $(MAKE) clean && $(MAKE) api
+	export BUILD_VARIANT=cpu_x86_v2 ; export BUILD_FULL_OPTIMIZATION=x86-64-v2 ; export BUILD_TUNE_OPTIMIZATION=core2; cd src && $(MAKE) clean && $(MAKE) api
 
 api_cpu_x86_v3:
-	export BUILD_VARIANT=cpu_x86_v3 ; export BUILD_FULL_OPTIMIZATION=x86-64-v3 ; cd src && $(MAKE) clean && $(MAKE) api
+	export BUILD_VARIANT=cpu_x86_v3 ; export BUILD_FULL_OPTIMIZATION=x86-64-v3 ; export BUILD_TUNE_OPTIMIZATION=znver3; cd src && $(MAKE) clean && $(MAKE) api
 
 api_cpu_x86_v4:
-	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; cd src && $(MAKE) clean && $(MAKE) api
+	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; export BUILD_TUNE_OPTIMIZATION=znver4 ;cd src && $(MAKE) clean && $(MAKE) api
 
 api_nv:
 	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api_acc
