@@ -65,7 +65,7 @@ ifndef NOGPU
    ifeq ($(BUILD_OFFLOAD),ompgpu)
 	CPPFLAGS += -DUNIFRAC_ENABLE_OMPGPU=1
 	UNIFRAC_FILES += unifrac_task_ompgpu.o unifrac_cmp_ompgpu.o
-	ifneq (,$(findstring pgi,$(COMPILER)))
+	ifneq (,$(findstring pgi,$(NV_COMPILER)))
 		OMPGPUCXX=$(NV_CXX)
 		UNIFRAC_ACC_SHLIBS += libssu_ompgpu.so
 		OMPGPUCPPFLAGS += -tp=px -mp=gpu -DOMPGPU=1 -noacc
