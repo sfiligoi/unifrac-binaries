@@ -25,32 +25,34 @@
 #ifndef BASIC_ONLY
 static const char *ssu_get_lib_name() {
    __builtin_cpu_init ();
-   bool has_avx  = __builtin_cpu_supports ("avx");
-   bool has_avx2 = __builtin_cpu_supports ("avx2");
+   bool has_v2  = __builtin_cpu_supports ("x86-64-v2");
+   bool has_v3  = __builtin_cpu_supports ("x86-64-v3");
+   bool has_v4  = __builtin_cpu_supports ("x86-64-v4");
 
    const char* env_max_cpu = getenv("UNIFRAC_MAX_CPU");
 
-   if ((env_max_cpu!=NULL) && (strcmp(env_max_cpu,"basic")==0)) {
-      has_avx = false;
-      has_avx2 = false;
+   if (env_max_cpu!=NULL) {
+    if (strcmp(env_max_cpu,"basic")==0) {
+      has_v2 = false;
+      has_v3 = false;
+      has_v4 = false;
+    } else if ((strcmp(env_max_cpu,"x86-64-v2")==0) || (strcmp(env_max_cpu,"avx")==0)) {
+      has_v3 = false;
+      has_v4 = false;
+    } else if ((strcmp(env_max_cpu,"x86-64-v3")==0) || (strcmp(env_max_cpu,"avx2")==0)) {
+      has_v4 = false;
+    }
    }
 
-   const char *ssu = "libssu_nv.so";
-   if (has_avx) {
-      if ((env_max_cpu!=NULL) && (strcmp(env_max_cpu,"avx")==0)) {
-         has_avx2 = false;
-      }
-      if (has_avx2) {
-         ssu="libssu_nv_avx2.so";
-      } else {
-         ssu="libssu_nv.so";
-      }
-   } else { // no avx
-      const char* env_gpu_info = getenv("UNIFRAC_GPU_INFO");
-      if ((env_gpu_info!=NULL) && (env_gpu_info[0]=='Y')) {
-         printf("INFO (unifrac): CPU too old, disabling GPU\n");
-      }
-      ssu="libssu_cpu_basic.so";
+   const char *ssu = "unknown"; // just to have a default
+   if (has_v4) {
+     ssu = "libssu_cpu_x86_v4.so";
+   } else if (has_v3) {
+     ssu = "libssu_cpu_x86_v3.so";
+   } else if (has_v2) {
+     ssu = "libssu_cpu_x86_v2.so";
+   } else {
+     ssu = "libssu_cpu_basic.so";
    }
 
    return ssu;
