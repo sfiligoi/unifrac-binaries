@@ -125,7 +125,7 @@ else
   else
     # no preference from the user
     # change default only if not performing CONDA_BUILD
-    ifeq ($(PERFORMING_CONDA_BUILD),True)
+    ifneq ($(PERFORMING_CONDA_BUILD),True)
 	ifeq ($(PLATFORM),Darwin)
          	# no special tuning for the MacOS at this point
 	  	CPPFLAGS += 
