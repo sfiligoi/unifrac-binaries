@@ -24,51 +24,41 @@ clean_install:
 else
 # Linux with several optimization levels and with optional GPU support
 
-ifndef NOGPU
-
 all: 
+	$(MAKE) all_cpu
+	if [ "x$${NV_CXX}" != "x" ]; then $(MAKE) all_nv; fi
+
+clean:
+	$(MAKE) clean_cpu
+	if [ "x$${NV_CXX}" != "x" ]; then export BUILD_VARIANT=nv; cd src && $(MAKE) clean; fi
+
+clean_install:
+	$(MAKE) clean_install_cpu
+	if [ "x$${NV_CXX}" != "x" ]; then export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install; fi
+
+all_cpu: 
 	$(MAKE) all_cpu_basic
 	$(MAKE) all_cpu_x86_v2
 	$(MAKE) all_cpu_x86_v3
 	$(MAKE) all_cpu_x86_v4
-	$(MAKE) all_nv
 	$(MAKE) all_combined
 	$(MAKE) test_binaries
 
-clean:
+clean_cpu:
 	-cd test && $(MAKE) clean
 	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
 	-export BUILD_VARIANT=cpu_x86_v2; cd src && $(MAKE) clean
 	-export BUILD_VARIANT=cpu_x86_v3; cd src && $(MAKE) clean
 	-export BUILD_VARIANT=cpu_x86_v4; cd src && $(MAKE) clean
-	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean
 	-cd combined && $(MAKE) clean
 
-clean_install:
+clean_install_cpu:
 	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
 	-export BUILD_VARIANT=cpu_x86_v2; cd src && $(MAKE) clean_install
 	-export BUILD_VARIANT=cpu_x86_v3; cd src && $(MAKE) clean_install
 	-export BUILD_VARIANT=cpu_x86_v4; cd src && $(MAKE) clean_install
 	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install
 	-cd combined && $(MAKE) clean_install
-
-else
-
-all: 
-	$(MAKE) all_cpu_basic
-	$(MAKE) all_combined
-	$(MAKE) test_binaries
-
-clean:
-	-cd test && $(MAKE) clean
-	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
-	-cd combined && $(MAKE) clean
-
-clean_install:
-	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
-	-cd combined && $(MAKE) clean_install
-
-endif
 
 all_cpu_basic:
 	$(MAKE) api_cpu_basic

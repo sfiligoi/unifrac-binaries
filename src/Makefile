@@ -66,7 +66,7 @@ else
 endif
 
 ifndef NOGPU
-   ifeq ($(BUILD_OFFLOAD),ompgpu)
+   ifeq ($(BUILD_NV_OFFLOAD),ompgpu)
 	CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
 	UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
@@ -82,7 +82,7 @@ ifndef NOGPU
 		NV_LDFLAGS += -shared -mp=gpu -Bstatic_pgi
 	endif
    else 
-     ifeq ($(BUILD_OFFLOAD),acc)
+     ifeq ($(BUILD_NV_OFFLOAD),acc)
 	CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
 	UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
