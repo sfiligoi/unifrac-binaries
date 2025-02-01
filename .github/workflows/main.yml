@@ -66,9 +66,10 @@ jobs:
         export BUILD_OFFLOAD=${{ matrix.offload }}
         if [[ "$(uname -s)" == "Linux" ]] && [[ "x${BUILD_OFFLOAD}" != "xcpu" ]];
         then
-          # install PGI but do not source it
-          # the makefile will do it automatically
+          # install PGI locally
           ./scripts/install_hpc_sdk.sh </dev/null
+          # get the PGI compilers in the path and set NV_CXX
+          . ./setup_nv_compiler.sh
         fi
         df -h .
         if [[ "x${BUILD_OFFLOAD}" == "xcpu" ]];
