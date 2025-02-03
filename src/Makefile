@@ -90,7 +90,6 @@ ifndef NOGPU
 		NV_LDFLAGS += -shared -mp=gpu -Bstatic_pgi
 	endif
    else 
-     ifeq ($(BUILD_NV_OFFLOAD),acc)
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_nv.so
 		NV_CPPFLAGS += -tp=px -acc
@@ -103,13 +102,11 @@ ifndef NOGPU
                 endif
 		NV_LDFLAGS += -shared -acc -Bstatic_pgi
 	endif
-     endif
    endif
    # AMD GPUs
    UNIFRAC_FILES += unifrac_task_acc_amd.o unifrac_cmp_acc_amd.o
    CPPFLAGS += -DUNIFRAC_ENABLE_ACC_AMD=1
-   ifeq ($(BUILD_AMD_OFFLOAD),ompgpu)
-	ifneq (,$(findstring clang,$(AMD_COMPILER)))
+   ifneq (,$(findstring clang,$(AMD_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_amd.so
 		AMD_CPPFLAGS += -fopenmp -fopenmp-offload-mandatory -DOMPGPU=1
 	        ifeq ($(PERFORMING_CONDA_BUILD),True)
@@ -118,7 +115,6 @@ ifndef NOGPU
 	            AMD_CPPFLAGS += --offload-arch=native
                 endif
 		AMD_LDFLAGS += -shared -fopenmp --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
-	endif
    endif
 endif
 
