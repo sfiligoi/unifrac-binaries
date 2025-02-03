@@ -27,6 +27,7 @@ else
 all: 
 	$(MAKE) all_cpu
 	$(MAKE) all_acc
+	$(MAKE) test_binaries
 
 clean:
 	$(MAKE) clean_cpu
@@ -40,7 +41,6 @@ all_cpu:
 	$(MAKE) all_cpu_x86_v3
 	$(MAKE) all_cpu_x86_v4
 	$(MAKE) all_combined
-	$(MAKE) test_binaries
 
 clean_cpu:
 	-cd test && $(MAKE) clean
