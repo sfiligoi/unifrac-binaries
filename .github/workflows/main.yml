@@ -68,10 +68,13 @@ jobs:
         then
           # install PGI locally
           ./scripts/install_hpc_sdk.sh </dev/null
-          # get the PGI compilers in the path and set NV_CXX
+          # also install the AMD compiler
+          ./scripts/install_amd_clang.sh </dev/null
+          # get the compilers in the path and set NV_CXX and AMD_CXX
           . ./setup_nv_compiler.sh
+          . ./setup_amd_compiler.sh
         fi
-        # else, no NV_CXX in the env, so no GPU build
+        # else, no NV_CXX or AMD_CXX in the env, so no GPU build
         df -h .
         echo "======= begin env ====="
         env
