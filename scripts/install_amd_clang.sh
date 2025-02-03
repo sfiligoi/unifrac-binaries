@@ -18,6 +18,8 @@
 export AOMP_VERSION=20.0-1
 
 if [ -f /usr/lib/aomp_${AOMP_VERSION}/llvm/bin/amdclang++ ]; then
+ echo "[INFO] Found existing /usr/lib/aomp_${AOMP_VERSION}/llvm/bin/amdclang++"
+else
  dist=`cat /etc/os-release |awk '/^NAME=/{split($1,a,"="); split(a[2],b,"\""); print b[2]}'`
  osver=`cat /etc/os-release |awk '/^VERSION_ID=/{split($1,a,"="); split(a[2],b,"\""); print b[2]}'`
  if [ "x$dist" = "xUbuntu" ]; then
@@ -41,8 +43,6 @@ if [ -f /usr/lib/aomp_${AOMP_VERSION}/llvm/bin/amdclang++ ]; then
   echo "Unsupported Linux distribution $dist"
   exit 1
  fi
-else
-    echo "[INFO] Found existing /usr/lib/aomp_${AOMP_VERSION}/llvm/bin/amdclang++"
 fi
 
 
