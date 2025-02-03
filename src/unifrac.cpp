@@ -407,15 +407,29 @@ inline void check_acc() {
 
  int detected_acc = ACC_CPU;
 #if defined(UNIFRAC_ENABLE_ACC_NV)
- if ((detected_acc==ACC_CPU) && (su_acc_nv::found_gpu())) {
+ bool detected_nv_acc = su_acc_nv::found_gpu();
+ if (print_info) {
+   if (detected_nv_acc) {
+     printf("INFO (unifrac): NVIDIA GPU detected\n");
+   } else {
+     printf("INFO (unifrac): NVIDIA GPU not detected\n");
+   }
+ }
+ if ((detected_acc==ACC_CPU) && detected_nv_acc) {
    detected_acc = ACC_NV;
-   if (print_info) printf("INFO (unifrac): NVIDIA GPU detected\n");
  }
 #endif
 #if defined(UNIFRAC_ENABLE_ACC_AMD)
- if ((detected_acc==ACC_CPU) && (su_acc_amd::found_gpu())) {
+ bool detected_amd_acc = su_acc_amd::found_gpu();
+ if (print_info) {
+   if (detected_amd_acc) {
+     printf("INFO (unifrac): AMD GPU detected\n");
+   } else {
+     printf("INFO (unifrac): AMD GPU not detected\n");
+   }
+ }
+ if ((detected_acc==ACC_CPU) && detected_amd_acc) {
    detected_acc = ACC_AMD;
-   if (print_info) printf("INFO (unifrac): AMD GPU detected\n");
  }
 #endif
 

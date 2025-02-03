@@ -39,6 +39,7 @@ BLASLIB=-llapacke -lcblas
 ifeq ($(PLATFORM),Darwin)
 	AVX2 := $(shell sysctl -a | grep -c AVX2)
 	LDDFLAGS = -dynamiclib -install_name @rpath/lib$(SSU).so
+	NOGPU := 1
 else
 	AVX2 := $(shell grep "^flags" /proc/cpuinfo | head -n 1 | grep -c avx2)
 	LDDFLAGS = -shared
@@ -66,9 +67,9 @@ else
 endif
 
 ifndef NOGPU
+   UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
+   CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
    ifeq ($(BUILD_NV_OFFLOAD),ompgpu)
-	CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
-	UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_nv.so
 		NV_CPPFLAGS += -tp=px -mp=gpu -DOMPGPU=1 -noacc
@@ -83,8 +84,6 @@ ifndef NOGPU
 	endif
    else 
      ifeq ($(BUILD_NV_OFFLOAD),acc)
-	CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
-	UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_nv.so
 		NV_CPPFLAGS += -tp=px -acc
