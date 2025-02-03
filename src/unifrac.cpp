@@ -445,10 +445,16 @@ inline void check_acc() {
  }
 
  if (print_info) {
-   if (detected_acc != ACC_CPU) {
-     printf("INFO (unifrac): Using GPU\n");
-   } else {
-     printf("INFO (unifrac): Using CPU, not GPU\n");
+   if (detected_acc == ACC_CPU) {
+     printf("INFO (unifrac): Using CPU (not GPU)\n");
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+   } else if (detected_acc == ACC_NV) {
+     printf("INFO (unifrac): Using NVIDIA GPU\n");
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+   } else if (detected_acc == ACC_AMD) {
+     printf("INFO (unifrac): Using AMD GPU\n");
+#endif
    }
  }
  // we can assume int is atomic
