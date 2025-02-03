@@ -66,7 +66,14 @@ else
    NV_COMPILER := $(shell ($(NV_CXX) -v 2>&1) | tr A-Z a-z )
 endif
 
+ifeq ($(AMD_CXX),)
+   AMD_COMPILER := 
+else
+   AMD_COMPILER := $(shell ($(AMD_CXX) -v 2>&1) | tr A-Z a-z )
+endif
+
 ifndef NOGPU
+   # NVIDIA GPUs
    UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
    CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
    ifeq ($(BUILD_NV_OFFLOAD),ompgpu)
@@ -97,6 +104,21 @@ ifndef NOGPU
 		NV_LDFLAGS += -shared -acc -Bstatic_pgi
 	endif
      endif
+   endif
+   # AMD GPUs
+   UNIFRAC_FILES += unifrac_task_acc_amd.o unifrac_cmp_acc_amd.o
+   CPPFLAGS += -DUNIFRAC_ENABLE_ACC_AMD=1
+   ifeq ($(BUILD_AMD_OFFLOAD),ompgpu)
+	ifneq (,$(findstring clang,$(AMD_COMPILER)))
+		UNIFRAC_ACC_SHLIBS += libssu_acc_amd.so
+		AMD_CPPFLAGS += -fopenmp -fopenmp-offload-mandatory -DOMPGPU=1
+	        ifeq ($(PERFORMING_CONDA_BUILD),True)
+	            AMD_CPPFLAGS += --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
+		else
+	            AMD_CPPFLAGS += --offload-arch=native
+                endif
+		AMD_LDFLAGS += -shared -fopenmp --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
+	endif
    endif
 endif
 
@@ -147,7 +169,7 @@ endif
 
 CPPFLAGS += -Wall  -std=c++17 -pedantic -I. $(OPT) -fPIC -L$(PREFIX)/lib
 NV_CPPFLAGS += -std=c++17 -I. $(OPT) -fPIC -L$(PREFIX)/lib
-OMPGPUCPPFLAGS += -std=c++17 -I. $(OPT) -fPIC -L$(PREFIX)/lib
+AMD_CPPFLAGS += -std=c++17 -I. $(OPT) -fPIC -L$(PREFIX)/lib
 
 all: api install_lib main install
 
@@ -203,13 +225,12 @@ unifrac_task_api_acc_nv.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_nv.h gen
 unifrac_task_noclass_acc_nv.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_nv.h generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py acc_nv indirect > $@
 
-#TODO: all ompgpu lines are currently useless... will fix in follow-up commits
-unifrac_task_api_ompgpu.h: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
-	python3 generate_unifrac_task_noclass.py ompgpu api_h > $@
-unifrac_task_api_ompgpu.cpp: unifrac_task_impl.hpp unifrac_task_api_ompgpu.h generate_unifrac_task_noclass.py
-	python3 generate_unifrac_task_noclass.py ompgpu api > $@
-unifrac_task_noclass_ompgpu.cpp: unifrac_task_impl.hpp unifrac_task_api_ompgpu.h generate_unifrac_task_noclass.py
-	python3 generate_unifrac_task_noclass.py ompgpu indirect > $@
+unifrac_task_api_acc_amd.h: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py acc_amd api_h > $@
+unifrac_task_api_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py acc_amd api > $@
+unifrac_task_noclass_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h generate_unifrac_task_noclass.py
+	python3 generate_unifrac_task_noclass.py acc_amd indirect > $@
 
 unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
@@ -230,13 +251,14 @@ unifrac_task_api_acc_nv.o: unifrac_task_api_acc_nv.cpp unifrac_task_api_acc_nv.h
 libssu_acc_nv.so: unifrac_task_api_acc_nv.o
 	$(NV_CXX) $(NV_LDFLAGS) -o $@ unifrac_task_api_acc_nv.o
 
-unifrac_task_ompgpu.o: unifrac_task_noclass_ompgpu.cpp unifrac_task_noclass.hpp unifrac_task_api_ompgpu.h
-	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
-unifrac_task_api_ompgpu.o: unifrac_task_api_ompgpu.cpp unifrac_task_api_ompgpu.h unifrac_task_impl.hpp
-	${OMPGPUCXX} $(OMPGPUCPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
 
-libssu_ompgpu.so: unifrac_task_api_ompgpu.o
-	${OMPGPUCXX} $(OMPGPULDDFLAGS) -o $@ unifrac_task_api_ompgpu.o
+unifrac_task_acc_amd.o: unifrac_task_noclass_acc_amd.cpp unifrac_task_noclass.hpp unifrac_task_api_acc_amd.h
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
+unifrac_task_api_acc_amd.o: unifrac_task_api_acc_amd.cpp unifrac_task_api_acc_amd.h unifrac_task_impl.hpp
+	$(AMD_CXX) $(AMD_CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
+
+libssu_acc_amd.so: unifrac_task_api_acc_amd.o
+	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o
 
 
 unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
@@ -244,8 +266,8 @@ unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.
 
 unifrac_cmp_acc_nv.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
-unifrac_cmp_ompgpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
-	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_ompgpu -c $< -o $@
+unifrac_cmp_acc_amd.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
 
 %.o: %.cpp %.hpp
 	h5c++ $(CPPFLAGS) -c $< -o $@

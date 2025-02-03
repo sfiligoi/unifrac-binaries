@@ -26,15 +26,13 @@ else
 
 all: 
 	$(MAKE) all_cpu
-	if [ "x$${NV_CXX}" != "x" ]; then $(MAKE) all_nv; fi
+	$(MAKE) all_acc
 
 clean:
 	$(MAKE) clean_cpu
-	if [ "x$${NV_CXX}" != "x" ]; then export BUILD_VARIANT=nv; cd src && $(MAKE) clean; fi
 
 clean_install:
 	$(MAKE) clean_install_cpu
-	if [ "x$${NV_CXX}" != "x" ]; then export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install; fi
 
 all_cpu: 
 	$(MAKE) all_cpu_basic
@@ -76,9 +74,9 @@ all_cpu_x86_v4:
 	$(MAKE) api_cpu_x86_v4
 	$(MAKE) install_cpu_x86_v4
 
-all_nv: 
-	$(MAKE) api_nv
-	$(MAKE) install_nv
+all_acc: 
+	$(MAKE) api_acc
+	$(MAKE) install_lib_acc
 
 all_combined:
 	$(MAKE) api_combined
@@ -105,8 +103,8 @@ api_cpu_x86_v3:
 api_cpu_x86_v4:
 	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; export BUILD_TUNE_OPTIMIZATION=znver4 ;cd src && $(MAKE) clean && $(MAKE) api
 
-api_nv:
-	export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api_acc
+api_acc:
+	export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api_acc
 
 api_combined:
 	cd combined && $(MAKE) clean && $(MAKE) api
@@ -136,8 +134,8 @@ install_cpu_x86_v3:
 install_cpu_x86_v4:
 	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; cd src && $(MAKE) install_lib
 
-install_nv:
-	export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib_acc
+install_lib_acc:
+	export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib_acc
 
 install_combined:
 	cd combined && $(MAKE) install
