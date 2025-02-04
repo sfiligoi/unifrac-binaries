@@ -24,24 +24,24 @@ else
  osver=`cat /etc/os-release |awk '/^VERSION_ID=/{split($1,a,"="); split(a[2],b,"\""); print b[2]}'`
  if [ "x$dist" = "xUbuntu" ]; then
   if [ "x$osver" == "x22.04" ]; then
-    curl https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb -o aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
+    curl -L https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb -o aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
     if [ $? -ne 0 ]; then
       echo "Failed to download aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb"
       exit 1
     fi
     echo "[INFO] Executing sudo dpkg -i aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb"
     echo "Please insert password, if you want to install aomp"
-    sudo dpkg -i aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
+    sudo apt install ./aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
     rm -f aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
   elif [ "x$osver" == "x24.04" ]; then
-    curl https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb -o  aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
+    curl -L https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb -o  aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
     if [ $? -ne 0 ]; then
       echo "Failed to download aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb"
       exit 1
     fi
     echo "[INFO] Executing sudo dpkg -i aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb"
     echo "Please insert password, if you want to install aomp"
-    sudo dpkg -i aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
+    sudo apt install ./aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
     rm -f aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
   else
    echo "Unsupported $dist Linux version $osver"
