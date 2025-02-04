@@ -55,14 +55,6 @@ conda activate unifrac
 
 To install, first the binary needs to be compiled. This assumes that the HDF5 toolchain and libraries are available.
 
-Assuming `h5c++` is in your path, the following should work:
-
-```
-make clean && make api && make main 
-#optionally
-make install
-```
-
 
 **Note**: if you are using [conda](https://docs.anaconda.com/miniconda/) we recommend installing HDF5 and related compiler using the
 `conda-forge` channel, for example:
@@ -94,7 +86,23 @@ scripts/install_amd_clang.sh
 source setup_amd_compiler.sh
 ```
 
-If you prefer to build your HDF5 toolchain yourself,
+At this point, we recommend building with
+```
+export PERFORMING_CONDA_BUILD=True
+make clean && make all
+```
+(This will also install it in the conda location)
+
+
+If you prefer avoiding conda, assuming `h5c++` is in your path, the following should work, too:
+
+```
+make clean && make api && make main 
+#optionally
+make install
+```
+
+Note: If you prefer to build your HDF5 toolchain yourself,
 more information about how to setup the 
 stack can be found [here](https://support.hdfgroup.org/HDF5/Tutor/compile.html).
 
