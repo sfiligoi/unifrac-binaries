@@ -24,7 +24,8 @@ else
  osver=`cat /etc/os-release |awk '/^VERSION_ID=/{split($1,a,"="); split(a[2],b,"\""); print b[2]}'`
  if [ "x$dist" = "xUbuntu" ]; then
   if [ "x$osver" == "x22.04" ]; then
-    curl -L https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb -o aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
+    echo "[INFO] Fetching https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb"
+    curl -s -L https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb -o aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
     if [ $? -ne 0 ]; then
       echo "Failed to download aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb"
       exit 1
@@ -34,7 +35,8 @@ else
     sudo apt install ./aomp_Ubuntu2204_${AOMP_VERSION}_amd64.deb
     rm -f aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
   elif [ "x$osver" == "x24.04" ]; then
-    curl -L https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb -o  aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
+    echo "[INFO] Fetching https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb"
+    curl -s -L https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb -o  aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
     if [ $? -ne 0 ]; then
       echo "Failed to download aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb"
       exit 1
@@ -54,6 +56,8 @@ else
 fi
 
 
+if [ -f /usr/lib/aomp_${AOMP_VERSION}/llvm/bin/amdclang++ ]; then
+
 cat > setup_amd_compiler.sh  << EOF
 export PATH=/usr/lib/aomp_${AOMP_VERSION}/:/usr/lib/aomp_${AOMP_VERSION}/bin/:/usr/lib/aomp_${AOMP_VERSION}/llvm/bin:\$PATH
 
@@ -67,7 +71,11 @@ export AMD_CFLAGS=
 export AMD_LDFLAGS=
 EOF
 
-# we don't need the install dir anymore
-rm -fr nvhpc_*
-
 echo "Setup script avaiabile in $PWD/setup_amd_compiler.sh"
+
+else
+  # something went wrong with the installation process above
+  echo "Failed to install aomp_${AOMP_VERSION}"
+  exit 1
+fi
+
