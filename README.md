@@ -80,7 +80,7 @@ source setup_nv_compiler.sh
 ```
 
 For AMD-GPU-enabled code, you will need the [AOMP clang](https://github.com/ROCm/aomp) compiler, and is only supported on Linux.
-This helper script will download it, install it (at a system level) and setup the necessary environment:
+This helper script will download it, install it and setup the necessary environment:
 ```
 scripts/install_amd_clang.sh 
 source setup_amd_compiler.sh

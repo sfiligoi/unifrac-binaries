@@ -66,8 +66,6 @@ jobs:
         export BUILD_NV_OFFLOAD=${{ matrix.offload }}
         if [[ "$(uname -s)" == "Linux" ]] && [[ "x${BUILD_NV_OFFLOAD}" != "xcpu" ]];
         then
-          # Note: Not checking for errors, as GPU compilers are optional (check build logs by hand)
-
           # install PGI locally
           ./scripts/install_hpc_sdk.sh </dev/null
           # also install the AMD compiler
