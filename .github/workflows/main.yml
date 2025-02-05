@@ -80,7 +80,7 @@ jobs:
         env
         echo "=======  end env  ====="
         # all == build (shlib,bins,tests) and install
-        make all
+        make clean && make_clean_install && make all
         df -h .
     - name: Tests
       shell: bash -l {0}

@@ -417,6 +417,14 @@ inline void check_acc() {
  }
  if ((detected_acc==ACC_CPU) && detected_nv_acc) {
    detected_acc = ACC_NV;
+   if (const char* env_p = std::getenv("UNIFRAC_USE_NVIDIA_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (unifrac): NVIDIA GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   }
  }
 #endif
 #if defined(UNIFRAC_ENABLE_ACC_AMD)
@@ -430,6 +438,14 @@ inline void check_acc() {
  }
  if ((detected_acc==ACC_CPU) && detected_amd_acc) {
    detected_acc = ACC_AMD;
+   if (const char* env_p = std::getenv("UNIFRAC_USE_AMD_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (unifrac): AMD GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   }
  }
 #endif
 

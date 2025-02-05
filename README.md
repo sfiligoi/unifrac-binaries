@@ -89,7 +89,7 @@ source setup_amd_compiler.sh
 At this point, we recommend building with
 ```
 export PERFORMING_CONDA_BUILD=True
-make clean && make all
+make clean && make clean_install && make all
 ```
 (This will also install it in the conda location)
 
