@@ -119,26 +119,6 @@ static inline void compute_stripes_totals_T(
 }
 
 
-#if defined(_OPENACC) || defined(OMPGPU)
-// will not use popcnt for accelerated compute
-#else
-// popcnt returns number of bits set to 1, if supported by fast HW compute
-// else return 0 when v is 0 and max-bits else
-// Note: The user of popcnt in this file must be able to use this modified semantics
-
-#if __AVX__
-#include <immintrin.h>
-static inline int32_t popcnt_u32(uint32_t v) {return  _mm_popcnt_u32(v);}
-static inline int64_t popcnt_u64(uint64_t v) {return  _mm_popcnt_u64(v);}
-#else
-static inline int32_t popcnt_u32(uint32_t v) {return (v==0) ? 0 : 32;}
-static inline int64_t popcnt_u64(uint64_t v) {return (v==0) ? 0 : 64;}
-// For future non-x86 ports, see https://barakmich.dev/posts/popcnt-arm64-go-asm/
-// and https://stackoverflow.com/questions/38113284/whats-the-difference-between-builtin-popcountll-and-mm-popcnt-u64
-#endif
-
-#endif
-
 // check for zero values and pre-compute single column sums
 template<class TFloat>
 static inline void WeightedZerosAndSums(
@@ -201,7 +181,9 @@ static inline TFloat WeightedVal1(
             return my_stripe;
 }
 
-#if !(defined(_OPENACC) || defined(OMPGPU))
+#if 0
+// Deprecated for now
+
 template<class TFloat>
 static inline void WeightedVal4(
                       TFloat * const __restrict__ stripes,
@@ -391,10 +373,6 @@ static inline void UnnormalizedWeighted4(
        const bool allzero_k = z_k==0x01010101;
        const bool allzero_l = z_l==0x01010101;
 
-       // popcnt is cheap but has large latency, so compute speculatively/early
-       const int32_t cnt_k = popcnt_u32(z_k);
-       const int32_t cnt_l = popcnt_u32(z_l);
-
        if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
        } else if (allzero_k || allzero_l) {
@@ -424,15 +402,6 @@ static inline void UnnormalizedWeighted4(
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
           }
-       } else if ((cnt_k<3) && (cnt_l<3)) {
-          // several of the elemens are nonzero, may as well use the vectorized version
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-
-          WeightedVal4(dm_stripe,
-                       embedded_proportions, lengths,
-                       filled_embs, n_samples_r,
-                       ks, ls);
        } else {
          // only a few have both sides partially non zero, use the fine grained compute
          for (uint64_t i=0; i<4; i++) {
@@ -461,10 +430,6 @@ static inline void UnnormalizedWeighted8(
        const uint64_t z_l = ((const uint64_t *)(zcheck+ls))[0];
        const bool allzero_k = z_k==0x0101010101010101;
        const bool allzero_l = z_l==0x0101010101010101;
-
-       // popcnt is cheap but has large latency, so compute speculatively/early
-       const int64_t cnt_k = popcnt_u64(z_k);
-       const int64_t cnt_l = popcnt_u64(z_l);
 
        if (allzero_k && allzero_l) {
          // nothing to do, would have to add 0
@@ -511,19 +476,10 @@ static inline void UnnormalizedWeighted8(
              dm_stripe[ks+6] += sum_k6;
              dm_stripe[ks+7] += sum_k7;
           } 
-       } else if ((cnt_k<6) && (cnt_l<6)) {
-          // several of the elemens are nonzero, may as well use the vectorized version
-          TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-          //TFloat *dm_stripe = dm_stripes[stripe];
-
-          WeightedVal8(dm_stripe,
-                       embedded_proportions, lengths,
-                       filled_embs, n_samples_r,
-                       ks, ls);
        } else {
-         // only a few have both sides partially non zero, use the fine grained compute
-         for (uint64_t i=0; i<8; i++) {
-            UnnormalizedWeighted1<TFloat>(
+         // only a few have both sides partially non zero, use the finer grained compute
+         for (uint64_t i=0; i<8; i+=4) {
+            UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
@@ -794,9 +750,6 @@ static inline void NormalizedWeighted4(
           const TFloat sum_kl2 = sum_k2 + sum_l2;
           const TFloat sum_kl3 = sum_k3 + sum_l3;
 
-          int32_t cnt_k = 0;
-          int32_t cnt_l = 0;
-
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -814,10 +767,6 @@ static inline void NormalizedWeighted4(
              dm_stripe[ks+1] += sum_k1;
              dm_stripe[ks+2] += sum_k2;
              dm_stripe[ks+3] += sum_k3;
-          } else {
-             // popcnt is cheap but has large latency, so compute early
-             cnt_k = popcnt_u32(z_k);
-             cnt_l = popcnt_u32(z_l);
           }
 
           // the totals can always use the distributed property
@@ -832,17 +781,7 @@ static inline void NormalizedWeighted4(
 
           if (allzero_k||allzero_l) {
              // already done
-          } else if ((cnt_k<3) && (cnt_l<3)) {
-             // several of the elemens are nonzero, may as well use the vectorized version
-             TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-             //TFloat *dm_stripe = dm_stripes[stripe];
-
-             WeightedVal4(dm_stripe,
-                       embedded_proportions, lengths,
-                       filled_embs, n_samples_r,
-                       ks, ls);
           } else {
-             // only a few have both sides partially non zero, use the fine grained compute
              // Use UnnormalizedWeighted since we already computed dm_stripe_total
              for (uint64_t i=0; i<4; i++) {
                 UnnormalizedWeighted1<TFloat>(
@@ -902,9 +841,6 @@ static inline void NormalizedWeighted8(
           const TFloat sum_kl6 = sum_k6 + sum_l6;
           const TFloat sum_kl7 = sum_k7 + sum_l7;
 
-          int32_t cnt_k = 0;
-          int32_t cnt_l = 0;
-
           TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
           //TFloat *dm_stripe = dm_stripes[stripe];
 
@@ -930,10 +866,6 @@ static inline void NormalizedWeighted8(
              dm_stripe[ks+5] += sum_k5;
              dm_stripe[ks+6] += sum_k6;
              dm_stripe[ks+7] += sum_k7;
-          } else {
-             // popcnt is cheap but has large latency, so compute early
-             cnt_k = popcnt_u64(z_k);
-             cnt_l = popcnt_u64(z_l);
           }
 
           // the totals can always use the distributed property
@@ -952,20 +884,10 @@ static inline void NormalizedWeighted8(
 
           if (allzero_k||allzero_l) {
              // already done
-          } else if ((cnt_k<6) && (cnt_l<6)) {
-             // several of the elemens are nonzero, may as well use the vectorized version
-             TFloat * const __restrict__ dm_stripe = dm_stripes_buf+idx;
-             //TFloat *dm_stripe = dm_stripes[stripe];
-
-             WeightedVal8(dm_stripe,
-                       embedded_proportions, lengths,
-                       filled_embs, n_samples_r,
-                       ks, ls);
           } else {
-             // only a few have both sides partially non zero, use the fine grained compute
              // Use UnnormalizedWeighted since we already computed dm_stripe_total
-             for (uint64_t i=0; i<8; i++) {
-                UnnormalizedWeighted1<TFloat>(
+             for (uint64_t i=0; i<8; i+=4) {
+                UnnormalizedWeighted4<TFloat>(
                                    dm_stripes_buf,
                                    zcheck, sums, embedded_proportions, lengths,
                                    filled_embs,idx, n_samples_r,
