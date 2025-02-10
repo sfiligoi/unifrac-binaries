@@ -214,6 +214,26 @@ namespace SUCMP_NM {
           }
         }
 
+        // Just copy from one buffer to another, transpose for faster compute later
+        // May convert between fp formats in the process (if TOut!=double)
+        template<class TOut> void embed_proportions_range_transpose(TOut* __restrict__ out, const TFloat* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) const
+        {
+          const unsigned int n_samples  = dm_stripes.n_samples;
+          const uint64_t n_samples_r  = dm_stripes.n_samples_r;
+          const uint64_t istripe = max_embs;
+
+          for(unsigned int i = start; i < end; i++) {
+            out[i*istripe + emb] = in[i-start];
+          }
+
+          if (end==n_samples) {
+            // avoid NaNs
+            for(unsigned int i = n_samples; i < n_samples_r; i++) {
+              out[i*istripe + emb] = 0.0;
+            }
+          }
+        }
+
         // packed bool
         // Compute (in[:]>0) on each element, and store only the boolean bit.
         // The output values are stored in a multi-byte format, one bit per emb index,
@@ -255,10 +275,10 @@ namespace SUCMP_NM {
         }
     };
 
-    // straight embeded_proportions
-    template<> inline void UnifracTaskBase<double,double>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(get_embedded_proportions(),in,start,end,emb);}
-    template<> inline void UnifracTaskBase<double,float>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(get_embedded_proportions(),in,start,end,emb);}
-    template<> inline void UnifracTaskBase<float,float>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_straight(get_embedded_proportions(),in,start,end,emb);}
+    // transpose embeded_proportions
+    template<> inline void UnifracTaskBase<double,double>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_transpose(get_embedded_proportions(),in,start,end,emb);}
+    template<> inline void UnifracTaskBase<double,float>::embed_proportions_range(const double* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_transpose(get_embedded_proportions(),in,start,end,emb);}
+    template<> inline void UnifracTaskBase<float,float>::embed_proportions_range(const float* __restrict__ in, unsigned int start, unsigned int end, unsigned int emb) {embed_proportions_range_transpose(get_embedded_proportions(),in,start,end,emb);}
     template<> inline  unsigned int UnifracTaskBase<double,double>::get_emb_els(unsigned int max_embs) {return max_embs;}
     template<> inline  unsigned int UnifracTaskBase<double,float>::get_emb_els(unsigned int max_embs) {return max_embs;}
     template<> inline  unsigned int UnifracTaskBase<float,float>::get_emb_els(unsigned int max_embs) {return max_embs;}
@@ -346,7 +366,7 @@ namespace SUCMP_NM {
 
         void _run(unsigned int filled_embs) {
            run_UnnormalizedWeightedTask(
-			  filled_embs,
+			  this->max_embs, filled_embs,
 			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
 			  this->lengths,  this->get_embedded_proportions(), this->dm_stripes.buf,
 			  this->zcheck, this->sums);
@@ -393,7 +413,7 @@ namespace SUCMP_NM {
 
         void _run(unsigned int filled_embs) {
           run_NormalizedWeightedTask(
-			    filled_embs,
+			    this->max_embs, filled_embs,
 			    this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
 			    this->lengths, this->get_embedded_proportions(),
 			    this->dm_stripes.buf, this->dm_stripes_total.buf,
@@ -512,7 +532,7 @@ namespace SUCMP_NM {
 
         void _run(unsigned int filled_embs) {
           run_GeneralizedTask(
-			  filled_embs,
+			  this->max_embs, filled_embs,
 			  this->task_p->start, this->task_p->stop, this->task_p->n_samples, this->dm_stripes.n_samples_r,
 			  this->lengths, this->get_embedded_proportions(),
 			  this->dm_stripes.buf, this->dm_stripes_total.buf,
@@ -594,14 +614,43 @@ namespace SUCMP_NM {
 
        void sync_embedded(unsigned int filled_embs) { this->sync_embedded_proportions(filled_embs); this->sync_embedded_counts(filled_embs);}
 
-        void embed_range(const TFloat* __restrict__ in_proportions, const TFloat* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
-          this->embed_proportions_range(in_proportions,start,end,emb);
-          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
-        }
+        void embed_range(const TFloat* __restrict__ in_proportions, const TFloat* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb);
         void embed(const TFloat* __restrict__ in_proportions, const double* __restrict__ in_counts, unsigned int emb) { embed_range(in_proportions,in_counts,0,this->dm_stripes.n_samples,emb);}
 
        virtual void run(unsigned int filled_embs) = 0;
     };
+
+    // straight embeded_proportions
+    template<> inline void UnifracVawTask<double,double>::embed_range(const double* __restrict__ in_proportions, const double* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_straight(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
+    template<> inline void UnifracVawTask<double,float>::embed_range(const double* __restrict__ in_proportions, const double* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_straight(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
+    template<> inline void UnifracVawTask<float,float>::embed_range(const float* __restrict__ in_proportions, const float* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_straight(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
+
+    //packed bool embeded_proportions
+    template<> inline void UnifracVawTask<double,uint32_t>::embed_range(const double* __restrict__ in_proportions, const double* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_bool(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
+    template<> inline void UnifracVawTask<double,uint64_t>::embed_range(const double* __restrict__ in_proportions, const double* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_bool(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
+    template<> inline void UnifracVawTask<float,uint32_t>::embed_range(const float* __restrict__ in_proportions, const float* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_bool(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
+    template<> inline void UnifracVawTask<float,uint64_t>::embed_range(const float* __restrict__ in_proportions, const float* __restrict__ in_counts, unsigned int start, unsigned int end, unsigned int emb) {
+          this->embed_proportions_range_bool(this->get_embedded_proportions(),in_proportions,start,end,emb);
+          this->embed_proportions_range_straight(this->embedded_counts,in_counts,start,end,emb);
+    }
 
     template<class TFloat>
     class UnifracVawUnnormalizedWeightedTask : public UnifracVawTask<TFloat,TFloat> {
