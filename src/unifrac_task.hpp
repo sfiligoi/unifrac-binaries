@@ -325,7 +325,14 @@ namespace SUCMP_NM {
        virtual void run(unsigned int filled_embs) = 0;
 
       protected:
-       static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 128-16; // a little less to leave a bit of space of maxed-out L1
+#if (SUCMP_NM==su_cpu)
+       // size for contiguous access
+       static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 512-16; // optimize for 32k CPU L1 cache... -16 to avoid cache line trashing
+#else
+       // size for vectorized access
+       static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 128-16; // optimize for GPU L1 cache... -16 to avoid cache line trashing
+#endif
+       // size for vectorized access
        // packed uses 32x less memory,so this should be 32x larger than straight... but there are additional structures, so use half of that
        static constexpr unsigned int RECOMMENDED_MAX_EMBS_BOOL = 64*32;
 
