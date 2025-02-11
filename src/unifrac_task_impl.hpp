@@ -170,6 +170,9 @@ static inline TFloat WeightedVal1(
             const uint64_t offset_l = embs_stripe*l1;
             TFloat my_stripe = 0.0;
 
+#if !(defined(_OPENACC) || defined(OMPGPU))
+#pragma omp simd reduction(+:my_stripe)
+#endif
             for (uint64_t emb=0; emb<filled_embs; emb++) {
                 TFloat u1 = embedded_proportions[offset_k + emb];
                 TFloat v1 = embedded_proportions[offset_l + emb];
