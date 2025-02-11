@@ -517,9 +517,9 @@ static inline void run_UnnormalizedWeightedTask_T(
     // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) default(shared)
 #else
-#pragma acc parallel loop gang vector collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) present(embedded_proportions,dm_stripes_buf,lengths,zcheck,sums) async
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
@@ -931,9 +931,9 @@ static inline void run_NormalizedWeightedTask_T(
     // Use as big vector size as we can, to maximize cache line reuse
 #if defined(OMPGPU)
     // TODO: Explore async omp target
-#pragma omp target teams distribute parallel for simd collapse(3) simdlen( SUCMP_ACC_MAXVEC ) default(shared)
+#pragma omp target teams distribute parallel for simd collapse(3) default(shared)
 #else
-#pragma acc parallel loop gang vector collapse(3) vector_length( SUCMP_ACC_MAXVEC ) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
+#pragma acc parallel loop gang vector collapse(3) present(embedded_proportions,dm_stripes_buf,dm_stripes_total_buf,lengths,zcheck,sums) async
 #endif
     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
      for(uint64_t stripe = start_idx; stripe < stop_idx; stripe++) {
