@@ -24,6 +24,15 @@
 #define SUCMP_NM su_cpu
 #endif
 
+// Helper defs to select on SUCMP_NM in preprocessor
+#define su_cpu_SUCMP_ID 11
+#define su_acc_SUCMP_ID 12
+#define su_ompgpu_SUCMP_ID 13
+
+// from https://stackoverflow.com/questions/2335888/how-to-compare-strings-in-c-conditional-preprocessor-directives
+#define SUCMP_ID(U) SUCMP_ID_(U)
+#define SUCMP_ID_(U) U##_SUCMP_ID
+
 namespace SUCMP_NM {
 
     // Note: This adds a copy, which is suboptimal
@@ -325,7 +334,7 @@ namespace SUCMP_NM {
        virtual void run(unsigned int filled_embs) = 0;
 
       protected:
-#if (SUCMP_NM==su_cpu)
+#if SUCMP_ID(SUCMP_NM)==su_cpu_SUCMP_ID
        // size for contiguous access
        static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 512-16; // optimize for 32k CPU L1 cache... -16 to avoid cache line trashing
 #else
