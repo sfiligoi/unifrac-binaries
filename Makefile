@@ -6,20 +6,20 @@ PLATFORM := $(shell uname -s)
 COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
 
 ifeq ($(PLATFORM),Darwin)
-all: api main install test_binaries
+all: api install main install_main test_binaries
 
 else
 
 # Note: important that all_nv is after all_cpu_basic and all_nv_avx2 for tests to work
 all: all_cpu_basic all_nv_avx2 all_nv all_combined test_binaries_nv
 
-all_cpu_basic: api_cpu_basic main_cpu_basic install_cpu_basic
+all_cpu_basic: api_cpu_basic install_cpu_basic
 
-all_nv: api_nv main_nv install_nv
+all_nv: api_nv install_nv
 
-all_nv_avx2: api_nv_avx2 main_nv_avx2 install_nv_avx2
+all_nv_avx2: api_nv_avx2 install_nv_avx2
 
-all_combined: api_combined install_combined
+all_combined: api_combined install_combined main install_main
 
 endif
 
@@ -50,28 +50,22 @@ api_combined:
 main:
 	cd src && make main
 
-main_cpu_basic:
-	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make main
-
-main_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make main
-
-main_nv_avx2:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && make main
+install_main:
+	cd src && make install
 
 ########### install
 
 install:
-	cd src && make install
+	cd src && make install_lib
 
 install_cpu_basic:
-	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make install
+	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make install_lib
 
 install_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make install
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && make install_lib
 
 install_nv_avx2:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && make install
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && make install_lib
 
 install_combined:
 	cd combined && make install

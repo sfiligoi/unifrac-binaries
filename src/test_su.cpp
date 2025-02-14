@@ -383,6 +383,9 @@ void test_biom_constructor() {
     ASSERT(table_copy.get_sample_ids() == exp_sids);
     ASSERT(table_copy.get_obs_ids() == exp_oids);
 
+    uint32_t t_n_samples = su::biom::load_n_samples("test.biom");
+    ASSERT(t_n_samples == exp_n_samples);
+
     SUITE_END();
 }
 

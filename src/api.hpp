@@ -704,7 +704,7 @@ EXTERN IOStatus write_vec(const char* filename, r_vec* result);
  * unknown_method : the requested method is unknown.
  */
 
-ComputeStatus partial(const char* biom_filename, const char* tree_filename,
+EXTERN ComputeStatus partial(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, unsigned int stripe_start,
                              unsigned int stripe_stop, partial_mat_t** result);
@@ -750,7 +750,7 @@ ComputeStatus partial(const char* biom_filename, const char* tree_filename,
  * ### FOOTER ###
  * <MAGIC>              : char, e.g., SSU-PARTIAL-01, same as starting magic
  */
-IOStatus write_partial(const char* filename, const partial_mat_t* result);
+EXTERN IOStatus write_partial(const char* filename, const partial_mat_t* result);
 
 /* Read a partial matrix object
  *
@@ -780,7 +780,7 @@ IOStatus read_partial(const char* filename, partial_mat_t** result);
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out);
+EXTERN IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out);
 
 /* Read a stripe of a partial matrix
  *
@@ -796,12 +796,12 @@ IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** res
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-IOStatus read_partial_one_stripe(partial_dyn_mat_t* result, uint32_t stripe_idx);
+EXTERN IOStatus read_partial_one_stripe(partial_dyn_mat_t* result, uint32_t stripe_idx);
 
 /*
  * Description TBD
  */
-MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials);
+EXTERN MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials);
 
 /* Merge partial results
  *
@@ -863,7 +863,7 @@ MergeStatus merge_partial_to_matrix_fp32(partial_dyn_mat_t* * partial_mats, int 
  * sample_id_consistency : samples described by stripes are inconsistent
  * square_mismatch       : inconsistency on denotation of square matrix
  */
-MergeStatus merge_partial_to_mmap_matrix(partial_dyn_mat_t* * partial_mats, int n_partials, const char *mmap_dir, mat_full_fp64_t** result);
+EXTERN MergeStatus merge_partial_to_mmap_matrix(partial_dyn_mat_t* * partial_mats, int n_partials, const char *mmap_dir, mat_full_fp64_t** result);
 
 /* Merge partial results
  *
@@ -879,7 +879,7 @@ MergeStatus merge_partial_to_mmap_matrix(partial_dyn_mat_t* * partial_mats, int 
  * sample_id_consistency : samples described by stripes are inconsistent
  * square_mismatch       : inconsistency on denotation of square matrix
  */
-MergeStatus merge_partial_to_mmap_matrix_fp32(partial_dyn_mat_t* * partial_mats, int n_partials, const char *mmap_dir, mat_full_fp32_t** result);
+EXTERN MergeStatus merge_partial_to_mmap_matrix_fp32(partial_dyn_mat_t* * partial_mats, int n_partials, const char *mmap_dir, mat_full_fp32_t** result);
 
 
 // Find eigen values and vectors

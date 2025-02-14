@@ -15,33 +15,22 @@
 using namespace H5;
 using namespace su;
 
-/* datasets defined by the BIOM 2.x spec */ 
-const std::string OBS_INDPTR = std::string("/observation/matrix/indptr");
-const std::string OBS_INDICES = std::string("/observation/matrix/indices");
-const std::string OBS_DATA = std::string("/observation/matrix/data");
-const std::string OBS_IDS = std::string("/observation/ids");
-
-const std::string SAMPLE_INDPTR = std::string("/sample/matrix/indptr");
-const std::string SAMPLE_INDICES = std::string("/sample/matrix/indices");
-const std::string SAMPLE_DATA = std::string("/sample/matrix/data");
-const std::string SAMPLE_IDS = std::string("/sample/ids");
-
 biom::biom(std::string filename) 
   : biom_inmem(true)
   , has_hdf5_backing(true) {
     file = H5File(filename.c_str(), H5F_ACC_RDONLY);
 
     /* establish the datasets */
-    obs_indices = file.openDataSet(OBS_INDICES.c_str());
-    obs_data = file.openDataSet(OBS_DATA.c_str());
-    sample_indices = file.openDataSet(SAMPLE_INDICES.c_str());
-    sample_data = file.openDataSet(SAMPLE_DATA.c_str());
+    obs_indices = file.openDataSet(OBS_INDICES);
+    obs_data = file.openDataSet(OBS_DATA);
+    sample_indices = file.openDataSet(SAMPLE_INDICES);
+    sample_data = file.openDataSet(SAMPLE_DATA);
     
     /* cache IDs and indptr */
-    load_ids(OBS_IDS.c_str(), obs_ids);
-    load_ids(SAMPLE_IDS.c_str(), sample_ids);
-    load_indptr(OBS_INDPTR.c_str(), obs_indptr);    
-    load_indptr(SAMPLE_INDPTR.c_str(), sample_indptr);    
+    load_ids(OBS_IDS, obs_ids);
+    load_ids(SAMPLE_IDS, sample_ids);
+    load_indptr(OBS_INDPTR, obs_indptr);    
+    load_indptr(SAMPLE_INDPTR, sample_indptr);    
 
     /* cache shape and nnz info */
     n_samples = sample_ids.size();
