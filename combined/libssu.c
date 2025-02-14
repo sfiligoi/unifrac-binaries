@@ -26,6 +26,7 @@ static pthread_mutex_t dl_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*********************************************************************/
 
 /* Pick the right libssu implementation */
+#ifndef BASIC_ONLY
 static const char *ssu_get_lib_name() {
    __builtin_cpu_init ();
    bool has_avx  = __builtin_cpu_supports ("avx");
@@ -62,6 +63,25 @@ static const char *ssu_get_lib_name() {
    }
    return ssu;
 }
+
+#else
+static const char *ssu_get_lib_name() {
+   const char *ssu = "libssu_cpu_basic.so";
+
+   const char* env_gpu_info = getenv("UNIFRAC_GPU_INFO");
+   if ((env_gpu_info!=NULL) && (env_gpu_info[0]=='Y')) {
+         printf("INFO (unifrac): No GPU support in this version\n");
+   }
+
+   const char* env_cpu_info = getenv("UNIFRAC_CPU_INFO");
+   if ((env_cpu_info!=NULL) && (env_cpu_info[0]=='Y')) {
+      printf("INFO (unifrac): Using shared library %s\n",ssu);
+   }
+   return ssu;
+}
+
+
+#endif
 
 /*********************************************************************/
 
@@ -525,6 +545,7 @@ static ComputeStatus (*dl_partial)(const char*, const char*, const char*, bool, 
 static MergeStatus (*dl_merge_partial_to_mmap_matrix)(partial_dyn_mat_t**, int, const char *, mat_full_fp64_t**) = NULL;
 static MergeStatus (*dl_merge_partial_to_mmap_matrix_fp32)(partial_dyn_mat_t**, int, const char *, mat_full_fp32_t**) = NULL;
 static MergeStatus (*dl_validate_partial)(const partial_dyn_mat_t* const *, int);
+static IOStatus (*dl_read_partial)(const char*, partial_mat_t**);
 static IOStatus (*dl_read_partial_header)(const char*, partial_dyn_mat_t**);
 static IOStatus (*dl_read_partial_one_stripe)(partial_dyn_mat_t*, uint32_t);
 static IOStatus (*dl_write_partial)(const char*, const partial_mat_t*);
@@ -556,6 +577,12 @@ MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int 
    cond_ssu_load("validate_partial", (void **) &dl_validate_partial);
 
    return (*dl_validate_partial)(partial_mats,n_partials);
+}
+
+IOStatus read_partial(const char* input_filename, partial_mat_t** result_out) {
+   cond_ssu_load("read_partial", (void **) &dl_read_partial);
+
+   return (*dl_read_partial)(input_filename,result_out);
 }
 
 IOStatus read_partial_header(const char* input_filename, partial_dyn_mat_t** result_out) {

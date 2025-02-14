@@ -765,7 +765,7 @@ EXTERN IOStatus write_partial(const char* filename, const partial_mat_t* result)
  * bad_header         : header seems malformed
  * unexpected_end     : format end not found in expected location
  */
-IOStatus read_partial(const char* filename, partial_mat_t** result);
+EXTERN IOStatus read_partial(const char* filename, partial_mat_t** result);
 
 /* Read a partial matrix object header
  *
@@ -803,7 +803,9 @@ EXTERN IOStatus read_partial_one_stripe(partial_dyn_mat_t* result, uint32_t stri
  */
 EXTERN MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials);
 
+#if 0
 /* Merge partial results
+ * DEPRECATED, not used by anyone anymore
  *
  * results <partial_mat_t**> an array of partial_mat_t*, the buffers will be destroyed in the process
  * n_partials <int> number of partial mats
@@ -817,8 +819,10 @@ EXTERN MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mat
  * square_mismatch       : inconsistency on denotation of square matrix
  */
 MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result);
+#endif
 
 /* Merge partial results
+ * DEPRECATED, for backwards compatibility only, use the mmap version instead
  *
  * partial_mats <partial_dyn_mat_t**> an array of partial_dyn_mat_t*
  * n_partials <int> number of partial mats
@@ -834,6 +838,7 @@ MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned
 MergeStatus merge_partial_to_matrix(partial_dyn_mat_t* * partial_mats, int n_partials, mat_full_fp64_t** result);
 
 /* Merge partial results
+ * DEPRECATED, for backwards compatibility only, use the mmap version instead
  *
  * partial_mats <partial_dyn_mat_t**> an array of partial_dyn_mat_t*
  * n_partials <int> number of partial mats
@@ -853,7 +858,7 @@ MergeStatus merge_partial_to_matrix_fp32(partial_dyn_mat_t* * partial_mats, int 
  *
  * partial_mats <partial_dyn_mat_t**> an array of partial_dyn_mat_t*
  * n_partials <int> number of partial mats
- * mmap_dir <const char *> Where to host the mmap file
+ * mmap_dir <const char *> Where to host the mmap file, use NULL if no mmap
  * result <mat_full_fp64_t**> the full matrix, output parameters, this is initialized in the method so using **
  *
  * The following error codes are returned:
@@ -869,7 +874,7 @@ EXTERN MergeStatus merge_partial_to_mmap_matrix(partial_dyn_mat_t* * partial_mat
  *
  * partial_mats <partial_dyn_mat_t**> an array of partial_dyn_mat_t*
  * n_partials <int> number of partial mats
- * mmap_dir <const char *> Where to host the mmap file
+ * mmap_dir <const char *> Where to host the mmap file, use NULL if no mmap
  * result <mat_full_fp32_t**> the full matrix, output parameters, this is initialized in the method so using **
  *
  * The following error codes are returned:

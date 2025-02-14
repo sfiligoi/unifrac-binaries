@@ -2272,7 +2272,8 @@ MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int 
     return check_partial(partial_mats, n_partials, true);
 }
 
-
+#if 0
+// DEPRECATED, not used by anyone anymore
 MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result) {
     MergeStatus err = check_partial(partial_mats, n_partials, false);
     if (err!=merge_okay) return err;
@@ -2299,6 +2300,7 @@ MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned
 
     return merge_okay;
 }
+#endif
 
 // Will keep only the strictly necessary stripes in memory... reading just in time
 class PartialStripes : public su::ManagedStripes {

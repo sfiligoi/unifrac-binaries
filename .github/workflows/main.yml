@@ -14,14 +14,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-13, macos-14, linux-gpu-cuda]
-        offload: [acc, ompgpu]
+        offload: [cpu, acc, ompgpu]
         exclude:
-          - os: ubuntu-latest
-            offload: acc
+          - os: linux-gpu-cuda
+            offload: cpu
           - os: macos-14
             offload: acc
+          - os: macos-14
+            offload: ompgpu
           - os: macos-13
             offload: acc
+          - os: macos-13
+            offload: ompgpu
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -58,15 +62,20 @@ jobs:
           clang -v
         fi
         which h5c++
-        if [[ "$(uname -s)" == "Linux" ]];
+        export PERFORMING_CONDA_BUILD=True
+        export BUILD_OFFLOAD=${{ matrix.offload }}
+        if [[ "$(uname -s)" == "Linux" ]] && [[ "x${BUILD_OFFLOAD}" != "xcpu" ]];
         then
           # install PGI but do not source it
           # the makefile will do it automatically
           ./scripts/install_hpc_sdk.sh </dev/null
         fi
         df -h .
-        export PERFORMING_CONDA_BUILD=True
-        export BUILD_OFFLOAD=${{ matrix.offload }}
+        if [[ "x${BUILD_OFFLOAD}" == "xcpu" ]];
+        then
+           # CPU-only builds use no GPU
+           export NOGPU=1
+        fi
         echo "======= begin env ====="
         env
         echo "=======  end env  ====="

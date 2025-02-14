@@ -144,14 +144,26 @@ main: $(SSU) $(FPD)
 
 api: lib$(SSU).so
 
-test_binaries: test_su test_ska test_api
+test_binaries: test_su test_ska test_api test_su_api
 
-test_su: test_su.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o test_su tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
-test_ska: test_ska.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska skbio_alt.o tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o api.o -llz4 $(BLASLIB) -lpthread
-test_api: test_api.cpp tree.o tsv.o test_su.cpp biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
-	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o test_api tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+# first test the internal structures
+test_su: test_su.cpp api.hpp tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o unifrac.o skbio_alt.o api.o $(UNIFRAC_FILES)
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_su.cpp -o $@ tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o $(UNIFRAC_FILES) unifrac.o skbio_alt.o api.o -llz4 $(BLASLIB) -lpthread
+# then exercise the optimized code through the API interface
+test_su_api: test_su.cpp test_helper.hpp api.hpp $(PREFIX)/lib/lib$(SSU).so
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) -DAPI_ONLY=1 test_su.cpp -o $@ -l$(SSU)
+
+# Create an archive, so we do not need dependencies for functions we do not use
+test_ska_deps.a: tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o skbio_alt.o api.o
+	rm -f $@
+	ar -r $@ $^
+ 
+# Not invoking the unifrac acc code, so we do not need to use the shlib
+test_ska: test_ska.cpp skbio_alt.hpp api.hpp test_helper.hpp biom.hpp test_ska_deps.a
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_ska.cpp -o test_ska test_ska_deps.a -llz4 $(BLASLIB) -lpthread
+
+test_api: test_api.cpp api.hpp test_helper.hpp biom.hpp $(PREFIX)/lib/lib$(SSU).so
+	$(CXX) $(CPPFLAGS) $(EXEFLAGS) test_api.cpp -o $@ -l$(SSU)
 
 $(SSU): su.cpp api.hpp biom.hpp $(PREFIX)/lib/lib$(SSU).so
 	$(CXX) $(CPPFLAGS) $(EXEFLAGS) su.cpp -o $@ -l$(SSU)
@@ -164,7 +176,6 @@ lib$(SSU).so: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o
 
 api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_subsampled.hpp tree.hpp tsv.hpp
 	$(CXX) $(CPPFLAGS) api.cpp -c -o api.o -fPIC
-
 
 unifrac_task_noclass.cpp: unifrac_task_impl.hpp
 	python3 generate_unifrac_task_noclass.py >unifrac_task_noclass.cpp
@@ -194,6 +205,7 @@ test: test_binaries
 	./test_su
 	./test_ska
 	./test_api
+	./test_su_api
 
 install_lib: lib$(SSU).so
 	rm -f ${PREFIX}/lib/lib$(SSU).so; cp lib$(SSU).so ${PREFIX}/lib/
@@ -226,5 +238,8 @@ rapi_test: tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o sk
 	rm -f *.o
 
 clean:
-	-rm -f *.o $(SSU) $(FPD) test_su test_ska test_api lib$(SSU).so unifrac_task_noclass.cpp
+	-rm -f *.o $(SSU) $(FPD) *.a test_su test_ska test_api test_su_api lib$(SSU).so unifrac_task_noclass.cpp
+
+clean_install:
+	-rm -f ${PREFIX}/lib/lib$(SSU).so ${PREFIX}/bin/$(SSU) ${PREFIX}/bin/$(FPD) ${PREFIX}/include/unifrac/task_parameters.hpp ${PREFIX}/include/unifrac/api.hpp ${PREFIX}/include/unifrac/status_enum.hpp
 
