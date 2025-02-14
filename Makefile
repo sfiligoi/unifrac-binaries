@@ -6,7 +6,7 @@ PLATFORM := $(shell uname -s)
 COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
 
 ifeq ($(PLATFORM),Darwin)
-# no GPU support for MacOS
+# only one optimization level and no GPU support for MacOS
 all:
 	$(MAKE) api
 	$(MAKE) install
@@ -22,13 +22,15 @@ clean_install:
 	-cd src && $(MAKE) clean_install
 
 else
-# Linux with optional GPU support
+# Linux with several optimization levels and with optional GPU support
 
 ifndef NOGPU
 
 all: 
 	$(MAKE) all_cpu_basic
-	$(MAKE) all_nv_avx2
+	$(MAKE) all_cpu_x86_v2
+	$(MAKE) all_cpu_x86_v3
+	$(MAKE) all_cpu_x86_v4
 	$(MAKE) all_nv
 	$(MAKE) all_combined
 	$(MAKE) test_binaries
@@ -36,14 +38,18 @@ all:
 clean:
 	-cd test && $(MAKE) clean
 	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
-	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean
-	-export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean
+	-export BUILD_VARIANT=cpu_x86_v2; cd src && $(MAKE) clean
+	-export BUILD_VARIANT=cpu_x86_v3; cd src && $(MAKE) clean
+	-export BUILD_VARIANT=cpu_x86_v4; cd src && $(MAKE) clean
+	-. ./setup_nv_h5.sh; export BUILD_VARIANT=nv; cd src && $(MAKE) clean
 	-cd combined && $(MAKE) clean
 
 clean_install:
 	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
-	-export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install
-	-export BUILD_VARIANT=nv_avx2; cd src && $(MAKE) clean_install
+	-export BUILD_VARIANT=cpu_x86_v2; cd src && $(MAKE) clean_install
+	-export BUILD_VARIANT=cpu_x86_v3; cd src && $(MAKE) clean_install
+	-export BUILD_VARIANT=cpu_x86_v4; cd src && $(MAKE) clean_install
+	-. ./setup_nv_h5.sh; export BUILD_VARIANT=nv; cd src && $(MAKE) clean_install
 	-cd combined && $(MAKE) clean_install
 
 else
@@ -68,13 +74,21 @@ all_cpu_basic:
 	$(MAKE) api_cpu_basic
 	$(MAKE) install_cpu_basic
 
+all_cpu_x86_v2:
+	$(MAKE) api_cpu_x86_v2
+	$(MAKE) install_cpu_x86_v2
+
+all_cpu_x86_v3:
+	$(MAKE) api_cpu_x86_v3
+	$(MAKE) install_cpu_x86_v3
+
+all_cpu_x86_v4:
+	$(MAKE) api_cpu_x86_v4
+	$(MAKE) install_cpu_x86_v4
+
 all_nv: 
 	$(MAKE) api_nv
 	$(MAKE) install_nv
-
-all_nv_avx2: 
-	$(MAKE) api_nv_avx2
-	$(MAKE) install_nv_avx2
 
 all_combined:
 	$(MAKE) api_combined
@@ -92,11 +106,17 @@ api:
 api_cpu_basic:
 	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api
 
-api_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api
+api_cpu_x86_v2:
+	export BUILD_VARIANT=cpu_x86_v2 ; export BUILD_FULL_OPTIMIZATION=x86-64-v2 ; export BUILD_TUNE_OPTIMIZATION=core2; cd src && $(MAKE) clean && $(MAKE) api
 
-api_nv_avx2:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && $(MAKE) clean && $(MAKE) api
+api_cpu_x86_v3:
+	export BUILD_VARIANT=cpu_x86_v3 ; export BUILD_FULL_OPTIMIZATION=x86-64-v3 ; export BUILD_TUNE_OPTIMIZATION=znver3; cd src && $(MAKE) clean && $(MAKE) api
+
+api_cpu_x86_v4:
+	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; export BUILD_TUNE_OPTIMIZATION=znver4 ;cd src && $(MAKE) clean && $(MAKE) api
+
+api_nv:
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api_acc
 
 api_combined:
 	cd combined && $(MAKE) clean && $(MAKE) api
@@ -117,11 +137,17 @@ install:
 install_cpu_basic:
 	export BUILD_VARIANT=cpu_basic ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib
 
-install_nv:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib
+install_cpu_x86_v2:
+	export BUILD_VARIANT=cpu_x86_v2 ; export BUILD_FULL_OPTIMIZATION=x86-64-v2 ; cd src && $(MAKE) install_lib
 
-install_nv_avx2:
-	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv_avx2 ; export BUILD_FULL_OPTIMIZATION=True ; cd src && $(MAKE) install_lib
+install_cpu_x86_v3:
+	export BUILD_VARIANT=cpu_x86_v3 ; export BUILD_FULL_OPTIMIZATION=x86-64-v3 ; cd src && $(MAKE) install_lib
+
+install_cpu_x86_v4:
+	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; cd src && $(MAKE) install_lib
+
+install_nv:
+	. ./setup_nv_h5.sh; export BUILD_VARIANT=nv ; export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib_acc
 
 install_combined:
 	cd combined && $(MAKE) install

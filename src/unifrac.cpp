@@ -435,7 +435,6 @@ static int proc_use_acc = -1;
 
 inline bool use_acc() {
  if (proc_use_acc!=-1) return (proc_use_acc!=0);
- int has_nvidia_gpu_rc = access("/proc/driver/nvidia/gpus", F_OK);
 
  bool print_info = false;
 
@@ -448,14 +447,7 @@ inline bool use_acc() {
    }
  }
 
- if (has_nvidia_gpu_rc == 0) {
-    if (!su_acc::found_gpu()) {
-       has_nvidia_gpu_rc  = 1;
-       if (print_info) printf("INFO (unifrac): NVIDIA GPU listed but OpenACC cannot use it.\n");
-    }
- } 
-
- if (has_nvidia_gpu_rc != 0) {
+ if (!su_acc::found_gpu()) {
    if (print_info) printf("INFO (unifrac): GPU not found, using CPU\n");
    proc_use_acc=0;
    return false;

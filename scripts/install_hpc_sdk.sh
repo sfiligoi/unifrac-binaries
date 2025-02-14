@@ -83,35 +83,18 @@ mkdir setup_scripts
 cat > setup_scripts/setup_nv_hpc_bins.sh << EOF
 PATH=$PWD/conda_nv_bins:`ls -d $PWD/hpc_sdk/*/202*/compilers/bin`:\$PATH
 
+export NV_CXX=pgc++
+
 # pgc++ does not define it, but gcc libraries expect it
 # also remove the existing conda flags, which are not compatible
-export CPPFLAGS=-D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=0
-export CXXFLAGS=\${CPPFLAGS}
-export CFLAGS=\${CPPFLAGS}
+export NV_CPPFLAGS=-D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=0
+export NV_CXXFLAGS=\${NV_CPPFLAGS}
+export NV_CFLAGS=\${NV_CPPFLAGS}
 
-unset DEBUG_CPPFLAGS
-unset DEBUG_CXXFLAGS
-unset DEBUG_CFLAGS
+# reuse the same top-level LDFLAGS
+export NV_LDFLAGS=\${LDFLAGS}
 
 EOF
-
-# h5c++ patch
-mkdir conda_h5
-cp $CONDA_PREFIX/bin/h5c++ conda_h5/
-
-# This works on linux with gcc ..
-sed -i \
-  "s#x86_64-conda.*-linux-gnu-c++#pgc++ -I`ls -d $NVHPC_INSTALL_DIR/*/202*/compilers/include`#g" \
-  conda_h5/h5c++ 
-sed -i \
-  's#H5BLD_CXXFLAGS=".*"#H5BLD_CXXFLAGS=" -fvisibility-inlines-hidden -std=c++17 -fPIC -O2 -I${includedir}"#g'  \
-  conda_h5/h5c++
-sed -i \
-  's#H5BLD_CPPFLAGS=".*"#H5BLD_CPPFLAGS=" -I${includedir} -DNDEBUG -D_FORTIFY_SOURCE=2 -O2"#g' \
-  conda_h5/h5c++
-sed -i \
-  's#H5BLD_LDFLAGS=".*"#H5BLD_LDFLAGS=" -L${prefix}/x86_64-conda-linux-gnu/sysroot/usr/lib64/ -L${libdir} -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,-rpath,\\\\\\$ORIGIN/../x86_64-conda-linux-gnu/sysroot/usr/lib64/ -Wl,-rpath,\\\\\\$ORIGIN -Wl,-rpath,\\\\\\$ORIGIN/../lib -Wl,-rpath,${prefix}/x86_64-conda-linux-gnu/sysroot/usr/lib64/ -Wl,-rpath,${libdir}"#g' \
- conda_h5/h5c++
 
 # patch localrc to find crt1.o
 for f in ${NVHPC_INSTALL_DIR}/*/202*/compilers/bin/localrc; do
@@ -121,10 +104,10 @@ for f in ${NVHPC_INSTALL_DIR}/*/202*/compilers/bin/localrc; do
   #echo "===="
 done
 
+# TODO: Get rid of this indirection
 cat > setup_nv_h5.sh  << EOF
 . $PWD/setup_scripts/setup_nv_hpc_bins.sh
 
-PATH=${PWD}/conda_h5:\$PATH
 EOF
 
 # we don't need the install dir anymore
