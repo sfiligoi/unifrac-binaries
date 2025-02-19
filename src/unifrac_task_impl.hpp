@@ -1199,17 +1199,27 @@ static inline void UnweightedOneSide(
                       TFloat * const  __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
+                      const uint64_t embs_stripe,
                       const unsigned int filled_embs_els_round,
                       const uint64_t n_samples_r,
                       const uint64_t kl) {
             bool all_zeros=true;
             TFloat my_stripe = 0.0;
 
+#if !(defined(_OPENACC) || defined(OMPGPU))
+            // CPUs use transposed layout
+            const uint64_t offset = embs_stripe*kl;
+#endif
             for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
-                const uint64_t offset = n_samples_r * emb_el;
                 const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
 
+#if !(defined(_OPENACC) || defined(OMPGPU))
+		// CPUs use transposed layout
+                uint64_t o1 = embedded_proportions[offset + emb_el];
+#else
+                const uint64_t offset = n_samples_r * emb_el;
                 uint64_t o1 = embedded_proportions[offset + kl];
+#endif
 
                 if (o1==0) {  // zeros are prevalent
                     // nothing to do
@@ -1376,6 +1386,7 @@ static inline void Unweighted1(
                       const TFloat * const   __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ sums,
                       const uint64_t * const __restrict__ embedded_proportions,
+                      const uint64_t embs_stripe,
                       const unsigned int filled_embs_els_round,
                       const uint64_t idx,
                       const uint64_t n_samples_r,
@@ -1406,12 +1417,13 @@ static inline void Unweighted1(
             did_update = (my_stripe!=0.0);
           } else {
             // we need both sides
+            const uint64_t offset_k = embs_stripe*k;
+            const uint64_t offset_l = embs_stripe*l1;
             for (uint64_t emb_el=0; emb_el<filled_embs_els_round; emb_el++) {
-                const uint64_t offset = n_samples_r * emb_el;
                 const TFloat * __restrict__ psum = &(sums[emb_el*0x800]);
 
-                uint64_t u1 = embedded_proportions[offset + k];
-                uint64_t v1 = embedded_proportions[offset + l1];
+                uint64_t u1 = embedded_proportions[offset_k + emb_el];
+                uint64_t v1 = embedded_proportions[offset_l + emb_el];
                 uint64_t o1 = u1 | v1;
                 uint64_t x1 = u1 ^ v1;
 
@@ -1504,6 +1516,7 @@ static inline void UnweightedZerosAndSums(
                       TFloat * const  __restrict__ stripe_sums,
                       const TFloat * const   __restrict__ el_sums,
                       const T * const __restrict__ embedded_proportions,
+                      const uint64_t embs_stripe,
                       const unsigned int filled_embs_els_round,
                       const uint64_t n_samples,
                       const uint64_t n_samples_r) {
@@ -1518,13 +1531,14 @@ static inline void UnweightedZerosAndSums(
             UnweightedOneSide(
                       zcheck, stripe_sums,
                       el_sums, embedded_proportions,
-                      filled_embs_els_round, n_samples_r,
+                      embs_stripe, filled_embs_els_round, n_samples_r,
                       k);
     }
 }
 
 template<class TFloat>
 static inline void run_UnweightedTask_T(
+		const uint64_t embs_stripe,
 		const unsigned int filled_embs,
 		const uint64_t start_idx, const uint64_t stop_idx,
 		const uint64_t n_samples, const uint64_t n_samples_r,
@@ -1619,7 +1633,7 @@ static inline void run_UnweightedTask_T(
     // check for zero values and compute stripe sums
     UnweightedZerosAndSums(zcheck, stripe_sums,
                            sums, embedded_proportions,
-                           filled_embs_els_round, n_samples, n_samples_r);
+                           embs_stripe, filled_embs_els_round, n_samples, n_samples_r);
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
@@ -1672,7 +1686,7 @@ static inline void run_UnweightedTask_T(
                                 dm_stripes_buf,dm_stripes_total_buf,
                                 zcheck, stripe_sums,
                                 sums, embedded_proportions,
-                                filled_embs_els_round,idx, n_samples_r,
+                                embs_stripe,filled_embs_els_round,idx, n_samples_r,
                                 k, l1);
            } // if k
          } // for ik
@@ -1685,6 +1699,7 @@ static inline void run_UnweightedTask_T(
 
 template<class TFloat>
 static inline void run_UnnormalizedUnweightedTask_T(
+		const uint64_t embs_stripe,
 		const unsigned int filled_embs,
 		const uint64_t start_idx, const uint64_t stop_idx,
 		const uint64_t n_samples, const uint64_t n_samples_r,
@@ -1778,7 +1793,7 @@ static inline void run_UnnormalizedUnweightedTask_T(
     // check for zero values and compute stripe sums
     UnweightedZerosAndSums(zcheck, stripe_sums,
                            sums, embedded_proportions,
-                           filled_embs_els_round, n_samples, n_samples_r);
+                           embs_stripe, filled_embs_els_round, n_samples, n_samples_r);
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
@@ -1831,7 +1846,7 @@ static inline void run_UnnormalizedUnweightedTask_T(
                                 dm_stripes_buf,NULL,
                                 zcheck, stripe_sums,
                                 sums, embedded_proportions,
-                                filled_embs_els_round,idx, n_samples_r,
+                                embs_stripe,filled_embs_els_round,idx, n_samples_r,
                                 k, l1);
            } // if k
          } // for ik

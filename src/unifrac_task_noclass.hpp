@@ -90,7 +90,7 @@ namespace SUCMP_NM {
     // Compute NormalizedWeighted step
     template<class TFloat>
     void run_NormalizedWeightedTask(
-                const uint64_t embs_stripe,
+		const uint64_t embs_stripe,
 		const unsigned int filled_embs,
 		const uint64_t start_idx, const uint64_t stop_idx,
 		const uint64_t n_samples, const uint64_t n_samples_r,
@@ -104,6 +104,7 @@ namespace SUCMP_NM {
     // Compute Unweighted step
     template<class TFloat>
     void run_UnweightedTask(
+		const uint64_t embs_stripe,
 		const unsigned int filled_embs,
 		const uint64_t start_idx, const uint64_t stop_idx,
 		const uint64_t n_samples, const uint64_t n_samples_r,
@@ -118,6 +119,7 @@ namespace SUCMP_NM {
     // Compute UnnormalizedUnweighted step
     template<class TFloat>
     void run_UnnormalizedUnweightedTask(
+		const uint64_t embs_stripe,
 		const unsigned int filled_embs,
 		const uint64_t start_idx, const uint64_t stop_idx,
 		const uint64_t n_samples, const uint64_t n_samples_r,
