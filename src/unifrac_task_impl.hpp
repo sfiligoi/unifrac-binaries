@@ -1429,45 +1429,6 @@ static inline void Unweighted1(
 
                 if (o1==0) {  // zeros are prevalent
                     // nothing to do
-                } else if (((uint32_t)o1)==0) {
-                    // only high part relevant
-                    did_update=true;
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    if constexpr (compute_total) {
-                    my_stripe_total += psum[0x400+((uint8_t)(o1 >> 32))] +
-                                       psum[0x500+((uint8_t)(o1 >> 40))] +
-                                       psum[0x600+((uint8_t)(o1 >> 48))] +
-                                       psum[0x700+((uint8_t)(o1 >> 56))];
-                    }
-                    my_stripe       += psum[0x400+((uint8_t)(x1 >> 32))] +
-                                       psum[0x500+((uint8_t)(x1 >> 40))] +
-                                       psum[0x600+((uint8_t)(x1 >> 48))] +
-                                       psum[0x700+((uint8_t)(x1 >> 56))];
-                } else if ((o1>>32)==0) {
-                    // only low part relevant
-                    did_update=true;
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    if constexpr (compute_total) {
-                    my_stripe_total += psum[       (uint8_t)(o1)       ] + 
-                                       psum[0x100+((uint8_t)(o1 >>  8))] +
-                                       psum[0x200+((uint8_t)(o1 >> 16))] +
-                                       psum[0x300+((uint8_t)(o1 >> 24))];
-                    }
-                    my_stripe       += psum[       (uint8_t)(x1)       ] + 
-                                       psum[0x100+((uint8_t)(x1 >>  8))] +
-                                       psum[0x200+((uint8_t)(x1 >> 16))] +
-                                       psum[0x300+((uint8_t)(x1 >> 24))];
-
                 } else {
                     did_update=true;
 
@@ -1475,25 +1436,16 @@ static inline void Unweighted1(
                     // Each range of 8 lengths has already been pre-computed and stored in psum
                     // Since embedded_proportions packed format is in 64-bit format for performance reasons
                     //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    if constexpr (compute_total) {
-                    my_stripe_total += psum[       (uint8_t)(o1)       ] + 
-                                       psum[0x100+((uint8_t)(o1 >>  8))] +
-                                       psum[0x200+((uint8_t)(o1 >> 16))] +
-                                       psum[0x300+((uint8_t)(o1 >> 24))] +
-                                       psum[0x400+((uint8_t)(o1 >> 32))] +
-                                       psum[0x500+((uint8_t)(o1 >> 40))] +
-                                       psum[0x600+((uint8_t)(o1 >> 48))] +
-                                       psum[0x700+((uint8_t)(o1 >> 56))];
-                    }
-                    my_stripe       += psum[       (uint8_t)(x1)       ] + 
-                                       psum[0x100+((uint8_t)(x1 >>  8))] +
-                                       psum[0x200+((uint8_t)(x1 >> 16))] +
-                                       psum[0x300+((uint8_t)(x1 >> 24))] +
-                                       psum[0x400+((uint8_t)(x1 >> 32))] +
-                                       psum[0x500+((uint8_t)(x1 >> 40))] +
-                                       psum[0x600+((uint8_t)(x1 >> 48))] +
-                                       psum[0x700+((uint8_t)(x1 >> 56))];
+		    for (int i=0; i<8; i++) {
+		      uint8_t o1_8 = (uint8_t)(o1);
+                      if (o1_8!=0) {
+                        if constexpr (compute_total) my_stripe_total += psum[o1_8];
+                        my_stripe       += psum[(uint8_t)(x1)];
+		      }
+		      o1 = o1 >> 8;
+		      x1 = x1 >> 8;
+		      psum += 0x100;
+		    }
                 }
             }
           } // (allzero_k || allzero_l1)
