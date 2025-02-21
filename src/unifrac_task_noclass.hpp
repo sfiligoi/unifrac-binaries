@@ -114,6 +114,7 @@ namespace SUCMP_NM {
 		TFloat * const __restrict__ dm_stripes_total_buf,
 		TFloat * const __restrict__ sums,
 		bool   * const __restrict__ zcheck,
+		uint32_t* const __restrict__ idxs,
 		TFloat * const __restrict__ stripe_sums);
 
     // Compute UnnormalizedUnweighted step
@@ -128,6 +129,7 @@ namespace SUCMP_NM {
 		TFloat * const __restrict__ dm_stripes_buf,
 		TFloat * const __restrict__ sums,
 		bool   * const __restrict__ zcheck,
+		uint32_t* const __restrict__ idxs,
 		TFloat * const __restrict__ stripe_sums);
 
     // Compute Generalized step
