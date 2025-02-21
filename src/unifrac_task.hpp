@@ -392,13 +392,16 @@ namespace SUCMP_NM {
 #if SUCMP_ID(SUCMP_NM)==su_cpu_SUCMP_ID
        // size for contiguous access
        static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 512-16; // optimize for 32k CPU L1 cache... -16 to avoid cache line trashing
-       // packed uses 8x less memory,so this should be ~8x larger than straight (vectorized)
-       static constexpr unsigned int RECOMMENDED_MAX_EMBS_BOOL = 256*8; 
+       // Must be multiple of 64, since it it bit packed
+       // The EMB is 64x smaller, and still msut fit in L1 cache
+       // But must also fit sums in L2 cache, since access is pseudo-random (and too big for L1)
+       static constexpr unsigned int RECOMMENDED_MAX_EMBS_BOOL = 64*32;  // Optimize for 1M L2 cache... (using 1/4 of it)
 #else
        // size for vectorized access
        static constexpr unsigned int RECOMMENDED_MAX_EMBS_STRAIGHT = 128-16; // optimize for GPU L1 cache... -16 to avoid cache line trashing
-       // size for vectorized access
-       // packed uses 32x less memory,so this should be 32x larger than straight... but there are additional structures, so use half of that
+       // Must be multiple of 64, since it it bit packed
+       // The EMB is 64x smaller, and still msut fit in L1 cache
+       // But must also fit sums in L2 cache, since access is pseudo-random (and too big for L1)
        static constexpr unsigned int RECOMMENDED_MAX_EMBS_BOOL = 64*32;
 #endif
 
