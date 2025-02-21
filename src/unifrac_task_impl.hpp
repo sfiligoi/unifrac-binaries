@@ -1224,52 +1224,25 @@ static inline void UnweightedOneSide(
                 if (o1==0) {  // zeros are prevalent
                     // nothing to do
                 } else {
-                 all_zeros = false;
+                    all_zeros = false;
+                    // Use the pre-computed sums
+                    // Each range of 8 lengths has already been pre-computed and stored in psum
+                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
+                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
+
 #if !(defined(_OPENACC) || defined(OMPGPU))
-                 // CPU/SIMD faster if we check for partial compute
-                 if (((uint32_t)o1)==0) {
-                    // only high part relevant
-                    //uint64_t x1 = u1 ^ v1;
-                    // With one of the two being 0, xor is just the non-negative one
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    TFloat esum      = psum[0x400+((uint8_t)(o1 >> 32))] +
-                                       psum[0x500+((uint8_t)(o1 >> 40))] +
-                                       psum[0x600+((uint8_t)(o1 >> 48))] +
-                                       psum[0x700+((uint8_t)(o1 >> 56))];
-                    my_stripe       += esum;
-                 } else if ((o1>>32)==0) {
-                    // only low part relevant
-                    //uint64_t x1 = u1 ^ v1;
-                    // With one of the two being 0, xor is just the non-negative one
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
-                    TFloat esum      = psum[       (uint8_t)(o1)       ] + 
-                                       psum[0x100+((uint8_t)(o1 >>  8))] +
-                                       psum[0x200+((uint8_t)(o1 >> 16))] +
-                                       psum[0x300+((uint8_t)(o1 >> 24))];
-                    my_stripe       += esum;
-                 } else {
+                    // CPU/SIMD faster if we check for partial compute
+		    TFloat esum = 0.0;
+		    for (int i=0; i<8; i++) {
+		      uint8_t o1_8 = (uint8_t)(o1);
+                      if (o1_8!=0) {
+                        my_stripe  += psum[(uint8_t)(o1_8)];
+		      }
+		      o1 = o1 >> 8;
+		      psum += 0x100;
+		    }
 #else
-                 // GPU/SIMT faster if we just go ahead will full at all times
-                 {
-#endif
-                    //uint64_t x1 = u1 ^ v1;
-                    // With one of the two being 0, xor is just the non-negative one
-
-                    // Use the pre-computed sums
-                    // Each range of 8 lengths has already been pre-computed and stored in psum
-                    // Since embedded_proportions packed format is in 64-bit format for performance reasons
-                    //    we need to add the 8 sums using the four 8-bits for addressing inside psum
-
+                    // GPU/SIMT faster if we just go ahead will full at all times
                     TFloat esum      = psum[       (uint8_t)(o1)       ] + 
                                        psum[0x100+((uint8_t)(o1 >>  8))] +
                                        psum[0x200+((uint8_t)(o1 >> 16))] +
@@ -1278,8 +1251,8 @@ static inline void UnweightedOneSide(
                                        psum[0x500+((uint8_t)(o1 >> 40))] +
                                        psum[0x600+((uint8_t)(o1 >> 48))] +
                                        psum[0x700+((uint8_t)(o1 >> 56))];
+#endif
                     my_stripe       += esum;
-                 }
                 }
             }
 
