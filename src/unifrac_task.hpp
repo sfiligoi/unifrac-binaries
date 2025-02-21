@@ -515,14 +515,18 @@ namespace SUCMP_NM {
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = _max_embs*(0x400/32);
           zcheck = (bool*) malloc(sizeof(bool) * n_samples);
-          idxs = (uint32_t*) malloc(sizeof(uint32_t) * n_samples);
           stripe_sums = (TFloat*) malloc(sizeof(TFloat) *  n_samples);
           sums = (TFloat*) malloc(sizeof(TFloat) * bsize);
 
           acc_create_buf(zcheck, 0, n_samples);
-          acc_create_buf(idxs, 0, n_samples);
           acc_create_buf(stripe_sums, 0 , n_samples);
           acc_create_buf(sums, 0 , bsize);
+#if SUCMP_ID(SUCMP_NM)==su_cpu_SUCMP_ID
+	  idxs = NULL; // not used in the CPU code
+#else
+          idxs = (uint32_t*) malloc(sizeof(uint32_t) * n_samples);
+          acc_create_buf(idxs, 0, n_samples);
+#endif
         }
 
         virtual ~UnifracCommonUnweightedTask()
@@ -530,14 +534,18 @@ namespace SUCMP_NM {
           const unsigned int n_samples = this->task_p->n_samples;
           const unsigned int bsize = this->max_embs*(0x400/32);
 
+#if SUCMP_ID(SUCMP_NM)==su_cpu_SUCMP_ID
+	  // not allocated in the CPU code
+#else
+          acc_destroy_buf(idxs, 0, n_samples);
+          free(idxs);
+#endif
           acc_destroy_buf(sums, 0 , bsize);
           acc_destroy_buf(stripe_sums, 0 , n_samples);
-          acc_destroy_buf(idxs, 0, n_samples);
           acc_destroy_buf(zcheck, 0, n_samples);
 
           free(sums);
           free(stripe_sums);
-          free(idxs);
           free(zcheck);
         }
 

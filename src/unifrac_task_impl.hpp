@@ -1464,14 +1464,13 @@ static inline uint32_t UnweightedZerosAndSums(
 	    if (all_zeros) n_true_idxs++;
     }
 
+#if !defined(OMPGPU) && defined(_OPENACC)
     // create index of k, first all of those with zcheck true, then all false
     // equivalent to stable_sort, but knowing in advance n_true_idxs
 #if defined(OMPGPU)
 #pragma omp target teams distribute parallel for simd default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop gang vector present(idxs,zcheck)
-#else
-#pragma omp parallel for default(shared)
 #endif
     for (int b=0; b<2; b++) {
       const bool mytest = (b==0);
@@ -1483,6 +1482,9 @@ static inline uint32_t UnweightedZerosAndSums(
         }
       }
     }
+#else
+    // CPU version does not use idxs
+#endif
 
     return n_true_idxs;
 }
@@ -1604,8 +1606,6 @@ static inline void run_UnweightedTask_T(
           if (k_idx<n_samples) { // else past the limit
 	    const uint64_t k = idxs[k_idx];
             const uint64_t idx = (stripe-start_idx) * n_samples_r;
-
-
             const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
             Unweighted1<TFloat,compute_total>(
@@ -1767,8 +1767,6 @@ static inline void run_UnnormalizedUnweightedTask_T(
           if (k_idx<n_samples) { // else past the limit
 	    const uint64_t k = idxs[k_idx];
             const uint64_t idx = (stripe-start_idx) * n_samples_r;
-
-
             const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
             Unweighted1<TFloat,compute_total>(
