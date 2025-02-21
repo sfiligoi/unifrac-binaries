@@ -1596,14 +1596,11 @@ static inline void run_UnweightedTask_T(
     // Use a moderate block to prevent trashing but still have some cache reuse
 #pragma omp parallel for collapse(2) schedule(dynamic,step_size) default(shared)
     for(uint64_t ss = 0; ss < stripe_steps ; ss++) {
-     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
+     for(uint64_t k= 0; k<n_samples; k++) {
        // tile to maximize cache reuse
        for(uint64_t is = 0; is < step_size ; is++) {
         const uint64_t stripe = start_idx+ss*step_size + is;
         if (stripe<stop_idx) { // esle past limit}
-         for(uint64_t ik = 0; ik < step_size ; ik++) {
-           const uint64_t k = sk*step_size + ik;
-           if (k<n_samples) { // elsepast the limit
             const uint64_t idx = (stripe-start_idx) * n_samples_r;
             const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
@@ -1613,11 +1610,9 @@ static inline void run_UnweightedTask_T(
                                 sums, embedded_proportions,
                                 embs_stripe,filled_embs_els_round,idx, n_samples_r,
                                 k, l1);
-           } // if k
-         } // for ik
         } // if stripe
        } // for is
-      } // for sk
+      } // for k
     } // for ss
 #endif
 }
@@ -1756,14 +1751,11 @@ static inline void run_UnnormalizedUnweightedTask_T(
     // Use a moderate block to prevent trashing but still have some cache reuse
 #pragma omp parallel for collapse(2) schedule(dynamic,step_size) default(shared)
     for(uint64_t ss = 0; ss < stripe_steps ; ss++) {
-     for(uint64_t sk = 0; sk < sample_steps ; sk++) {
+     for(uint64_t k = 0; k < n_samples ; k++) {
        // tile to maximize cache reuse
        for(uint64_t is = 0; is < step_size ; is++) {
         const uint64_t stripe = start_idx+ss*step_size + is;
         if (stripe<stop_idx) { // esle past limit}
-         for(uint64_t ik = 0; ik < step_size ; ik++) {
-           const uint64_t k = sk*step_size + ik;
-           if (k<n_samples) { // elsepast the limit
             const uint64_t idx = (stripe-start_idx) * n_samples_r;
             const uint64_t l1 = (k + stripe + 1)%n_samples; // wraparound
 
@@ -1773,11 +1765,9 @@ static inline void run_UnnormalizedUnweightedTask_T(
                                 sums, embedded_proportions,
                                 embs_stripe,filled_embs_els_round,idx, n_samples_r,
                                 k, l1);
-           } // if k
-         } // for ik
         } // if stripe
        } // for is
-      } // for sk
+      } // for k
     } // for ss
 #endif
 }
