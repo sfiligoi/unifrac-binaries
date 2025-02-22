@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2016-2025, UniFrac development team.
+ * All rights reserved.
+ *
+ * See LICENSE file for more details
+ */
+
 #include <math.h> 
 #include <algorithm> 
 #include "unifrac_task_noclass.hpp"
@@ -1593,6 +1602,11 @@ static inline void run_UnweightedTask_T(
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
+
+    // With idxs ordered, keep elements with same zcheck_k together
+    // This minimizes warp divergence, which is important given drastically different cost of some paths
+    // It does potentially disrupt memory coalescence, but the major memory cost is access to su, which is pseudo-random anyway
+    // (Note that sorting is not affective for the Weighted methods, since they have a much more regular memory access pattern)
 #if defined(OMPGPU)
     // TODO: Explore async omp target
 #pragma omp target teams distribute parallel for simd collapse(3) default(shared)
@@ -1754,6 +1768,10 @@ static inline void run_UnnormalizedUnweightedTask_T(
 
     // point of thread
 #if defined(_OPENACC) || defined(OMPGPU)
+    // With idxs ordered, keep elements with same zcheck_k together
+    // This minimizes warp divergence, which is important given drastically different cost of some paths
+    // It does potentially disrupt memory coalescence, but the major memory cost is access to su, which is pseudo-random anyway
+    // (Note that sorting is not affective for the Weighted methods, since they have a much more regular memory access pattern)
 #if defined(OMPGPU)
     // TODO: Explore async omp target
 #pragma omp target teams distribute parallel for simd collapse(3) default(shared)
