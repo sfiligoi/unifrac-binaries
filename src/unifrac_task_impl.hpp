@@ -1473,7 +1473,7 @@ static inline uint32_t UnweightedZerosAndSums(
 	    if (all_zeros) n_true_idxs++;
     }
 
-#if !defined(OMPGPU) && defined(_OPENACC)
+#if defined(OMPGPU) || defined(_OPENACC)
     // create index of k, first all of those with zcheck true, then all false
     // equivalent to stable_sort, but knowing in advance n_true_idxs
 #if defined(OMPGPU)
