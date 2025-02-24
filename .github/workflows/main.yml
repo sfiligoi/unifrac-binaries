@@ -100,6 +100,7 @@ jobs:
         ./test_su
         ./test_api
         ./test_ska
+        ./test_su_api
         popd
         pushd test
         ./capi_test 1
