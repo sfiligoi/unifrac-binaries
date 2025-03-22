@@ -631,61 +631,38 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 //
 
 
-// Compute PERMANOVA pseudo-F partial statistic
-// mat is symmetric matrix of size n_dims x in_n
-// grouping is an array of size in_n
-// inv_group_sizes is an array of size maxel(grouping)
-// TILE is the loop tiling parameter
-template<class TRealIn, class TRealOut>
-inline TRealOut permanova_f_stat_sW_T_one(const TRealIn * mat, const uint32_t n_dims,
-                                  const uint32_t *grouping,
-                                  const TRealOut *inv_group_sizes,
-                                  const uint32_t TILE) {
-  TRealOut s_W = 0.0;
-
-  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
-    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
-      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
-      const uint32_t max_col = std::min(tcol+TILE,n_dims);
-
-      for (uint32_t row=trow; row < max_row; row++) {
-        const uint32_t min_col = std::max(tcol,row+1);
-        uint32_t group_idx = grouping[row];
-
-        TRealOut local_s_W = 0.0;
-        const TRealIn * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
-        for (uint32_t col=min_col; col < max_col; col++) {
-            if (grouping[col] == group_idx) {
-                TRealOut val = mat_row[col];
-                local_s_W += val * val;
-            }
-        }
-        s_W += local_s_W*inv_group_sizes[group_idx];
-      }
-    }
-  }
-
-  return s_W;
-}
-
-// Compute PERMANOVA pseudo-F partial statistic
-// mat is symmetric matrix of size n_dims x n_dims
-// groupings is a matrix of size n_dims x n_grouping_dims
-// inv_group_sizes is an array of size maxel(groupings)
-// TILE is the loop tiling parameter
-// Results in group_sWs, and array of size n_grouping_dims
-// Note: Best results when TILE is about cache line and n_grouping_dims fits in L1 cache
 template<class TRealIn, class TRealOut>
 inline void permanova_f_stat_sW_T(const TRealIn * mat, const uint32_t n_dims,
                                   const uint32_t *groupings, const uint32_t n_grouping_dims,
                                   const TRealOut *inv_group_sizes,
                                   const uint32_t TILE,
-                                  TRealOut *group_sWs) {
-#pragma omp parallel for
- for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
-    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
-    group_sWs[grouping_el] = permanova_f_stat_sW_T_one(mat,n_dims,grouping,inv_group_sizes,TILE);
- } 
+                                  TRealOut *group_sWs);
+
+template<>
+void permanova_f_stat_sW_T(const float * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const float *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  float *group_sWs) {
+  permanova_f_stat_sW_fp32(mat,n_dims,groupings,n_grouping_dims,inv_group_sizes,TILE,group_sWs);
+}
+
+template<>
+void permanova_f_stat_sW_T(const double * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const double *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  double *group_sWs) {
+  permanova_f_stat_sW_fp64(mat,n_dims,groupings,n_grouping_dims,inv_group_sizes,TILE,group_sWs);
+}
+
+template<>
+void permanova_f_stat_sW_T(const float * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const double *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  double *group_sWs) {
+  permanova_f_stat_sW_fpmixed(mat,n_dims,groupings,n_grouping_dims,inv_group_sizes,TILE,group_sWs);
 }
 
 // Compute PERMANOVA pseudo-F partial statistic using permutations
@@ -781,7 +758,7 @@ inline TRealOut sum_upper_square(const TRealIn * mat, const uint32_t n_dims, con
   } // for trow
   return sum;
 }
-
+#include <stdio.h>
 // Compute the permanova values for all of the permutations
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
@@ -822,6 +799,7 @@ inline void permanova_all_T(const TRealIn * mat, const uint32_t n_dims,
      TRealOut s_W = permutted_fstats[i];
      TRealOut s_A = s_T - s_W;
      permutted_fstats[i] = (s_A * inv_ngroups_1) / (s_W * inv_dg);
+     //if ((i%444)==0) printf("PF %i %5.2f\n",int(i),float(permutted_fstats[i]));
   }
 
   delete[] group_sizes;
@@ -865,7 +843,8 @@ void su::permanova(const double * mat, unsigned int n_dims,
                    const uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
-  uint32_t max_threads = omp_get_max_threads();
+  //uint32_t max_threads = omp_get_max_threads();
+  uint32_t max_threads = 4000;
   permanova_T<double,double>(mat, n_dims, grouping, n_perm,
                              512, max_threads, // 512 grouping els fit nicely in L1 cache
                              fstat_out, pvalue_out);
@@ -875,7 +854,8 @@ void su::permanova(const float * mat, unsigned int n_dims,
                    const uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
-  uint32_t max_threads = omp_get_max_threads();
+  //uint32_t max_threads = omp_get_max_threads();
+  uint32_t max_threads = 4000;
   permanova_T<float,double>(mat, n_dims, grouping, n_perm,
                             1024, max_threads,   // 1k grouping els fit nicely in L1 cache
                             fstat_out, pvalue_out);
@@ -885,7 +865,8 @@ void su::permanova(const float * mat, unsigned int n_dims,
                    const uint32_t *grouping,
                    unsigned int n_perm,
                    float &fstat_out, float &pvalue_out) {
-  uint32_t max_threads = omp_get_max_threads();
+  //uint32_t max_threads = omp_get_max_threads();
+  uint32_t max_threads = 4000; // hardcoded, works well on MI300A
   permanova_T<float,float>(mat, n_dims, grouping, n_perm,
                            1024, max_threads,  // 1k grouping els fit nicely in L1 cache
                            fstat_out, pvalue_out);

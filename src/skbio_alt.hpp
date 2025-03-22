@@ -64,4 +64,21 @@ public:
 
 }
 
+extern "C" void permanova_f_stat_sW_fp32(const float * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const float *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  float *group_sWs);
+extern "C" void permanova_f_stat_sW_fp64(const double * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const double *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  double *group_sWs);
+
+extern "C" void permanova_f_stat_sW_fpmixed(const float * mat, const uint32_t n_dims,
+                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
+                                  const double *inv_group_sizes,
+                                  const uint32_t TILE,
+                                  double *group_sWs);
+
 #endif

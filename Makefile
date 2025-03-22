@@ -12,7 +12,7 @@ all:
 	$(MAKE) install
 	$(MAKE) main
 	$(MAKE) install_main
-	$(MAKE) test_binaries
+	#$(MAKE) test_binaries
 
 clean:
 	-cd test && $(MAKE) clean
@@ -27,7 +27,7 @@ else
 all: 
 	$(MAKE) all_cpu
 	$(MAKE) all_acc
-	$(MAKE) test_binaries
+	#$(MAKE) test_binaries
 
 clean:
 	$(MAKE) clean_cpu

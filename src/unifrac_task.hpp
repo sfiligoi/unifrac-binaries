@@ -10,6 +10,9 @@
 #ifndef __UNIFRAC_TASKS
 #define __UNIFRAC_TASKS 1
 
+#pragma omp requires unified_address
+#pragma omp requires unified_shared_memory
+
 #include "unifrac_task_noclass.hpp"
 #include "task_parameters.hpp"
 #include <math.h>

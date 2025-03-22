@@ -15,9 +15,9 @@
 # based on https://github.com/ROCm/aomp/blob/aomp-dev/docs/INSTALL.md
 #
 
-export AOMP_VERSION=20.0-1
+export AOMP_VERSION=20.0-2
 
-export AOMP_BASEDIR=/usr/lib
+export AOMP_BASEDIR=/cosmos/nfs/home/sfiligoi/github/unifrac-binaries/usr/lib
 
 if [ -f ${AOMP_BASEDIR}/aomp_${AOMP_VERSION}/llvm/bin/amdclang++ ]; then
  echo "[INFO] Found existing ${AOMP_BASEDIR}/aomp_${AOMP_VERSION}/llvm/bin/amdclang++"
@@ -60,6 +60,8 @@ else
     fi
     rm -f aomp_Ubuntu2404_${AOMP_VERSION}_amd64.deb
   else
+   wget https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_20.0-2/aomp_SLES15_SP5-20.0-2.x86_64.rpm
+   rpm2cpio aomp_SLES15_SP5-20.0-2.x86_64.rpm | cpio -idmv
    echo "Unsupported $dist Linux version $osver"
    exit 1
   fi

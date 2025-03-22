@@ -14,6 +14,8 @@
 
 #if defined(OMPGPU)
 
+#pragma omp requires unified_address
+#pragma omp requires unified_shared_memory
 #include <omp.h>
 
 // Biggest vector size supported by the GPU

@@ -18,6 +18,8 @@
 #include "task_parameters.hpp"
 #include "biom_interface.hpp"
 
+#pragma omp requires unified_address
+#pragma omp requires unified_shared_memory
     namespace su {
         enum Method {unweighted, weighted_normalized, weighted_unnormalized, generalized, unweighted_fp32, weighted_normalized_fp32, weighted_unnormalized_fp32, generalized_fp32, unweighted_unnormalized, unweighted_unnormalized_fp32};
 

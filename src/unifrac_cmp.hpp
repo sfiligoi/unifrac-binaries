@@ -20,6 +20,8 @@
 #define SUCMP_NM su_cpu
 #endif
 
+#pragma omp requires unified_address
+#pragma omp requires unified_shared_memory
 namespace SUCMP_NM {
 
   // Returns True iff a GPU can be used

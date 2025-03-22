@@ -109,12 +109,13 @@ ifndef NOGPU
    ifneq (,$(findstring clang,$(AMD_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_amd.so
 		AMD_CPPFLAGS += -fopenmp -fopenmp-offload-mandatory -DOMPGPU=1
-	        ifeq ($(PERFORMING_CONDA_BUILD),True)
-	            AMD_CPPFLAGS += --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
-		else
-	            AMD_CPPFLAGS += --offload-arch=native
-                endif
-		AMD_LDFLAGS += -shared -fopenmp --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
+	        #ifeq ($(PERFORMING_CONDA_BUILD),True)
+	        #    AMD_CPPFLAGS += --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
+		#else
+	            AMD_CPPFLAGS += --offload-arch=native -g
+                #endif
+		#AMD_LDFLAGS += -shared -fopenmp --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
+		AMD_LDFLAGS += -shared -fopenmp --offload-arch=native
    endif
 endif
 
@@ -227,6 +228,7 @@ unifrac_task_api_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h g
 	python3 generate_unifrac_task_noclass.py acc_amd api > $@
 unifrac_task_noclass_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py acc_amd indirect > $@
+	cat skbio_alt_acc_wrap.cpp >> $@
 
 unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
@@ -253,8 +255,11 @@ unifrac_task_acc_amd.o: unifrac_task_noclass_acc_amd.cpp unifrac_task_noclass.hp
 unifrac_task_api_acc_amd.o: unifrac_task_api_acc_amd.cpp unifrac_task_api_acc_amd.h unifrac_task_impl.hpp
 	$(AMD_CXX) $(AMD_CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
 
-libssu_acc_amd.so: unifrac_task_api_acc_amd.o
-	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o
+skbio_alt_acc.o: skbio_alt_acc.cpp
+	$(AMD_CXX) $(AMD_CPPFLAGS) -c $< -o $@
+
+libssu_acc_amd.so: unifrac_task_api_acc_amd.o skbio_alt_acc.o
+	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o skbio_alt_acc.o
 
 
 unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
