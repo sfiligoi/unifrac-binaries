@@ -15,7 +15,7 @@
 # based on https://github.com/ROCm/aomp/blob/aomp-dev/docs/INSTALL.md
 #
 
-export AOMP_VERSION=20.0-1
+export AOMP_VERSION=20.0-2
 
 export AOMP_BASEDIR=/usr/lib
 
@@ -63,7 +63,13 @@ else
    echo "Unsupported $dist Linux version $osver"
    exit 1
   fi
- else
+ elif [ "x$dist" = "xSLES" ]; then
+  # TODO: Add option to try sudo, too, as above
+  wget https://github.com/ROCm-Developer-Tools/aomp/releases/download/rel_${AOMP_VERSION}/aomp_SLES15_SP5-${AOMP_VERSION}.x86_64.rpm
+  rpm2cpio aomp_SLES15_SP5-${AOMP_VERSION}.x86_64.rpm | cpio -idmv
+  AOMP_BASEDIR=$PWD/usr/lib
+  rm -f aomp_SLES15_SP5-${AOMP_VERSION}.x86_64.rpm
+else
   echo "Unsupported Linux distribution $dist"
   exit 1
  fi
