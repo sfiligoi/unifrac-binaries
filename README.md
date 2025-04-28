@@ -73,7 +73,7 @@ conda activate unifrac-binaries
 ```
 
 For NVIDIA-GPU-enabled code, you will need the [NVIDIA HPC SDK](https://developer.nvidia.com/hpc-sdk) compiler, and is only supported on Linux.
-The NVIDIA GPU compilation requires the setting of the `NV_CXX` environment variable.
+The NVIDIA GPU compilation requires the setting of the `NV_CXX` environment variable (also avaialble as part of the `scripts/enable_nv_compiler.sh` script).
 
 This helper script will download it, install it and setup the necessary environment:
 ```
@@ -82,7 +82,7 @@ source setup_nv_compiler.sh
 ```
 
 For AMD-GPU-enabled code, you will need the [AOMP clang](https://github.com/ROCm/aomp) compiler, and is only supported on Linux.
-The AMD GPU compilation requires the setting of the `AMD_CXX` environment variable.
+The AMD GPU compilation requires the setting of the `AMD_CXX` environment variable (also avaialble as part of the `scripts/enable_amd_compiler.sh` script).
 
 This helper script will download it, install it and setup the necessary environment:
 ```
