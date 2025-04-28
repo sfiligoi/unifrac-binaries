@@ -15,7 +15,9 @@
 # based on https://github.com/ROCm/aomp/blob/aomp-dev/docs/INSTALL.md
 #
 
-export AOMP_VERSION=21.0-0
+if [ "x${AOMP_VERSION}" == "x" ]; then
+  export AOMP_VERSION=21.0-0
+fi
 
 export AOMP_BASEDIR=/usr/lib
 
@@ -81,14 +83,7 @@ if [ -f ${AOMP_BASEDIR}/aomp_${AOMP_VERSION}/llvm/bin/amdclang++ ]; then
 cat > setup_amd_compiler.sh  << EOF
 export PATH=${AOMP_BASEDIR}/aomp_${AOMP_VERSION}/:${AOMP_BASEDIR}/aomp_${AOMP_VERSION}/bin/:${AOMP_BASEDIR}/aomp_${AOMP_VERSION}/llvm/bin:\$PATH
 
-export AMD_CXX=amdclang++
-
-# no special  flags needed in most cases
-export AMD_CPPFLAGS=
-export AMD_CXXFLAGS=
-export AMD_CFLAGS=
-
-export AMD_LDFLAGS=
+. ${PWD}/scripts/enable_amd_compiler.sh
 EOF
 
 echo "Setup script avaiabile in $PWD/setup_amd_compiler.sh"
