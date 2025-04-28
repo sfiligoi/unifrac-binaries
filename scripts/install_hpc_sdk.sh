@@ -96,12 +96,7 @@ done
 cat > setup_nv_compiler.sh  << EOF
 . $PWD/setup_scripts/setup_nv_hpc_bins.sh
 
-export NV_CXX=pgc++
-
-# no special  flags needed in most cases
-export NV_CPPFLAGS=
-export NV_CXXFLAGS=
-export NV_CFLAGS=
+. ${PWD}/scripts/enable_nv_compiler.sh
 
 # reuse the same top-level LDFLAGS
 # in order to find the right system shared libraries, etc.
