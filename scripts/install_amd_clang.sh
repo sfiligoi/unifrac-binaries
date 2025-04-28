@@ -15,7 +15,7 @@
 # based on https://github.com/ROCm/aomp/blob/aomp-dev/docs/INSTALL.md
 #
 
-export AOMP_VERSION=20.0-2
+export AOMP_VERSION=21.0-0
 
 export AOMP_BASEDIR=/usr/lib
 
