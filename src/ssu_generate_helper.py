@@ -152,6 +152,32 @@ def print_func_args(method,ftype,nmspace,fname,ttype,fargs):
 #
 # ==========================
 #
+# Print out the common header of the
+# concrete implementation
+# Also returns
+#  namespace
+#
+# Args:
+#  variant
+#  method - direct, indirect, api, api_h
+def print_header(variant,method):
+    if method in ('api_h',):
+        # bool and unit_t are not standard in C without these header
+        print('#include <stdbool.h>')
+        print('#include <stdint.h>')
+
+    if method in ('indirect',):
+        # function expected by ssu_ld
+        print('static const char *ssu_get_lib_name() { return "libssu_%s.so";}'%variant)
+        print('#include "ssu_ld.c"')
+
+    print('')
+
+    return "su_%s"%variant
+
+#
+# ==========================
+#
 # Print out the main body of the
 # concrete implementation
 #
@@ -161,6 +187,7 @@ def print_func_args(method,ftype,nmspace,fname,ttype,fargs):
 #  nmspace - namespace to use for the concrete implementations
 
 def print_body(method,lines,nmspace):
+    # now we can generate the concrete functions
     i=0
     while (i<len(lines)):
         line = lines[i]
