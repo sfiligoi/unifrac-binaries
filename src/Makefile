@@ -57,7 +57,7 @@ endif
 LDDFLAGS += $(MPFLAG)
 CPPFLAGS += $(MPFLAG)
 
-UNIFRAC_FILES = unifrac_internal.o unifrac_task_cpu.o unifrac_cmp_cpu.o
+UNIFRAC_FILES = unifrac_internal.o unifrac_task_cpu.o unifrac_accapi_cpu.o unifrac_cmp_cpu.o
 UNIFRAC_ACC_SHLIBS =
 
 ifeq ($(NV_CXX),)
@@ -74,7 +74,7 @@ endif
 
 ifndef NOGPU
    # NVIDIA GPUs
-   UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_cmp_acc_nv.o
+   UNIFRAC_FILES += unifrac_task_acc_nv.o unifrac_accapi_acc_nv.o unifrac_cmp_acc_nv.o
    CPPFLAGS += -DUNIFRAC_ENABLE_ACC_NV=1
    ifeq ($(BUILD_NV_OFFLOAD),ompgpu)
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
@@ -104,7 +104,7 @@ ifndef NOGPU
 	endif
    endif
    # AMD GPUs
-   UNIFRAC_FILES += unifrac_task_acc_amd.o unifrac_cmp_acc_amd.o
+   UNIFRAC_FILES += unifrac_task_acc_amd.o unifrac_accapi_acc_amd.o unifrac_cmp_acc_amd.o
    CPPFLAGS += -DUNIFRAC_ENABLE_ACC_AMD=1
    ifneq (,$(findstring clang,$(AMD_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_amd.so
@@ -209,10 +209,19 @@ api.o: api.cpp api.hpp unifrac.hpp skbio_alt.hpp biom.hpp biom_inmem.hpp biom_su
 	h5c++ $(CPPFLAGS) api.cpp -c -o api.o -fPIC
 
 
+# Use the same compiler for CPU-based code
+# So no need for futher levels of indirection
+unifrac_accapi_cpu.cpp: unifrac_accapi.hpp generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py cpu direct > $@
 unifrac_task_noclass_cpu.cpp: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
-	# Use the same compiler for CPU-based code
-	# So no need for futher levels of indirection
 	python3 generate_unifrac_task_noclass.py cpu direct > $@
+
+unifrac_accapi_dyn_acc_nv.h: unifrac_accapi_impl.hpp generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py acc_nv api_h > $@
+unifrac_accapi_dyn_acc_nv.cpp: unifrac_accapi_impl.hpp unifrac_accapi_dyn_acc_nv.h generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py acc_nv api > $@
+unifrac_accapi_acc_nv.cpp: unifrac_accapi_impl.hpp unifrac_accapi_dyn_acc_nv.h generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py acc_nv indirect > $@
 
 unifrac_task_api_acc_nv.h: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py acc_nv api_h > $@
@@ -221,6 +230,13 @@ unifrac_task_api_acc_nv.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_nv.h gen
 unifrac_task_noclass_acc_nv.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_nv.h generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py acc_nv indirect > $@
 
+unifrac_accapi_dyn_acc_amd.h: unifrac_accapi_impl.hpp generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py acc_amd api_h > $@
+unifrac_accapi_dyn_acc_amd.cpp: unifrac_accapi_impl.hpp unifrac_accapi_dyn_acc_amd.h generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py acc_amd api > $@
+unifrac_accapi_acc_amd.cpp: unifrac_accapi_impl.hpp unifrac_accapi_dyn_acc_amd.h generate_unifrac_accapi.py
+	python3 generate_unifrac_accapi.py acc_amd indirect > $@
+
 unifrac_task_api_acc_amd.h: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py acc_amd api_h > $@
 unifrac_task_api_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h generate_unifrac_task_noclass.py
@@ -228,6 +244,8 @@ unifrac_task_api_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h g
 unifrac_task_noclass_acc_amd.cpp: unifrac_task_impl.hpp unifrac_task_api_acc_amd.h generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py acc_amd indirect > $@
 
+unifrac_accapi_cpu.o: unifrac_accapi_cpu.cpp unifrac_accapi.hpp unifrac_accapi_impl.hpp
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 
@@ -236,25 +254,37 @@ unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifra
 # no separate task_api 
 
 # create symlink to make R (and any autodeduct system) happy
+unifrac_accapi.cpp: unifrac_accapi_cpu.cpp
+	ln -s unifrac_accapi_cpu.cpp unifrac_accapi.cpp
 unifrac_task.cpp: unifrac_task_noclass_cpu.cpp
 	ln -s unifrac_task_noclass_cpu.cpp unifrac_task.cpp
+
+unifrac_accapi_acc_nv.o: unifrac_accapi_acc_nv.cpp unifrac_accapi.hpp unifrac_accapi_dyn_acc_nv.h
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
+unifrac_accapi_dyn_acc_nv.o: unifrac_accapi_dyn_acc_nv.cpp unifrac_accapi_dyn_acc_nv.h unifrac_task_impl.hpp
+	$(NV_CXX) $(NV_CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
 
 unifrac_task_acc_nv.o: unifrac_task_noclass_acc_nv.cpp unifrac_task_noclass.hpp unifrac_task_api_acc_nv.h
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
 unifrac_task_api_acc_nv.o: unifrac_task_api_acc_nv.cpp unifrac_task_api_acc_nv.h unifrac_task_impl.hpp
 	$(NV_CXX) $(NV_CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
 
-libssu_acc_nv.so: unifrac_task_api_acc_nv.o
-	$(NV_CXX) $(NV_LDFLAGS) -o $@ unifrac_task_api_acc_nv.o
+libssu_acc_nv.so: unifrac_task_api_acc_nv.o unifrac_accapi_dyn_acc_nv.o
+	$(NV_CXX) $(NV_LDFLAGS) -o $@ unifrac_task_api_acc_nv.o unifrac_accapi_dyn_acc_nv.o
 
+
+unifrac_accapi_acc_amd.o: unifrac_accapi_acc_amd.cpp unifrac_accapi.hpp unifrac_accapi_dyn_acc_amd.h
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
+unifrac_accapi_dyn_acc_amd.o: unifrac_accapi_dyn_acc_amd.cpp unifrac_accapi_dyn_acc_amd.h unifrac_task_impl.hpp
+	$(AMD_CXX) $(AMD_CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
 
 unifrac_task_acc_amd.o: unifrac_task_noclass_acc_amd.cpp unifrac_task_noclass.hpp unifrac_task_api_acc_amd.h
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
 unifrac_task_api_acc_amd.o: unifrac_task_api_acc_amd.cpp unifrac_task_api_acc_amd.h unifrac_task_impl.hpp
 	$(AMD_CXX) $(AMD_CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
 
-libssu_acc_amd.so: unifrac_task_api_acc_amd.o
-	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o
+libssu_acc_amd.so: unifrac_task_api_acc_amd.o unifrac_accapi_dyn_acc_amd.o
+	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o unifrac_accapi_dyn_acc_amd.o
 
 
 unifrac_cmp_cpu.o: unifrac_cmp.cpp unifrac_cmp.hpp unifrac_internal.hpp unifrac.hpp unifrac_task.hpp unifrac_task_noclass.hpp biom_interface.hpp tree.hpp
@@ -290,7 +320,7 @@ install: $(SSU) $(FPD)
 	rm -f ${PREFIX}/include/unifrac/api.hpp; cp api.hpp ${PREFIX}/include/unifrac/
 	rm -f ${PREFIX}/include/unifrac/status_enum.hpp; cp status_enum.hpp ${PREFIX}/include/unifrac/
 
-rapi_test: unifrac_task.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+rapi_test: unifrac_task.cpp unifrac_accapi.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	mkdir -p ~/.R
 	if [ -e ~/.R/Makevars ] ; \
 	then \
