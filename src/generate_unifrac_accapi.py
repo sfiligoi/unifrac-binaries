@@ -1,5 +1,5 @@
 #
-# Parse unifrac_task_impl.hpp
+# Parse unifrac_accapi_impl.hpp
 # and generate concrete implementations
 # for all inline functions ending in _T
 #
@@ -20,7 +20,7 @@ method =sys.argv[2]
 # ==========================
 #
 
-with open('unifrac_task_impl.hpp','r') as fd:
+with open('unifrac_accapi_impl.hpp','r') as fd:
     lines=fd.readlines()
 
 #
@@ -28,21 +28,21 @@ with open('unifrac_task_impl.hpp','r') as fd:
 #
 
 # print out the header
-print('// Generated from unifrac_task_impl.hpp (using method %s)'%method);
+print('// Generated from unifrac_accapi_impl.hpp (using method %s)'%method);
 print('// Do not edit by hand');
 print('');
 
 if method in ('direct','indirect',):
-    # we are generating unifrac_task_noclass.cpp
-    print('#include "unifrac_task_noclass.hpp"');
+    # we are generating unifrac_accapi.cpp
+    print('#include "unifrac_accapi.hpp"');
 
 if method in ('indirect','api',):
-    # we referencing the api
-    print('#include "unifrac_task_api_%s.h"'%variant);
+    # we referencing the dynamic api
+    print('#include "unifrac_accapi_dyn_%s.h"'%variant);
 
 if method in ('direct','api',):
     # we are generating the actual code
-    print('#include "unifrac_task_impl.hpp"');
+    print('#include "unifrac_accapi_impl.hpp"');
 
 nmspace = print_header(variant,method)
 print_body(method, lines, nmspace)
