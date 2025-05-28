@@ -16,9 +16,6 @@
  *
  */
 
-#ifndef __UNIFRAC_TASK_NOCLASS
-#define __UNIFRAC_TASK_NOCLASS 1
-
 #include <stdint.h>
 #include "unifrac_accapi.hpp"
 
@@ -45,4 +42,3 @@ namespace SUCMP_NM {
 			TFloat *group_sWs);
 }
 
-#endif
