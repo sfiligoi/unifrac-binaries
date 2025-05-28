@@ -693,16 +693,15 @@ inline void permanova_f_stat_sW_T(const TFloat * mat, const uint32_t n_dims,
 // grouping is an array of size n_dims
 // group_sizes is an array of size maxel(grouping)
 //
-// PERM_CHUNK is the permutation tiling parameter
 // Results in permutted_sWs, and array of size (n_perm+1)
-// Note: Best results when PERM_CHUNK fits in L1 cache
 template<class TFloat>
 inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
                                    const uint32_t *grouping, 
                                    const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
-                                   const uint32_t PERM_CHUNK,
                                    TFloat *permutted_sWs) {
+  // Do at most one step_perm per OMP
+  const uint32_t PERM_CHUNK = omp_get_max_threads();
   // need temp bufffer for bulk processing
   const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
   uint32_t *permutted_groupings = new uint32_t[uint64_t(n_dims)*uint64_t(step_perms)];
@@ -788,14 +787,11 @@ inline TFloat sum_upper_square(const TFloat * mat, const uint32_t n_dims) {
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
 //
-// PERM_CHUNK is the permutation tiling parameter
 // Results in permutted_fstats, and array of size (n_perm+1)
-// Note: Best results when PERM_CHUNK fits in L1 cache
 template<class TFloat>
 inline void permanova_all_T(const TFloat * mat, const uint32_t n_dims,
                             const uint32_t *grouping, 
                             const uint32_t n_perm,
-                            const uint32_t PERM_CHUNK,
                             TFloat *permutted_fstats) {
   // first count the elements in the grouping
   uint32_t n_groups = (*std::max_element(grouping,grouping+n_dims)) + 1;
@@ -809,7 +805,7 @@ inline void permanova_all_T(const TFloat * mat, const uint32_t n_dims,
     TFloat *permutted_sWs = permutted_fstats;
     permanova_perm_fp_sW_T<TFloat>(mat,n_dims,grouping,
                                    group_sizes,n_groups,
-                                   n_perm,PERM_CHUNK,
+                                   n_perm,
                                    permutted_sWs);
   }
 
@@ -832,18 +828,15 @@ inline void permanova_all_T(const TFloat * mat, const uint32_t n_dims,
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
 //
-// PERM_CHUNK is the permutation tiling parameter
 // Results in permutted_fstats, and array of size (n_perm+1)
-// Note: Best results when PERM_CHUNK fits in L1 cache
 template<class TFloat>
 inline void permanova_T(const TFloat * mat, const uint32_t n_dims,
                         const uint32_t *grouping, 
                         const uint32_t n_perm,
-                        const uint32_t PERM_CHUNK,
                         TFloat &fstat, TFloat &pvalue) {
   // First compute all the permutations
   TFloat *permutted_fstats = new TFloat[n_perm+1];
-  permanova_all_T<TFloat>(mat,n_dims,grouping,n_perm,PERM_CHUNK,permutted_fstats);
+  permanova_all_T<TFloat>(mat,n_dims,grouping,n_perm,permutted_fstats);
 
   // keep the first one and compute p_value, too
   TFloat myfstat = permutted_fstats[0];
@@ -865,9 +858,7 @@ void su::permanova(const double * mat, unsigned int n_dims,
                    const uint32_t *grouping,
                    unsigned int n_perm,
                    double &fstat_out, double &pvalue_out) {
-  uint32_t max_threads = omp_get_max_threads();
   permanova_T<double>(mat, n_dims, grouping, n_perm,
-                      max_threads,
                       fstat_out, pvalue_out);
 }
 
@@ -875,9 +866,7 @@ void su::permanova(const float * mat, unsigned int n_dims,
                    const uint32_t *grouping,
                    unsigned int n_perm,
                    float &fstat_out, float &pvalue_out) {
-  uint32_t max_threads = omp_get_max_threads();
   permanova_T<float>(mat, n_dims, grouping, n_perm,
-                     max_threads,
                      fstat_out, pvalue_out);
 }
 
