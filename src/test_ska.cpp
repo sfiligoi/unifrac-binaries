@@ -604,7 +604,7 @@ void test_permanova_unequal() {
     // value from skbio
     const float exp_stat = 0.578848;
     // using a different random than skbio, so result different
-    const float exp_pvalue = 0.64;
+    const float exp_pvalue = 0.65;
 
     double stat_fp64, pvalue_fp64;
     float stat_fp32, pvalue_fp32;

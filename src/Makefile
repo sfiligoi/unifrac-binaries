@@ -57,7 +57,7 @@ endif
 LDDFLAGS += $(MPFLAG)
 CPPFLAGS += $(MPFLAG)
 
-UNIFRAC_FILES = unifrac_internal.o unifrac_task_cpu.o unifrac_accapi_cpu.o unifrac_cmp_cpu.o
+UNIFRAC_FILES = unifrac_internal.o unifrac_task_cpu.o unifrac_accapi_cpu.o unifrac_cmp_cpu.o skbio_alt_dyn_cpu.o
 UNIFRAC_ACC_SHLIBS =
 
 ifeq ($(NV_CXX),)
@@ -185,7 +185,7 @@ test_su_api: test_su.cpp test_helper.hpp api.hpp $(PREFIX)/lib/lib$(SSU).so
 	h5c++ $(CPPFLAGS) $(EXEFLAGS) -DAPI_ONLY=1 test_su.cpp -o $@ -l$(SSU)
 
 # Create an archive, so we do not need dependencies for functions we do not use
-test_ska_deps.a: tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o skbio_alt.o api.o
+test_ska_deps.a: tree.o tsv.o biom.o biom_inmem.o biom_subsampled.o skbio_alt.o api.o skbio_alt_dyn_cpu.o
 	rm -f $@
 	ar -r $@ $^
  
@@ -215,6 +215,8 @@ unifrac_accapi_cpu.cpp: unifrac_accapi.hpp generate_unifrac_accapi.py
 	python3 generate_unifrac_accapi.py cpu direct > $@
 unifrac_task_noclass_cpu.cpp: unifrac_task_impl.hpp generate_unifrac_task_noclass.py
 	python3 generate_unifrac_task_noclass.py cpu direct > $@
+skbio_alt_dyn_cpu.cpp: skbio_alt_dyn.hpp generate_skbio_alt_dyn.py
+	python3 generate_skbio_alt_dyn.py cpu direct > $@
 
 unifrac_accapi_dyn_acc_nv.h: unifrac_accapi_impl.hpp generate_unifrac_accapi.py
 	python3 generate_unifrac_accapi.py acc_nv api_h > $@
@@ -248,6 +250,8 @@ unifrac_accapi_cpu.o: unifrac_accapi_cpu.cpp unifrac_accapi.hpp unifrac_accapi_i
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 unifrac_task_cpu.o: unifrac_task_noclass_cpu.cpp unifrac_task_noclass.hpp unifrac_task_impl.hpp
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
+skbio_alt_dyn_cpu.o: skbio_alt_dyn_cpu.cpp skbio_alt_dyn.hpp skbio_alt_dyn.hpp
+	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_cpu -c $< -o $@
 
 
 
@@ -258,6 +262,8 @@ unifrac_accapi.cpp: unifrac_accapi_cpu.cpp
 	ln -s unifrac_accapi_cpu.cpp unifrac_accapi.cpp
 unifrac_task.cpp: unifrac_task_noclass_cpu.cpp
 	ln -s unifrac_task_noclass_cpu.cpp unifrac_task.cpp
+skbio_alt_dyn.cpp: skbio_alt_dyn_cpu.cpp
+	ln -s skbio_alt_dyn_cpu.cpp skbio_alt_dyn.cpp
 
 unifrac_accapi_acc_nv.o: unifrac_accapi_acc_nv.cpp unifrac_accapi.hpp unifrac_accapi_dyn_acc_nv.h
 	h5c++ $(CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
