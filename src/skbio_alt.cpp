@@ -635,12 +635,12 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 // mat is symmetric matrix of size n_dims x in_n
 // grouping is an array of size in_n
 // inv_group_sizes is an array of size maxel(grouping)
-// TILE is the loop tiling parameter
 template<class TFloat>
 inline TFloat permanova_f_stat_sW_T_one(const TFloat * mat, const uint32_t n_dims,
                                   const uint32_t *grouping,
-                                  const TFloat *inv_group_sizes,
-                                  const uint32_t TILE) {
+                                  const TFloat *inv_group_sizes) {
+  constexpr uint32_t TILE = 1024;  // 1k grouping els fit nicely in L1 cache (4kB total)
+
   // Use full precision for intermediate compute, to minimize accumulation errors
   double s_W = 0.0;
 
@@ -658,7 +658,7 @@ inline TFloat permanova_f_stat_sW_T_one(const TFloat * mat, const uint32_t n_dim
         const TFloat * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
         for (uint32_t col=min_col; col < max_col; col++) {
             if (grouping[col] == group_idx) {
-                TFloat val = mat_row[col];
+                TFloat val = mat_row[col];  // mat[row,col];
                 local_s_W += val * val;
             }
         }
@@ -674,19 +674,17 @@ inline TFloat permanova_f_stat_sW_T_one(const TFloat * mat, const uint32_t n_dim
 // mat is symmetric matrix of size n_dims x n_dims
 // groupings is a matrix of size n_dims x n_grouping_dims
 // inv_group_sizes is an array of size maxel(groupings)
-// TILE is the loop tiling parameter
 // Results in group_sWs, and array of size n_grouping_dims
-// Note: Best results when TILE is about cache line and n_grouping_dims fits in L1 cache
+// Note: Best results when n_grouping_dims fits in L1 cache
 template<class TFloat>
 inline void permanova_f_stat_sW_T(const TFloat * mat, const uint32_t n_dims,
                                   const uint32_t *groupings, const uint32_t n_grouping_dims,
                                   const TFloat *inv_group_sizes,
-                                  const uint32_t TILE,
                                   TFloat *group_sWs) {
 #pragma omp parallel for
  for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
     const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
-    group_sWs[grouping_el] = permanova_f_stat_sW_T_one(mat,n_dims,grouping,inv_group_sizes,TILE);
+    group_sWs[grouping_el] = permanova_f_stat_sW_T_one(mat,n_dims,grouping,inv_group_sizes);
  } 
 }
 
@@ -695,16 +693,15 @@ inline void permanova_f_stat_sW_T(const TFloat * mat, const uint32_t n_dims,
 // grouping is an array of size n_dims
 // group_sizes is an array of size maxel(grouping)
 //
-// MAT_TILE is the matrix loop tiling parameter
 // PERM_CHUNK is the permutation tiling parameter
 // Results in permutted_sWs, and array of size (n_perm+1)
-// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+// Note: Best results when PERM_CHUNK fits in L1 cache
 template<class TFloat>
 inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
                                    const uint32_t *grouping, 
                                    const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
-                                   const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                                   const uint32_t PERM_CHUNK,
                                    TFloat *permutted_sWs) {
   // need temp bufffer for bulk processing
   const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
@@ -748,7 +745,7 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
       // now call the actual permanova
       permanova_f_stat_sW_T<TFloat>(mat, n_dims,
                                     permutted_groupings, max_p-tp,
-                                    inv_group_sizes, MAT_TILE,
+                                    inv_group_sizes,
                                     permutted_sWs+tp);
   }
 
@@ -759,7 +756,9 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
 
 // Compute the square sum of the upper triangle
 template<class TFloat>
-inline TFloat sum_upper_square(const TFloat * mat, const uint32_t n_dims, const uint32_t TILE) {
+inline TFloat sum_upper_square(const TFloat * mat, const uint32_t n_dims) {
+  constexpr uint32_t TILE = 1024; // mimic permanova_f_stat_sW_T_one
+
   // Use full precision for intermediate compute, to minimize accumulation errors
   double sum = 0.0;
 #pragma omp parallel for collapse(2) shared(mat) reduction(+:sum)
@@ -789,15 +788,14 @@ inline TFloat sum_upper_square(const TFloat * mat, const uint32_t n_dims, const 
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
 //
-// MAT_TILE is the matrix loop tiling parameter
 // PERM_CHUNK is the permutation tiling parameter
 // Results in permutted_fstats, and array of size (n_perm+1)
-// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+// Note: Best results when PERM_CHUNK fits in L1 cache
 template<class TFloat>
 inline void permanova_all_T(const TFloat * mat, const uint32_t n_dims,
                             const uint32_t *grouping, 
                             const uint32_t n_perm,
-                            const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                            const uint32_t PERM_CHUNK,
                             TFloat *permutted_fstats) {
   // first count the elements in the grouping
   uint32_t n_groups = (*std::max_element(grouping,grouping+n_dims)) + 1;
@@ -811,12 +809,12 @@ inline void permanova_all_T(const TFloat * mat, const uint32_t n_dims,
     TFloat *permutted_sWs = permutted_fstats;
     permanova_perm_fp_sW_T<TFloat>(mat,n_dims,grouping,
                                    group_sizes,n_groups,
-                                   n_perm,MAT_TILE,PERM_CHUNK,
+                                   n_perm,PERM_CHUNK,
                                    permutted_sWs);
   }
 
   // get the normalization factor
-  TFloat s_T = sum_upper_square<TFloat>(mat,n_dims,MAT_TILE)/n_dims;
+  TFloat s_T = sum_upper_square<TFloat>(mat,n_dims)/n_dims;
  
   TFloat inv_ngroups_1 = TFloat(1.0)/ (n_groups - 1);
   TFloat inv_dg =   TFloat(1.0)/  (n_dims - n_groups);
@@ -834,19 +832,18 @@ inline void permanova_all_T(const TFloat * mat, const uint32_t n_dims,
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
 //
-// MAT_TILE is the matrix loop tiling parameter
 // PERM_CHUNK is the permutation tiling parameter
 // Results in permutted_fstats, and array of size (n_perm+1)
-// Note: Best results when MAT_TILE is about cache line and PERM_CHUNK fits in L1 cache
+// Note: Best results when PERM_CHUNK fits in L1 cache
 template<class TFloat>
 inline void permanova_T(const TFloat * mat, const uint32_t n_dims,
                         const uint32_t *grouping, 
                         const uint32_t n_perm,
-                        const uint32_t MAT_TILE, const uint32_t PERM_CHUNK,
+                        const uint32_t PERM_CHUNK,
                         TFloat &fstat, TFloat &pvalue) {
   // First compute all the permutations
   TFloat *permutted_fstats = new TFloat[n_perm+1];
-  permanova_all_T<TFloat>(mat,n_dims,grouping,n_perm,MAT_TILE,PERM_CHUNK,permutted_fstats);
+  permanova_all_T<TFloat>(mat,n_dims,grouping,n_perm,PERM_CHUNK,permutted_fstats);
 
   // keep the first one and compute p_value, too
   TFloat myfstat = permutted_fstats[0];
@@ -870,7 +867,7 @@ void su::permanova(const double * mat, unsigned int n_dims,
                    double &fstat_out, double &pvalue_out) {
   uint32_t max_threads = omp_get_max_threads();
   permanova_T<double>(mat, n_dims, grouping, n_perm,
-                      512, max_threads, // 512 grouping els fit nicely in L1 cache
+                      max_threads,
                       fstat_out, pvalue_out);
 }
 
@@ -880,7 +877,7 @@ void su::permanova(const float * mat, unsigned int n_dims,
                    float &fstat_out, float &pvalue_out) {
   uint32_t max_threads = omp_get_max_threads();
   permanova_T<float>(mat, n_dims, grouping, n_perm,
-                     1024, max_threads,  // 1k grouping els fit nicely in L1 cache
+                     max_threads,
                      fstat_out, pvalue_out);
 }
 
