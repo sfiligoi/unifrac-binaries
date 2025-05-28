@@ -985,14 +985,9 @@ inline compute_status compute_permanova_T(const char *grouping_filename, unsigne
          return grouping_missing;
        }
 
-       // always use double for intermediate compute, adds trivial cost
-       double my_fstat;
-       double my_pvalue;
        su::permanova(result->matrix, n_samples,
                      grouping, permanova_perms,
-                     my_fstat,my_pvalue);
-       fstats[i] = my_fstat;
-       pvalues[i] = my_pvalue;
+                     fstats[i], pvalues[i]);
      }
      delete[] grouping;
 
