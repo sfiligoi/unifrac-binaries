@@ -12,7 +12,25 @@
 #include <cblas.h>
 #include <lapacke.h>
 
+// We will always have the CPU version
+#define SUCMP_NM  su_cpu
 #include "skbio_alt_dyn.hpp"
+#undef SUCMP_NM
+static constexpr int ACC_CPU=0;
+
+#ifdef UNIFRAC_ENABLE_ACC_NV
+#define SUCMP_NM  su_acc_nv
+#include "skbio_alt_dyn.hpp"
+#undef SUCMP_NM
+static constexpr int ACC_NV=1;
+#endif
+
+#ifdef UNIFRAC_ENABLE_ACC_AMD
+#define SUCMP_NM  su_acc_amd
+#include "skbio_alt_dyn.hpp"
+#undef SUCMP_NM
+static constexpr int ACC_AMD=2;
+#endif
 
 static std::mt19937 myRandomGenerator;
 
@@ -20,6 +38,119 @@ static std::mt19937 myRandomGenerator;
 void su::set_random_seed(uint32_t new_seed) {
   myRandomGenerator.seed(new_seed);
 }
+
+// test only once, then use persistent value
+static int skbio_use_acc = -1;
+
+inline void skbio_check_acc() {
+ if (skbio_use_acc!=-1) return; // keep the cached version
+
+ bool print_info = false;
+
+ if (const char* env_p = std::getenv("UNIFRAC_GPU_INFO")) {
+   print_info = true;
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     print_info = false;
+   }
+ }
+
+ int detected_acc = ACC_CPU;
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+ bool detected_nv_acc = su_acc_nv::acc_found_gpu();
+ if (print_info) {
+   if (detected_nv_acc) {
+     printf("INFO (skbio_alt): NVIDIA GPU detected\n");
+   } else {
+     printf("INFO (skbio_alt): NVIDIA GPU not detected\n");
+   }
+ }
+ if ((detected_acc==ACC_CPU) && detected_nv_acc) {
+   detected_acc = ACC_NV;
+   if (const char* env_p = std::getenv("UNIFRAC_SKBIO_USE_NVIDIA_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): NVIDIA GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   } else if (const char* env_p = std::getenv("UNIFRAC_USE_NVIDIA_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): NVIDIA GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   }
+ }
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+ bool detected_amd_acc = su_acc_amd::acc_found_gpu();
+ if (print_info) {
+   if (detected_amd_acc) {
+     printf("INFO (skbio_alt): AMD GPU detected\n");
+   } else {
+     printf("INFO (skbio_alt): AMD GPU not detected\n");
+   }
+ }
+ if ((detected_acc==ACC_CPU) && detected_amd_acc) {
+   detected_acc = ACC_AMD;
+   if (const char* env_p = std::getenv("UNIFRAC_SKBIO_USE_AMD_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): AMD GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   } else if (const char* env_p = std::getenv("UNIFRAC_USE_AMD_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): AMD GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   }
+ }
+#endif
+
+ if (const char* env_p = std::getenv("UNIFRAC_SKBIO_USE_GPU")) {
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     if (detected_acc!=ACC_CPU) {
+        if (print_info) printf("INFO (skbio_alt): GPU was detected but use explicitly disabled\n");
+         detected_acc = ACC_CPU;
+     }
+   }
+ } else if (const char* env_p = std::getenv("UNIFRAC_USE_GPU")) {
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     if (detected_acc!=ACC_CPU) {
+        if (print_info) printf("INFO (skbio_alt): GPU was detected but use explicitly disabled\n");
+         detected_acc = ACC_CPU;
+     }
+   }
+ }
+
+ if (print_info) {
+   if (detected_acc == ACC_CPU) {
+     printf("INFO (skbio_alt): Using CPU (not GPU)\n");
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+   } else if (detected_acc == ACC_NV) {
+     printf("INFO (skbio_alt): Using NVIDIA GPU\n");
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+   } else if (detected_acc == ACC_AMD) {
+     printf("INFO (skbio_alt): Using AMD GPU\n");
+#endif
+   }
+ }
+ // we can assume int is atomic
+ skbio_use_acc = detected_acc;
+}
+
 
 //
 // ======================= PCoA ========================
@@ -644,6 +775,9 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
                                    const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
                                    TFloat *permutted_sWs) {
+  // There is acc-specific logic here, initialize skbio_use_acc ASAP
+  skbio_check_acc();
+
   // Do at most one step_perm per OMP
   const uint32_t PERM_CHUNK = omp_get_max_threads();
   // need temp bufffer for bulk processing
@@ -686,10 +820,26 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
          }
       }
       // now call the actual permanova
-      su_cpu::pmn_f_stat_sW<TFloat>(mat, n_dims,
-                                    permutted_groupings, max_p-tp,
-                                    inv_group_sizes,
-                                    permutted_sWs+tp);
+      if (skbio_use_acc==ACC_CPU) {
+        su_cpu::pmn_f_stat_sW<TFloat>(mat, n_dims,
+                                      permutted_groupings, max_p-tp,
+                                      inv_group_sizes,
+                                      permutted_sWs+tp);
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+      } else if (skbio_use_acc==ACC_NV) {
+        su_acc_nv::pmn_f_stat_sW<TFloat>(mat, n_dims,
+                                         permutted_groupings, max_p-tp,
+                                         inv_group_sizes,
+                                         permutted_sWs+tp);
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+      } else if (skbio_use_acc==ACC_AMD) {
+        su_acc_amd::pmn_f_stat_sW<TFloat>(mat, n_dims,
+                                          permutted_groupings, max_p-tp,
+                                          inv_group_sizes,
+                                          permutted_sWs+tp);
+#endif
+      }
   }
 
   delete[] inv_group_sizes;
