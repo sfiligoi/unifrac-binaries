@@ -91,12 +91,20 @@ static inline void pmn_f_stat_sW_T(
 #else
 // GPU version, just put all the code in here
  const uint64_t groupings_size = uint64_t(n_dims)*uint64_t(n_grouping_dims);
+#ifdef OMPGPU
 #pragma omp target teams distribute map(to:groupings[0:groupings_size]) map(from:group_sWs[0:n_grouping_dims])
+#else
+#pragma acc parallel loop gang copyin(groupings[0:groupings_size]) copyout(group_sWs[0:n_grouping_dims]) default(present)
+#endif
  for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
     const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
     // Use full precision for intermediate compute, to minimize accumulation errors
     double s_W = 0.0;
+#ifdef OMPGPU
 #pragma omp parallel for collapse(2) reduction(+:s_W)
+#else
+#pragma acc loop vector reduction(+:s_W)
+#endif
     for (uint32_t row=0; row < (n_dims-1); row++) {   // no columns in last row
       for (uint32_t col=row+1; col < n_dims; col++) { // diagonal is always zero
         uint32_t group_idx = grouping[row];
