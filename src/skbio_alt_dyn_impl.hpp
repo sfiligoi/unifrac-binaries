@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-#if defined(OMPGPU)
+#if !(defined(_OPENACC) || defined(OMPGPU))
 
 #include <omp.h>
 
@@ -20,6 +20,19 @@
 #include <openacc.h>
 
 #endif
+
+static inline int pmn_get_max_parallelism_T() {
+#if !(defined(_OPENACC) || defined(OMPGPU))
+  // no good reason to do more than max threads
+  return omp_get_max_threads();
+#else
+  // 1k is enough for consumer-grade GPUs
+  // 4k needed for larger GPUs
+  // Keeping it at 4k not slowing down consumer GPUs
+  // Getting much higher than 4k seems to slow down the compute
+  return 4000; // should likely by dynamic, but there are no portable functions avaialble
+#endif
+}
 
 #if !(defined(_OPENACC) || defined(OMPGPU))
 // CPU version, uses tilling

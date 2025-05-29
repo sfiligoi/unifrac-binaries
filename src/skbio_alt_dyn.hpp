@@ -26,6 +26,9 @@
 
 namespace SUCMP_NM {
 
+	// Return the recommended max parallelism to use in pmn_f_stat_sW
+	int pmn_get_max_parallelism();
+
 	// Compute PERMANOVA pseudo-F partial statistic
 	// mat is symmetric matrix of size n_dims x n_dims
 	// groupings is a matrix of size n_dims x n_grouping_dims

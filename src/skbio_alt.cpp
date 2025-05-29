@@ -775,12 +775,24 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
                                    const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
                                    TFloat *permutted_sWs) {
+  const uint64_t mat_size = uint64_t(n_dims)*uint64_t(n_dims);
+
   // There is acc-specific logic here, initialize skbio_use_acc ASAP
   skbio_check_acc();
 
-  const uint64_t mat_size = uint64_t(n_dims)*uint64_t(n_dims);
-  // Do at most one step_perm per OMP
-  const uint32_t PERM_CHUNK = omp_get_max_threads();
+  uint32_t PERM_CHUNK = 1; // just a dummy default
+  if (skbio_use_acc==ACC_CPU) {
+    PERM_CHUNK = su_cpu::pmn_get_max_parallelism();
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+  } else if (skbio_use_acc==ACC_NV) {
+    PERM_CHUNK = su_acc_nv::pmn_get_max_parallelism();
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+  } else if (skbio_use_acc==ACC_AMD) {
+    PERM_CHUNK = su_acc_amd::pmn_get_max_parallelism();
+#endif
+  }
+
   // need temp bufffer for bulk processing
   const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
   const uint64_t permutted_groupings_size = uint64_t(n_dims)*uint64_t(step_perms);
