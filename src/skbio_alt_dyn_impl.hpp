@@ -113,14 +113,14 @@ static inline void pmn_f_stat_sW_T(
     const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
     // Use full precision for intermediate compute, to minimize accumulation errors
     double s_W = 0.0;
+    for (uint32_t row=0; row < (n_dims-1); row++) {   // no columns in last row
+      uint32_t group_idx = grouping[row];
 #ifdef OMPGPU
-#pragma omp parallel for collapse(2) reduction(+:s_W)
+#pragma omp parallel for simd reduction(+:s_W)
 #else
 #pragma acc loop vector reduction(+:s_W)
 #endif
-    for (uint32_t row=0; row < (n_dims-1); row++) {   // no columns in last row
       for (uint32_t col=row+1; col < n_dims; col++) { // diagonal is always zero
-        uint32_t group_idx = grouping[row];
         if (grouping[col] == group_idx) {
             const TFloat * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
             TFloat val = mat_row[col];  // mat[row,col];
