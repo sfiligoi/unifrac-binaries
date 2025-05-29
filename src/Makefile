@@ -303,7 +303,7 @@ skbio_alt_dyn_acc_nv.o: skbio_alt_dyn_acc_nv.cpp skbio_alt_dyn_acc_nv.h skbio_al
 	$(NV_CXX) $(NV_CPPFLAGS) -DSUCMP_NM=su_acc_nv -c $< -o $@
 
 libssu_acc_nv.so: unifrac_task_api_acc_nv.o unifrac_accapi_dyn_acc_nv.o skbio_alt_dyn_acc_nv.o
-	$(NV_CXX) $(NV_LDFLAGS) -o $@ unifrac_task_api_acc_nv.o unifrac_accapi_dyn_acc_nv.o
+	$(NV_CXX) $(NV_LDFLAGS) -o $@ unifrac_task_api_acc_nv.o unifrac_accapi_dyn_acc_nv.o skbio_alt_dyn_acc_nv.o
 
 ##
 
@@ -323,7 +323,7 @@ skbio_alt_dyn_acc_amd.o: skbio_alt_dyn_acc_amd.cpp skbio_alt_dyn_acc_amd.h skbio
 	$(AMD_CXX) $(AMD_CPPFLAGS) -DSUCMP_NM=su_acc_amd -c $< -o $@
 
 libssu_acc_amd.so: unifrac_task_api_acc_amd.o unifrac_accapi_dyn_acc_amd.o skbio_alt_dyn_acc_amd.o
-	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o unifrac_accapi_dyn_acc_amd.o
+	$(AMD_CXX) $(AMD_LDFLAGS) -o $@ unifrac_task_api_acc_amd.o unifrac_accapi_dyn_acc_amd.o skbio_alt_dyn_acc_amd.o
 
 ##
 

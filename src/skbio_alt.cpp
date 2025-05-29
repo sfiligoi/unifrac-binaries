@@ -778,11 +778,13 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
   // There is acc-specific logic here, initialize skbio_use_acc ASAP
   skbio_check_acc();
 
+  const uint64_t mat_size = uint64_t(n_dims)*uint64_t(n_dims);
   // Do at most one step_perm per OMP
   const uint32_t PERM_CHUNK = omp_get_max_threads();
   // need temp bufffer for bulk processing
   const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
-  uint32_t *permutted_groupings = new uint32_t[uint64_t(n_dims)*uint64_t(step_perms)];
+  const uint64_t permutted_groupings_size = uint64_t(n_dims)*uint64_t(step_perms);
+  uint32_t *permutted_groupings = new uint32_t[permutted_groupings_size];
 
   // first copy the original in all of the buffer rows
 #pragma omp parallel for schedule(static,1) default(shared)
@@ -804,6 +806,22 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
   for (uint32_t i=0; i<n_groups; i++) {
     inv_group_sizes[i] = TFloat(1.0)/group_sizes[i];
   }
+
+  // for acc implementations, make a copy of mat into the GPU memory
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+  if (skbio_use_acc==ACC_NV) {
+    // must remove const as it will indeed write to GPU memory
+    su_acc_nv::acc_copyin_buf(const_cast<TFloat*>(mat),0,mat_size);
+    su_acc_nv::acc_copyin_buf(inv_group_sizes,0,n_groups);
+  }
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+  if (skbio_use_acc==ACC_AMD) {
+    // must remove const as it will indeed write to GPU memory
+    su_acc_amd::acc_copyin_buf(const_cast<TFloat*>(mat),0,mat_size);
+    su_acc_amd::acc_copyin_buf(inv_group_sizes,0,n_groups);
+  }
+#endif
 
   // now permute and compute sWs
   for (uint32_t tp=0; tp < (n_perm+1); tp+=step_perms) {
@@ -841,6 +859,21 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
 #endif
       }
   }
+
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+  if (skbio_use_acc==ACC_NV) {
+    su_acc_nv::acc_destroy_buf(inv_group_sizes,0,n_groups);
+    // must remove const, as it will indeed destroy the copy in GPU memory
+    su_acc_nv::acc_destroy_buf(const_cast<TFloat*>(mat),0,mat_size);
+  }
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+  if (skbio_use_acc==ACC_AMD) {
+    su_acc_amd::acc_destroy_buf(inv_group_sizes,0,n_groups);
+    // must remove const, as it will indeed destroy the copy in GPU memory
+    su_acc_amd::acc_destroy_buf(const_cast<TFloat*>(mat),0,mat_size);
+  }
+#endif
 
   delete[] inv_group_sizes;
   delete[] randomGenerators;

@@ -21,20 +21,24 @@
 
 #endif
 
+#if !(defined(_OPENACC) || defined(OMPGPU))
+// CPU version, uses tilling
+// no internal parallelism, all parallelism handled outside
+
 // Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x in_n
 // grouping is an array of size in_n
 // inv_group_sizes is an array of size maxel(grouping)
 template<class TFloat>
-inline TFloat pmn_f_stat_sW_one(
+static inline TFloat pmn_f_stat_sW_one(
 		const TFloat * mat,
 		const uint32_t n_dims,
 		const uint32_t *grouping,
 		const TFloat *inv_group_sizes) {
-  constexpr uint32_t TILE = 1024;  // 1k grouping els fit nicely in L1 cache (4kB total)
-
   // Use full precision for intermediate compute, to minimize accumulation errors
   double s_W = 0.0;
+
+  constexpr uint32_t TILE = 1024;  // 1k grouping els fit nicely in L1 cache (4kB total)
 
   for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
     for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
@@ -61,6 +65,7 @@ inline TFloat pmn_f_stat_sW_one(
 
   return s_W;
 }
+#endif
 
 // Compute PERMANOVA pseudo-F partial statistic
 // mat is symmetric matrix of size n_dims x n_dims
@@ -76,10 +81,34 @@ static inline void pmn_f_stat_sW_T(
 		const uint32_t n_grouping_dims,
 		const TFloat *inv_group_sizes,
 		TFloat *group_sWs) {
+#if !(defined(_OPENACC) || defined(OMPGPU))
+// CPU version, call function
 #pragma omp parallel for
  for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
     const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
     group_sWs[grouping_el] = pmn_f_stat_sW_one<TFloat>(mat,n_dims,grouping,inv_group_sizes);
  } 
+#else
+// GPU version, just put all the code in here
+ const uint64_t groupings_size = uint64_t(n_dims)*uint64_t(n_grouping_dims);
+#pragma omp target teams distribute map(to:groupings[0:groupings_size]) map(from:group_sWs[0:n_grouping_dims])
+ for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
+    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+    // Use full precision for intermediate compute, to minimize accumulation errors
+    double s_W = 0.0;
+#pragma omp parallel for collapse(2) reduction(+:s_W)
+    for (uint32_t row=0; row < (n_dims-1); row++) {   // no columns in last row
+      for (uint32_t col=row+1; col < n_dims; col++) { // diagonal is always zero
+        uint32_t group_idx = grouping[row];
+        if (grouping[col] == group_idx) {
+            const TFloat * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+            TFloat val = mat_row[col];  // mat[row,col];
+            s_W += val * val * inv_group_sizes[group_idx];
+        }
+      }
+    }
+    group_sWs[grouping_el] = s_W;
+ } 
+#endif
 }
 
