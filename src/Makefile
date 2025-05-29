@@ -360,7 +360,7 @@ install: $(SSU) $(FPD)
 	rm -f ${PREFIX}/include/unifrac/api.hpp; cp api.hpp ${PREFIX}/include/unifrac/
 	rm -f ${PREFIX}/include/unifrac/status_enum.hpp; cp status_enum.hpp ${PREFIX}/include/unifrac/
 
-rapi_test: unifrac_task.cpp unifrac_accapi.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
+rapi_test: unifrac_task.cpp unifrac_accapi.cpp skbio_alt_dyn.cpp tree.o biom.o biom_inmem.o biom_subsampled.o tsv.o unifrac.o cmd.o skbio_alt.o api.o $(UNIFRAC_FILES)
 	mkdir -p ~/.R
 	if [ -e ~/.R/Makevars ] ; \
 	then \
