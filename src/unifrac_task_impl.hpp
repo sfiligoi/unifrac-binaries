@@ -1363,7 +1363,7 @@ static inline void Unweighted1(
 
 // check for zero values
 template<class TFloat, class T>
-static inline uint32_t UnweightedZerosAndSums(
+static inline void UnweightedZerosAndSums(
                       bool   * const __restrict__ zcheck,
 		      uint32_t* const __restrict__ idxs,
                       TFloat * const  __restrict__ stripe_sums,
@@ -1373,13 +1373,17 @@ static inline uint32_t UnweightedZerosAndSums(
                       const unsigned int filled_embs_els_round,
                       const uint32_t n_samples,
                       const uint64_t n_samples_r) {
+#if defined(OMPGPU) || defined(_OPENACC)
+    // only needed for GPU compute
     uint32_t n_true_idxs = 0;
+#endif
+
 #if defined(OMPGPU)
 #pragma omp target teams distribute parallel for simd reduction(+:n_true_idxs) default(shared)
 #elif defined(_OPENACC)
 #pragma acc parallel loop gang vector reduction(+:n_true_idxs) present(embedded_proportions,zcheck,el_sums,stripe_sums)
 #else
-#pragma omp parallel for reduction(+:n_true_idxs) default(shared)
+#pragma omp parallel for default(shared)
 #endif
     for(uint32_t k=0; k<n_samples; k++) {
             bool all_zeros = UnweightedOneSide(
@@ -1388,7 +1392,9 @@ static inline uint32_t UnweightedZerosAndSums(
                       embs_stripe, filled_embs_els_round, n_samples_r,
                       k);
             zcheck[k] = all_zeros;
+#if defined(OMPGPU) || defined(_OPENACC)
 	    if (all_zeros) n_true_idxs++;
+#endif
     }
 
 #if defined(OMPGPU) || defined(_OPENACC)
@@ -1413,7 +1419,6 @@ static inline uint32_t UnweightedZerosAndSums(
     // CPU version does not use idxs
 #endif
 
-    return n_true_idxs;
 }
 
 template<class TFloat>
@@ -1512,8 +1517,7 @@ static inline void run_UnweightedTask_T(
 #pragma acc wait
 #endif
     // check for zero values and compute stripe sums
-    uint32_t n_true_idxs = 
-	    UnweightedZerosAndSums(zcheck, idxs, stripe_sums,
+    UnweightedZerosAndSums(zcheck, idxs, stripe_sums,
                            sums, embedded_proportions,
                            embs_stripe, filled_embs_els_round, n_samples, n_samples_r);
 
@@ -1679,8 +1683,7 @@ static inline void run_UnnormalizedUnweightedTask_T(
 #pragma acc wait
 #endif
     // check for zero values and compute stripe sums
-    uint32_t n_true_idxs = 
-            UnweightedZerosAndSums(zcheck, idxs, stripe_sums,
+    UnweightedZerosAndSums(zcheck, idxs, stripe_sums,
                            sums, embedded_proportions,
                            embs_stripe, filled_embs_els_round, n_samples, n_samples_r);
 
