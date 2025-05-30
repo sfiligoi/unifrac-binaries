@@ -313,7 +313,7 @@ int32_t BPTree::bwd(uint32_t i, int d) const {
 }
 
 void BPTree::newick_to_bp(const char *newick) {
-    char last_structure;
+    char last_structure = '\0';  // just initializae to something invalid, to avoid compiler warnings
     bool potential_single_descendent = false;
     int count = 0;
     bool in_quote = false;
