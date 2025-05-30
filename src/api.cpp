@@ -1991,7 +1991,7 @@ inline IOStatus read_partial_header_fd(int fd, TPMat &result) {
 
       const char *samples_ptr = samples_buf;
 
-      for(int i = 0; i < n_samples; i++) {
+      for(uint32_t i = 0; i < n_samples; i++) {
         uint32_t sample_length = strlen(samples_ptr);
         if ((samples_ptr+sample_length+1)>(samples_buf+sample_id_length)) {free(samples_buf); free(cmp_buf); return magic_incompatible;}
 
@@ -2024,7 +2024,7 @@ inline IOStatus read_partial_data_fd(int fd, TPMat &result) {
       cnt = read(fd,cmp_buf_size_p , sizeof(uint32_t) );
       if (cnt != ssize_t(sizeof(uint32_t)) ) {free(cmp_buf); return magic_incompatible;}
 
-      for(int i = 0; i < n_stripes; i++) {
+      for(uint32_t i = 0; i < n_stripes; i++) {
         uint32_t cmp_size = *cmp_buf_size_p;
 
         uint32_t read_size = cmp_size;
@@ -2068,7 +2068,7 @@ inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t strip
       while (result.offsets[curr_idx]==0) --curr_idx; // must start reading from the first known offset
 
       for (;curr_idx<stripe_idx; curr_idx++) { // now get all the intermediate indexes
-        if (lseek(fd, result.offsets[curr_idx], SEEK_SET)!=result.offsets[curr_idx]) {
+        if (lseek(fd, result.offsets[curr_idx], SEEK_SET)!=off_t(result.offsets[curr_idx])) {
            free(cmp_buf); return bad_header;
         }
 
@@ -2084,7 +2084,7 @@ inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t strip
       // =======================
       // ready to read my stripe
 
-      if (lseek(fd, result.offsets[stripe_idx], SEEK_SET)!=result.offsets[stripe_idx]) {
+      if (lseek(fd, result.offsets[stripe_idx], SEEK_SET)!=off_t(result.offsets[stripe_idx])) {
          free(cmp_buf); return bad_header;
       }
 
@@ -2197,9 +2197,9 @@ MergeStatus check_partial(const TPMat* const * partial_mats, int n_partials, boo
     }
 
     // sanity check
-    int n_samples = partial_mats[0]->n_samples;
+    const uint32_t n_samples = partial_mats[0]->n_samples;
     bool *stripe_map = (bool*)calloc(sizeof(bool), partial_mats[0]->stripe_total);
-    int stripe_count = 0;
+    uint32_t stripe_count = 0;
 
     for(int i = 0; i < n_partials; i++) {
         if(partial_mats[i]->n_samples != n_samples) {
@@ -2227,7 +2227,7 @@ MergeStatus check_partial(const TPMat* const * partial_mats, int n_partials, boo
             }
             return square_mismatch;
         }
-        for(int j = 0; j < n_samples; j++) {
+        for(uint32_t j = 0; j < n_samples; j++) {
             if(strcmp(partial_mats[0]->sample_ids[j], partial_mats[i]->sample_ids[j]) != 0) {
                 free(stripe_map);
                 if (verbose) {
@@ -2237,7 +2237,7 @@ MergeStatus check_partial(const TPMat* const * partial_mats, int n_partials, boo
                 return sample_id_consistency;
             }
         }
-        for(int j = partial_mats[i]->stripe_start; j < partial_mats[i]->stripe_stop; j++) {
+        for(uint32_t j = partial_mats[i]->stripe_start; j < partial_mats[i]->stripe_stop; j++) {
             if(stripe_map[j]) {
                 if (verbose) {
                     fprintf(stderr, "Overlap in %i vs %i\n",
