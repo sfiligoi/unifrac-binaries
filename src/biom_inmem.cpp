@@ -169,7 +169,6 @@ sparse_data::sparse_data(const uint32_t _n_obs,
 
     if (n_obs>0) {
         malloc_resident();
-        unsigned int start = 0;
         for (uint32_t i = 0; i < n_obs; i++) {
             // pre-allocate with max size
             // the waste is stypically acceptable
@@ -186,7 +185,6 @@ sparse_data::sparse_data(const uint32_t _n_obs,
               }
             }
             obs_counts_resident[i]  = cnt;
-            start+=cnt;
         }
     }
 }
