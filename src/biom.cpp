@@ -121,7 +121,7 @@ void biom::load_ids(const char *path, std::vector<std::string> &ids) {
     char **dataout = (char**)malloc(sizeof(char*) * dims[0]);
     if(dataout == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(char*) * dims[0], __FILE__, __LINE__);
+                long(sizeof(char*) * dims[0]), __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
     ds_ids.read((void*)dataout, dtype);
@@ -153,7 +153,7 @@ void biom::load_indptr(const char *path, std::vector<uint32_t> &indptr) {
     uint32_t *dataout = (uint32_t*)malloc(sizeof(uint32_t) * dims[0]);
     if(dataout == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(uint32_t) * dims[0], __FILE__, __LINE__);
+                long(sizeof(uint32_t) * dims[0]), __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
     ds.read((void*)dataout, dtype);
@@ -193,13 +193,13 @@ unsigned int biom::get_obs_data_direct(const std::string &id, uint32_t *& curren
     current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count[0]);
     if(current_indices_out == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(uint32_t) * count[0], __FILE__, __LINE__);
+                long(sizeof(uint32_t) * count[0]), __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
     current_data_out = (double*)malloc(sizeof(double) * count[0]);
     if(current_data_out == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(double) * count[0], __FILE__, __LINE__);
+                long(sizeof(double) * count[0]), __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
 
@@ -238,13 +238,13 @@ unsigned int biom::get_sample_data_direct(const std::string &id, uint32_t *& cur
     current_indices_out = (uint32_t*)malloc(sizeof(uint32_t) * count[0]);
     if(current_indices_out == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(uint32_t) * count[0], __FILE__, __LINE__);
+                long(sizeof(uint32_t) * count[0]), __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
     current_data_out = (double*)malloc(sizeof(double) * count[0]);
     if(current_data_out == NULL) {
         fprintf(stderr, "Failed to allocate %zd bytes; [%s]:%d\n", 
-                sizeof(double) * count[0], __FILE__, __LINE__);
+                long(sizeof(double) * count[0]), __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
 

@@ -80,7 +80,7 @@ ifndef NOGPU
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_nv.so
 		NV_CPPFLAGS += -tp=px -mp=gpu -DOMPGPU=1 -noacc
-	        ifeq ($(PERFORMING_CONDA_BUILD),True)
+	        ifneq ($(PERFORMING_CONDA_BUILD),False)
 	            NV_CPPFLAGS += -gpu=ccall
 		else
 	            NV_CPPFLAGS += -gpu=ccnative
@@ -93,7 +93,7 @@ ifndef NOGPU
 	ifneq (,$(findstring pgi,$(NV_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_nv.so
 		NV_CPPFLAGS += -tp=px -acc
-	        ifeq ($(PERFORMING_CONDA_BUILD),True)
+	        ifneq ($(PERFORMING_CONDA_BUILD),False)
 	            NV_CPPFLAGS += -gpu=ccall
 		else
 	            NV_CPPFLAGS += -gpu=ccnative
@@ -109,7 +109,7 @@ ifndef NOGPU
    ifneq (,$(findstring clang,$(AMD_COMPILER)))
 		UNIFRAC_ACC_SHLIBS += libssu_acc_amd.so
 		AMD_CPPFLAGS += -fopenmp -fopenmp-offload-mandatory -DOMPGPU=1
-	        ifeq ($(PERFORMING_CONDA_BUILD),True)
+	        ifneq ($(PERFORMING_CONDA_BUILD),False)
 	            AMD_CPPFLAGS += --offload-arch=gfx1100,gfx1101,gfx1102,gfx1103,gfx1030,gfx1031,gfx90a,gfx942
 		else
 	            AMD_CPPFLAGS += --offload-arch=native
@@ -144,7 +144,7 @@ else
   else
     # no preference from the user
     # change default only if not performing CONDA_BUILD
-    ifneq ($(PERFORMING_CONDA_BUILD),True)
+    ifeq ($(PERFORMING_CONDA_BUILD),False)
 	ifeq ($(PLATFORM),Darwin)
          	# no special tuning for the MacOS at this point
 	  	CPPFLAGS += 
@@ -156,7 +156,7 @@ else
 endif
 
 ifeq (,$(findstring pgi,$(COMPILER)))
-    ifneq ($(PERFORMING_CONDA_BUILD),True)
+    ifeq ($(PERFORMING_CONDA_BUILD),False)
 	# basically, not gcc
 	CPPFLAGS += -Wextra -Wno-unused-parameter
     endif

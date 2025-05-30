@@ -313,9 +313,8 @@ int32_t BPTree::bwd(uint32_t i, int d) const {
 }
 
 void BPTree::newick_to_bp(const char *newick) {
-    char last_structure;
+    char last_structure = '\0';  // just initializae to something invalid, to avoid compiler warnings
     bool potential_single_descendent = false;
-    int count = 0;
     bool in_quote = false;
     for(const char* cptr = newick; cptr[0] != 0; cptr++) {
 	 const char c = cptr[0];
@@ -328,7 +327,6 @@ void BPTree::newick_to_bp(const char *newick) {
         switch(c) {
             case '(':
                 // opening of a node
-                count++;
                 structure.push_back(true);
                 last_structure = c;
                 potential_single_descendent = true;
@@ -337,7 +335,6 @@ void BPTree::newick_to_bp(const char *newick) {
                 // closing of a node
                 if(potential_single_descendent || (last_structure == ',')) {
                     // we have a single descendent or a last child (i.e. ",)" scenario)
-                    count += 3;
                     structure.push_back(true);
                     structure.push_back(false);
                     structure.push_back(false);
@@ -345,7 +342,6 @@ void BPTree::newick_to_bp(const char *newick) {
                 } else {
                     // it is possible still to have a single descendent in the case of 
                     // multiple single descendents (e.g., (...()...) )
-                    count += 1;
                     structure.push_back(false);
                 }
                 last_structure = c;
@@ -353,7 +349,6 @@ void BPTree::newick_to_bp(const char *newick) {
             case ',':
                 if(last_structure != ')') {
                     // we have a new tip
-                    count += 2;
                     structure.push_back(true);
                     structure.push_back(false);
                 }

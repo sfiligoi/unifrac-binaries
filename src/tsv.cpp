@@ -123,7 +123,8 @@ void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *groupin
   {
      // first line is the header
      std::vector<const char *> header_line = tsv_obj.get_next_line();
-     for (int i=1; i< header_line.size(); i++) {
+     const uint32_t header_size = header_line.size();
+     for (uint32_t i=1; i< header_size; i++) {
        if (column==header_line[i]) {
           column_idx = i;
           break; // found
@@ -135,7 +136,7 @@ void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *groupin
   }
 
   // there can be at most n_filter_els indexes, so this makes the values invalid
-  for (int i=1; i< n_filter_els; i++) grouping[i] = n_filter_els;
+  for (uint32_t i=1; i< n_filter_els; i++) grouping[i] = n_filter_els;
 
   // Gouping needs a number, not the value
   // Will build it as we read
@@ -170,7 +171,7 @@ void su::indexed_tsv::read_grouping(const std::string &column, uint32_t *groupin
   }
 
   // make sure we actually got all the filter_els
-  for (int i=1; i< n_filter_els; i++) {
+  for (uint32_t i=1; i< n_filter_els; i++) {
      if (grouping[i] == n_filter_els) throw std::runtime_error("Not all elements found");
   }
 

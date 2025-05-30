@@ -268,30 +268,30 @@ void test_pcoa_big() {
     ASSERT(fptr != NULL)
 
     unsigned int n_samples = 0;
-    fscanf(fptr,"# unifrac %u\n",&n_samples);
+    ASSERT(fscanf(fptr,"# unifrac %u\n",&n_samples)==1);
     ASSERT(n_samples == 57);
 
 
     // first 57 rows/cols of unweighted unifrac of EMP
     double matrix[57*57];
     for (unsigned int i=0; i<(57*57); i++)
-     fscanf(fptr,"%lf\n",&(matrix[i]));
+     ASSERT(fscanf(fptr,"%lf\n",&(matrix[i]))==1);
 
     unsigned int n_dims = 0;
-    fscanf(fptr,"# pcoa %u\n",&n_dims);
+    ASSERT(fscanf(fptr,"# pcoa %u\n",&n_dims)==1);
     ASSERT(n_dims == 7);
 
     double exp1[7];
     for (unsigned int i=0; i<(7); i++)
-     fscanf(fptr,"%lf\n",&(exp1[i]));
+     ASSERT(fscanf(fptr,"%lf\n",&(exp1[i]))==1);
 
     double exp2[7*57];
     for (unsigned int i=0; i<(7*57); i++)
-     fscanf(fptr,"%lf\n",&(exp2[i]));
+     ASSERT(fscanf(fptr,"%lf\n",&(exp2[i]))==1);
 
     double exp3[7];
     for (unsigned int i=0; i<(7); i++)
-     fscanf(fptr,"%lf\n",&(exp3[i]));
+     ASSERT(fscanf(fptr,"%lf\n",&(exp3[i]))==1);
     
     fclose(fptr);
 

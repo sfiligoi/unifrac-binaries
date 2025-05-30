@@ -78,32 +78,17 @@ static inline TFloat pmn_f_stat_sW_one(
 
   return s_W;
 }
-#endif
-
-// Compute PERMANOVA pseudo-F partial statistic
-// mat is symmetric matrix of size n_dims x n_dims
-// groupings is a matrix of size n_dims x n_grouping_dims
-// inv_group_sizes is an array of size maxel(groupings)
-// Results in group_sWs, and array of size n_grouping_dims
-// Note: Best results when n_grouping_dims fits in L1 cache
+#else
+// GPU version, all parallelization in a single function, due to compiler limitations
 template<class TFloat>
-static inline void pmn_f_stat_sW_T(
+static inline void pmn_f_stat_sW_gpu(
 		const TFloat * mat,
 		const uint32_t n_dims,
 		const uint32_t *groupings,
 		const uint32_t n_grouping_dims,
+		const uint64_t groupings_size,
 		const TFloat *inv_group_sizes,
 		TFloat *group_sWs) {
-#if !(defined(_OPENACC) || defined(OMPGPU))
-// CPU version, call function
-#pragma omp parallel for
- for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
-    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
-    group_sWs[grouping_el] = pmn_f_stat_sW_one<TFloat>(mat,n_dims,grouping,inv_group_sizes);
- } 
-#else
-// GPU version, just put all the code in here
- const uint64_t groupings_size = uint64_t(n_dims)*uint64_t(n_grouping_dims);
 #ifdef OMPGPU
 #pragma omp target teams distribute map(to:groupings[0:groupings_size]) map(from:group_sWs[0:n_grouping_dims])
 #else
@@ -130,6 +115,36 @@ static inline void pmn_f_stat_sW_T(
     }
     group_sWs[grouping_el] = s_W;
  } 
+}
+
+
+#endif
+
+// Compute PERMANOVA pseudo-F partial statistic
+// mat is symmetric matrix of size n_dims x n_dims
+// groupings is a matrix of size n_dims x n_grouping_dims
+// inv_group_sizes is an array of size maxel(groupings)
+// Results in group_sWs, and array of size n_grouping_dims
+// Note: Best results when n_grouping_dims fits in L1 cache
+template<class TFloat>
+static inline void pmn_f_stat_sW_T(
+		const TFloat * mat,
+		const uint32_t n_dims,
+		const uint32_t *groupings,
+		const uint32_t n_grouping_dims,
+		const TFloat *inv_group_sizes,
+		TFloat *group_sWs) {
+#if !(defined(_OPENACC) || defined(OMPGPU))
+// CPU version, handles thread-parallelization here
+#pragma omp parallel for
+ for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
+    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
+    group_sWs[grouping_el] = pmn_f_stat_sW_one<TFloat>(mat,n_dims,grouping,inv_group_sizes);
+ } 
+#else
+// GPU version, all parallelization in function
+ const uint64_t groupings_size = uint64_t(n_dims)*uint64_t(n_grouping_dims);
+ pmn_f_stat_sW_gpu(mat, n_dims, groupings, n_grouping_dims, groupings_size, inv_group_sizes, group_sWs);
 #endif
 }
 

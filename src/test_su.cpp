@@ -343,7 +343,7 @@ void test_bptree_postorder() {
     // fig1 from https://www.dcc.uchile.cl/~gnavarro/ps/tcs16.2.pdf
     su::BPTree tree("((3,4,(6)5)2,7,((10,100)9)8)1;");
     uint32_t exp[] = {2, 4, 7, 6, 1, 11, 15, 17, 14, 13, 0};
-    uint32_t obs[tree.nparens / 2];
+    uint32_t *obs =new uint32_t[tree.nparens / 2];
 
     for(unsigned int i = 0; i < (tree.nparens / 2); i++)
         obs[i] = tree.postorderselect(i);
@@ -352,6 +352,7 @@ void test_bptree_postorder() {
     std::vector<uint32_t> obs_v = _uint32_array_to_vector(obs, tree.nparens / 2);
 
     ASSERT(obs_v == exp_v);
+    delete[] obs;
     SUITE_END();
 }
 
@@ -361,7 +362,7 @@ void test_bptree_preorder() {
     // fig1 from https://www.dcc.uchile.cl/~gnavarro/ps/tcs16.2.pdf
     su::BPTree tree("((3,4,(6)5)2,7,((10,100)9)8)1;");
     uint32_t exp[] = {0, 1, 2, 4, 6, 7, 11, 13, 14, 15, 17};
-    uint32_t obs[tree.nparens / 2];
+    uint32_t *obs = new uint32_t[tree.nparens / 2];
 
     for(unsigned int i = 0; i < (tree.nparens / 2); i++)
         obs[i] = tree.preorderselect(i);
@@ -370,6 +371,7 @@ void test_bptree_preorder() {
     std::vector<uint32_t> obs_v = _uint32_array_to_vector(obs, tree.nparens / 2);
 
     ASSERT(obs_v == exp_v);
+    delete[] obs;
     SUITE_END();
 }
 
@@ -381,7 +383,7 @@ void test_bptree_parent() {
     uint32_t exp[] = {0, 1, 1, 1, 1, 1, 6, 6, 1, 0, 0, 0, 0, 13, 14, 14, 14, 14, 13, 0};
 
     // all the -2 and +1 garbage is to avoid testing the root.
-    uint32_t obs[tree.nparens - 2];
+    uint32_t *obs = new uint32_t[tree.nparens - 2];
 
     for(int i = 0; i < (int(tree.nparens) - 2); i++)
         obs[i] = tree.parent(i+1);
@@ -390,6 +392,7 @@ void test_bptree_parent() {
     std::vector<uint32_t> obs_v = _uint32_array_to_vector(obs, tree.nparens - 2);
 
     ASSERT(obs_v == exp_v);
+    delete[] obs;
     SUITE_END();
 }
 
@@ -1635,10 +1638,10 @@ void test_faith_pd() {
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
 
+#ifndef API_ONLY
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
-#ifndef API_ONLY
     su::faith_pd(table, tree, obs);
 
     // ASSERT that results = expectation
@@ -1670,10 +1673,10 @@ void test_faith_pd_shear(){
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
 
+#ifndef API_ONLY
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
-#ifndef API_ONLY
     std::unordered_set<std::string> to_keep(table.get_obs_ids().begin(),           \
                                             table.get_obs_ids().end());            \
     su::BPTree tree_sheared = tree.shear(to_keep).collapse();

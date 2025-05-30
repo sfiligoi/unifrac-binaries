@@ -1,3 +1,8 @@
+/*
+ * Deprecated, not currently used
+ * Could be removed from the repo, kept just in case we need it again in the future
+ */
+
 #define _GNU_SOURCE
 #include <pthread.h>
 #include <sys/syscall.h>
