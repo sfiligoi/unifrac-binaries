@@ -19,6 +19,10 @@
 
 #include "unifrac_internal.hpp"
 
+#ifdef __APPLE__
+#define CPU_SETSIZE 32
+#endif
+
 static pthread_mutex_t printf_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool* report_status;
 
