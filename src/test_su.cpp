@@ -1635,10 +1635,10 @@ void test_faith_pd() {
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
 
+#ifndef API_ONLY
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
-#ifndef API_ONLY
     su::faith_pd(table, tree, obs);
 
     // ASSERT that results = expectation
@@ -1670,10 +1670,10 @@ void test_faith_pd_shear(){
     // make vector of expectations from faith PD
     double exp[6] = {6., 7., 8., 5., 4., 7.};
 
+#ifndef API_ONLY
     // run faith PD to get obs
     double obs[6] = {0, 0, 0, 0, 0, 0};
 
-#ifndef API_ONLY
     std::unordered_set<std::string> to_keep(table.get_obs_ids().begin(),           \
                                             table.get_obs_ids().end());            \
     su::BPTree tree_sheared = tree.shear(to_keep).collapse();
