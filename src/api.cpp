@@ -306,10 +306,15 @@ void initialize_mat_full_no_biom_T(TMat* &result, const char* const * sample_ids
         // remove the file name, so it will be destroyed on close
         unlink(mmap_template.c_str());
         // make it big enough
-        ftruncate(fd,msize);
-        // now can be used, just like a malloc-ed buffer
-        result->matrix = (TReal*)mmap(NULL, msize,PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, fd, 0);
-        result->flags=(uint32_t(fd) & MMAP_FD_MASK) | MMAP_FLAG;
+        if (ftruncate(fd,msize)!=0) {
+           // fail
+           result->matrix = NULL;
+           // leave error handling to the caller
+	} else {
+           // now can be used, just like a malloc-ed buffer
+           result->matrix = (TReal*)mmap(NULL, msize,PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, fd, 0);
+           result->flags=(uint32_t(fd) & MMAP_FD_MASK) | MMAP_FLAG;
+        }
       }
    }
 
