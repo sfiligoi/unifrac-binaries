@@ -360,12 +360,12 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
     for(int x = 0; x < 2; x++) {
         if(x == 0) {
             obs_ids.resize(n_obs);
-            for(int i = 0; i < n_obs; i++) {
+            for(uint32_t i = 0; i < n_obs; i++) {
                 obs_ids[i] = std::string(obs_ids_in[i]);
             }
         } else {
             sample_ids.resize(n_samples);
-            for(int i = 0; i < n_samples; i++) {
+            for(uint32_t i = 0; i < n_samples; i++) {
                 sample_ids[i] = std::string(samp_ids_in[i]);
             }
         }
@@ -402,12 +402,12 @@ biom_inmem::biom_inmem(const char* const * obs_ids_in,
     for(int x = 0; x < 2; x++) {
         if(x == 0) {
             obs_ids.resize(n_obs);
-            for(int i = 0; i < n_obs; i++) {
+            for(uint32_t i = 0; i < n_obs; i++) {
                 obs_ids[i] = std::string(obs_ids_in[i]);
             }
         } else {
             sample_ids.resize(n_samples);
-            for(int i = 0; i < n_samples; i++) {
+            for(uint32_t i = 0; i < n_samples; i++) {
                 sample_ids[i] = std::string(samp_ids_in[i]);
             }
         }
@@ -483,7 +483,7 @@ void biom_inmem::get_obs_data_range_TT(const uint32_t idx, unsigned int start, u
 
     if (normalize) {
       for(unsigned int i = 0; i < count; i++) {
-        const int32_t j = indices[i];
+        const uint32_t j = indices[i];
         if ((j>=start)&&(j<end)) { 
           out[j-start] = data[i]/sample_counts[j];
         }
