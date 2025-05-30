@@ -12,12 +12,145 @@
 #include <cblas.h>
 #include <lapacke.h>
 
+// We will always have the CPU version
+#define SUCMP_NM  su_cpu
+#include "skbio_alt_dyn.hpp"
+#undef SUCMP_NM
+static constexpr int ACC_CPU=0;
+
+#ifdef UNIFRAC_ENABLE_ACC_NV
+#define SUCMP_NM  su_acc_nv
+#include "skbio_alt_dyn.hpp"
+#undef SUCMP_NM
+static constexpr int ACC_NV=1;
+#endif
+
+#ifdef UNIFRAC_ENABLE_ACC_AMD
+#define SUCMP_NM  su_acc_amd
+#include "skbio_alt_dyn.hpp"
+#undef SUCMP_NM
+static constexpr int ACC_AMD=2;
+#endif
+
 static std::mt19937 myRandomGenerator;
 
 
 void su::set_random_seed(uint32_t new_seed) {
   myRandomGenerator.seed(new_seed);
 }
+
+// test only once, then use persistent value
+static int skbio_use_acc = -1;
+
+inline void skbio_check_acc() {
+ if (skbio_use_acc!=-1) return; // keep the cached version
+
+ bool print_info = false;
+
+ if (const char* env_p = std::getenv("UNIFRAC_GPU_INFO")) {
+   print_info = true;
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     print_info = false;
+   }
+ }
+
+ int detected_acc = ACC_CPU;
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+ bool detected_nv_acc = su_acc_nv::acc_found_gpu();
+ if (print_info) {
+   if (detected_nv_acc) {
+     printf("INFO (skbio_alt): NVIDIA GPU detected\n");
+   } else {
+     printf("INFO (skbio_alt): NVIDIA GPU not detected\n");
+   }
+ }
+ if ((detected_acc==ACC_CPU) && detected_nv_acc) {
+   detected_acc = ACC_NV;
+   if (const char* env_p = std::getenv("UNIFRAC_SKBIO_USE_NVIDIA_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): NVIDIA GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   } else if (const char* env_p = std::getenv("UNIFRAC_USE_NVIDIA_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): NVIDIA GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   }
+ }
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+ bool detected_amd_acc = su_acc_amd::acc_found_gpu();
+ if (print_info) {
+   if (detected_amd_acc) {
+     printf("INFO (skbio_alt): AMD GPU detected\n");
+   } else {
+     printf("INFO (skbio_alt): AMD GPU not detected\n");
+   }
+ }
+ if ((detected_acc==ACC_CPU) && detected_amd_acc) {
+   detected_acc = ACC_AMD;
+   if (const char* env_p = std::getenv("UNIFRAC_SKBIO_USE_AMD_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): AMD GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   } else if (const char* env_p = std::getenv("UNIFRAC_USE_AMD_GPU")) {
+     std::string env_s(env_p);
+     if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+         (env_s=="NEVER") || (env_s=="never")) {
+       if (print_info) printf("INFO (skbio_alt): AMD GPU was detected but use explicitly disabled\n");
+       detected_acc = ACC_CPU;
+     }
+   }
+ }
+#endif
+
+ if (const char* env_p = std::getenv("UNIFRAC_SKBIO_USE_GPU")) {
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     if (detected_acc!=ACC_CPU) {
+        if (print_info) printf("INFO (skbio_alt): GPU was detected but use explicitly disabled\n");
+         detected_acc = ACC_CPU;
+     }
+   }
+ } else if (const char* env_p = std::getenv("UNIFRAC_USE_GPU")) {
+   std::string env_s(env_p);
+   if ((env_s=="NO") || (env_s=="N") || (env_s=="no") || (env_s=="n") ||
+       (env_s=="NEVER") || (env_s=="never")) {
+     if (detected_acc!=ACC_CPU) {
+        if (print_info) printf("INFO (skbio_alt): GPU was detected but use explicitly disabled\n");
+         detected_acc = ACC_CPU;
+     }
+   }
+ }
+
+ if (print_info) {
+   if (detected_acc == ACC_CPU) {
+     printf("INFO (skbio_alt): Using CPU (not GPU)\n");
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+   } else if (detected_acc == ACC_NV) {
+     printf("INFO (skbio_alt): Using NVIDIA GPU\n");
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+   } else if (detected_acc == ACC_AMD) {
+     printf("INFO (skbio_alt): Using AMD GPU\n");
+#endif
+   }
+ }
+ // we can assume int is atomic
+ skbio_use_acc = detected_acc;
+}
+
 
 //
 // ======================= PCoA ========================
@@ -630,64 +763,6 @@ void su::pcoa_inplace(float  * mat, const uint32_t n_samples, const uint32_t n_d
 // ======================= permanova ========================
 //
 
-
-// Compute PERMANOVA pseudo-F partial statistic
-// mat is symmetric matrix of size n_dims x in_n
-// grouping is an array of size in_n
-// inv_group_sizes is an array of size maxel(grouping)
-template<class TFloat>
-inline TFloat permanova_f_stat_sW_T_one(const TFloat * mat, const uint32_t n_dims,
-                                  const uint32_t *grouping,
-                                  const TFloat *inv_group_sizes) {
-  constexpr uint32_t TILE = 1024;  // 1k grouping els fit nicely in L1 cache (4kB total)
-
-  // Use full precision for intermediate compute, to minimize accumulation errors
-  double s_W = 0.0;
-
-  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
-    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
-      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
-      const uint32_t max_col = std::min(tcol+TILE,n_dims);
-
-      for (uint32_t row=trow; row < max_row; row++) {
-        const uint32_t min_col = std::max(tcol,row+1);
-        uint32_t group_idx = grouping[row];
-
-        // Use full precision for intermediate compute, to minimize accumulation errors
-        double local_s_W = 0.0;
-        const TFloat * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
-        for (uint32_t col=min_col; col < max_col; col++) {
-            if (grouping[col] == group_idx) {
-                TFloat val = mat_row[col];  // mat[row,col];
-                local_s_W += val * val;
-            }
-        }
-        s_W += local_s_W*inv_group_sizes[group_idx];
-      }
-    }
-  }
-
-  return s_W;
-}
-
-// Compute PERMANOVA pseudo-F partial statistic
-// mat is symmetric matrix of size n_dims x n_dims
-// groupings is a matrix of size n_dims x n_grouping_dims
-// inv_group_sizes is an array of size maxel(groupings)
-// Results in group_sWs, and array of size n_grouping_dims
-// Note: Best results when n_grouping_dims fits in L1 cache
-template<class TFloat>
-inline void permanova_f_stat_sW_T(const TFloat * mat, const uint32_t n_dims,
-                                  const uint32_t *groupings, const uint32_t n_grouping_dims,
-                                  const TFloat *inv_group_sizes,
-                                  TFloat *group_sWs) {
-#pragma omp parallel for
- for (uint32_t grouping_el=0; grouping_el < n_grouping_dims; grouping_el++) {
-    const uint32_t *grouping = groupings + uint64_t(grouping_el)*uint64_t(n_dims);
-    group_sWs[grouping_el] = permanova_f_stat_sW_T_one(mat,n_dims,grouping,inv_group_sizes);
- } 
-}
-
 // Compute PERMANOVA pseudo-F partial statistic using permutations
 // mat is symmetric matrix of size n_dims x n_dims
 // grouping is an array of size n_dims
@@ -700,11 +775,28 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
                                    const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
                                    TFloat *permutted_sWs) {
-  // Do at most one step_perm per OMP
-  const uint32_t PERM_CHUNK = omp_get_max_threads();
+  const uint64_t mat_size = uint64_t(n_dims)*uint64_t(n_dims);
+
+  // There is acc-specific logic here, initialize skbio_use_acc ASAP
+  skbio_check_acc();
+
+  uint32_t PERM_CHUNK = 1; // just a dummy default
+  if (skbio_use_acc==ACC_CPU) {
+    PERM_CHUNK = su_cpu::pmn_get_max_parallelism();
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+  } else if (skbio_use_acc==ACC_NV) {
+    PERM_CHUNK = su_acc_nv::pmn_get_max_parallelism();
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+  } else if (skbio_use_acc==ACC_AMD) {
+    PERM_CHUNK = su_acc_amd::pmn_get_max_parallelism();
+#endif
+  }
+
   // need temp bufffer for bulk processing
   const uint32_t step_perms = std::min(n_perm+1,PERM_CHUNK);
-  uint32_t *permutted_groupings = new uint32_t[uint64_t(n_dims)*uint64_t(step_perms)];
+  const uint64_t permutted_groupings_size = uint64_t(n_dims)*uint64_t(step_perms);
+  uint32_t *permutted_groupings = new uint32_t[permutted_groupings_size];
 
   // first copy the original in all of the buffer rows
 #pragma omp parallel for schedule(static,1) default(shared)
@@ -727,6 +819,22 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
     inv_group_sizes[i] = TFloat(1.0)/group_sizes[i];
   }
 
+  // for acc implementations, make a copy of mat into the GPU memory
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+  if (skbio_use_acc==ACC_NV) {
+    // must remove const as it will indeed write to GPU memory
+    su_acc_nv::acc_copyin_buf(const_cast<TFloat*>(mat),0,mat_size);
+    su_acc_nv::acc_copyin_buf(inv_group_sizes,0,n_groups);
+  }
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+  if (skbio_use_acc==ACC_AMD) {
+    // must remove const as it will indeed write to GPU memory
+    su_acc_amd::acc_copyin_buf(const_cast<TFloat*>(mat),0,mat_size);
+    su_acc_amd::acc_copyin_buf(inv_group_sizes,0,n_groups);
+  }
+#endif
+
   // now permute and compute sWs
   for (uint32_t tp=0; tp < (n_perm+1); tp+=step_perms) {
       const uint32_t max_p = std::min(tp+step_perms,n_perm+1);
@@ -742,11 +850,42 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
          }
       }
       // now call the actual permanova
-      permanova_f_stat_sW_T<TFloat>(mat, n_dims,
-                                    permutted_groupings, max_p-tp,
-                                    inv_group_sizes,
-                                    permutted_sWs+tp);
+      if (skbio_use_acc==ACC_CPU) {
+        su_cpu::pmn_f_stat_sW<TFloat>(mat, n_dims,
+                                      permutted_groupings, max_p-tp,
+                                      inv_group_sizes,
+                                      permutted_sWs+tp);
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+      } else if (skbio_use_acc==ACC_NV) {
+        su_acc_nv::pmn_f_stat_sW<TFloat>(mat, n_dims,
+                                         permutted_groupings, max_p-tp,
+                                         inv_group_sizes,
+                                         permutted_sWs+tp);
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+      } else if (skbio_use_acc==ACC_AMD) {
+        su_acc_amd::pmn_f_stat_sW<TFloat>(mat, n_dims,
+                                          permutted_groupings, max_p-tp,
+                                          inv_group_sizes,
+                                          permutted_sWs+tp);
+#endif
+      }
   }
+
+#if defined(UNIFRAC_ENABLE_ACC_NV)
+  if (skbio_use_acc==ACC_NV) {
+    su_acc_nv::acc_destroy_buf(inv_group_sizes,0,n_groups);
+    // must remove const, as it will indeed destroy the copy in GPU memory
+    su_acc_nv::acc_destroy_buf(const_cast<TFloat*>(mat),0,mat_size);
+  }
+#endif
+#if defined(UNIFRAC_ENABLE_ACC_AMD)
+  if (skbio_use_acc==ACC_AMD) {
+    su_acc_amd::acc_destroy_buf(inv_group_sizes,0,n_groups);
+    // must remove const, as it will indeed destroy the copy in GPU memory
+    su_acc_amd::acc_destroy_buf(const_cast<TFloat*>(mat),0,mat_size);
+  }
+#endif
 
   delete[] inv_group_sizes;
   delete[] randomGenerators;
@@ -756,28 +895,15 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
 // Compute the square sum of the upper triangle
 template<class TFloat>
 inline TFloat sum_upper_square(const TFloat * mat, const uint32_t n_dims) {
-  constexpr uint32_t TILE = 1024; // mimic permanova_f_stat_sW_T_one
-
   // Use full precision for intermediate compute, to minimize accumulation errors
   double sum = 0.0;
-#pragma omp parallel for collapse(2) shared(mat) reduction(+:sum)
-  for (uint32_t trow=0; trow < (n_dims-1); trow+=TILE) {   // no columns in last row
-    for (uint32_t tcol=trow+1; tcol < n_dims; tcol+=TILE) { // diagonal is always zero
-      const uint32_t max_row = std::min(trow+TILE,n_dims-1);
-      const uint32_t max_col = std::min(tcol+TILE,n_dims);
-
-      // Using tiling to be consistent with the rest of the code above
-      // Also likely improves vectorization
-      for (uint32_t row=trow; row < max_row; row++) {
-        const uint32_t min_col = std::max(tcol,row+1);
-
-        const TFloat * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
-        for (uint32_t col=min_col; col < max_col; col++) {
+  // not optimal parallelism, but this is cheap anyway
+#pragma omp parallel for shared(mat) reduction(+:sum)
+  for (uint32_t row=0; row < (n_dims-1); row++) {   // no columns in last row
+    const TFloat * mat_row = mat + uint64_t(row)*uint64_t(n_dims);
+    for (uint32_t col=row+1; col < n_dims; col++) { // diagonal is always zero
           TFloat val = mat_row[col]; // mat[row,col];
           sum+=val*val;
-        }
-      }
-
     } // for tcol
   } // for trow
   return sum;

@@ -138,6 +138,10 @@ To disable GPU offload, and thus force CPU-only execution, one can set:
 
     export UNIFRAC_USE_GPU=N
 
+To disable GPU offload only for the post-unifrac tools, e.g. PERMANOVA, one can set:
+
+    export UNIFRAC_SKBIO_USE_GPU=N
+
 To check which code path is used (Unifrac will print it to standard output at runtime), set:
 
     export UNIFRAC_GPU_INFO=Y

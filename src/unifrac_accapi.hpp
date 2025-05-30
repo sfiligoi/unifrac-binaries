@@ -16,9 +16,6 @@
  *
  */
 
-#ifndef __UNIFRAC_ACCAPI
-#define __UNIFRAC_ACCAPI 1
-
 #include <stdint.h>
 
 #ifndef SUCMP_NM
@@ -62,4 +59,3 @@ namespace SUCMP_NM {
 
 }
 
-#endif
