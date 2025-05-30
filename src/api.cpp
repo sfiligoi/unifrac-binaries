@@ -1955,7 +1955,7 @@ inline IOStatus read_partial_header_fd(int fd, TPMat &result) {
     const bool is_upper_triangle = header[5];
 
     /* sanity check header */
-    if(n_samples <= 0 || n_stripes <= 0 || stripe_total <= 0 || is_upper_triangle < 0)
+    if(n_samples <= 0 || n_stripes <= 0 || stripe_total <= 0 || (!is_upper_triangle))
          {return bad_header;}
     if(stripe_total >= n_samples || n_stripes > stripe_total || stripe_start >= stripe_total || stripe_start + n_stripes > stripe_total)
          {return bad_header;}
@@ -2266,36 +2266,6 @@ MergeStatus check_partial(const TPMat* const * partial_mats, int n_partials, boo
 MergeStatus validate_partial(const partial_dyn_mat_t* const * partial_mats, int n_partials) {
     return check_partial(partial_mats, n_partials, true);
 }
-
-#if 0
-// DEPRECATED, not used by anyone anymore
-MergeStatus merge_partial(partial_mat_t** partial_mats, int n_partials, unsigned int dummy, mat_t** result) {
-    MergeStatus err = check_partial(partial_mats, n_partials, false);
-    if (err!=merge_okay) return err;
-
-    int n_samples = partial_mats[0]->n_samples;
-    std::vector<double*> stripes(partial_mats[0]->stripe_total);
-    std::vector<double*> stripes_totals(partial_mats[0]->stripe_total);  // not actually used but destroy_stripes needs this to "exist"
-    for(int i = 0; i < n_partials; i++) {
-        int n_stripes = partial_mats[i]->stripe_stop - partial_mats[i]->stripe_start;
-        for(int j = 0; j < n_stripes; j++) {
-            // as this is potentially a large amount of memory, don't copy, just adopt
-            *&(stripes[j + partial_mats[i]->stripe_start]) = partial_mats[i]->stripes[j];
-        }
-    }
-
-    initialize_mat_no_biom(*result, partial_mats[0]->sample_ids, n_samples, partial_mats[0]->is_upper_triangle);
-    if ((*result)==NULL) return incomplete_stripe_set;
-    if ((*result)->condensed_form==NULL) return incomplete_stripe_set;
-    if ((*result)->sample_ids==NULL) return incomplete_stripe_set;
-
-    su::stripes_to_condensed_form(stripes, n_samples, (*result)->condensed_form, 0, partial_mats[0]->stripe_total);
-
-    destroy_stripes(stripes, stripes_totals, n_samples, 0, n_partials);
-
-    return merge_okay;
-}
-#endif
 
 // Will keep only the strictly necessary stripes in memory... reading just in time
 class PartialStripes : public su::ManagedStripes {
