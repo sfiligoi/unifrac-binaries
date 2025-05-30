@@ -1940,7 +1940,7 @@ IOStatus _is_partial_file(const char* input_filename) {
 
 template<class TPMat>
 inline IOStatus read_partial_header_fd(int fd, TPMat &result) {
-    int cnt=-1;
+    ssize_t cnt=-1;
 
     uint32_t header[8];
     cnt = read(fd,header,8*sizeof(uint32_t));
@@ -1981,13 +1981,13 @@ inline IOStatus read_partial_header_fd(int fd, TPMat &result) {
       char * const cmp_buf = (char *)malloc(sample_id_length_compressed);
       if (cmp_buf==NULL) { return bad_header;} // no better error code
       cnt = read(fd,cmp_buf,sample_id_length_compressed);
-      if (cnt != sample_id_length_compressed) {free(cmp_buf); return magic_incompatible;}
+      if (cnt != ssize_t(sample_id_length_compressed)) {free(cmp_buf); return magic_incompatible;}
 
       char *samples_buf = (char *)malloc(sample_id_length);
       if (samples_buf==NULL) { free(cmp_buf); return bad_header;} // no better error code
 
       cnt = LZ4_decompress_safe(cmp_buf,samples_buf,sample_id_length_compressed,sample_id_length);
-      if (cnt!=sample_id_length) {free(samples_buf); free(cmp_buf); return magic_incompatible;}
+      if (cnt!=ssize_t(sample_id_length)) {free(samples_buf); free(cmp_buf); return magic_incompatible;}
 
       const char *samples_ptr = samples_buf;
 
@@ -2008,7 +2008,7 @@ inline IOStatus read_partial_header_fd(int fd, TPMat &result) {
 
 template<class TPMat>
 inline IOStatus read_partial_data_fd(int fd, TPMat &result) {
-    int cnt=-1;
+    ssize_t cnt=-1;
 
     const uint32_t n_samples = result.n_samples;
     const uint32_t n_stripes = result.stripe_stop-result.stripe_start;
@@ -2022,7 +2022,7 @@ inline IOStatus read_partial_data_fd(int fd, TPMat &result) {
       uint32_t *cmp_buf_size_p = (uint32_t *)cmp_buf;
 
       cnt = read(fd,cmp_buf_size_p , sizeof(uint32_t) );
-      if (cnt != sizeof(uint32_t) ) {free(cmp_buf); return magic_incompatible;}
+      if (cnt != ssize_t(sizeof(uint32_t)) ) {free(cmp_buf); return magic_incompatible;}
 
       for(int i = 0; i < n_stripes; i++) {
         uint32_t cmp_size = *cmp_buf_size_p;
@@ -2031,7 +2031,7 @@ inline IOStatus read_partial_data_fd(int fd, TPMat &result) {
         if ( (i+1)<n_stripes ) read_size += sizeof(uint32_t); // last one does not have the cmp_size
 
         cnt = read(fd,cmp_buf , read_size );
-        if (cnt != read_size) {free(cmp_buf); return magic_incompatible;}
+        if (cnt != ssize_t(read_size)) {free(cmp_buf); return magic_incompatible;}
 
         result.stripes[i] = (double *) malloc(sizeof(double) * n_samples);
         if(result.stripes[i] == NULL) {
@@ -2039,7 +2039,7 @@ inline IOStatus read_partial_data_fd(int fd, TPMat &result) {
             exit(1);
         }
         cnt = LZ4_decompress_safe(cmp_buf, (char *) result.stripes[i],cmp_size,sizeof(double) * n_samples);
-        if (cnt != ( sizeof(double) * n_samples ) ) {free(cmp_buf); return magic_incompatible;}
+        if (cnt != ssize_t( sizeof(double) * n_samples ) ) {free(cmp_buf); return magic_incompatible;}
 
         cmp_buf_size_p = (uint32_t *)(cmp_buf+cmp_size);
       }
@@ -2052,7 +2052,7 @@ inline IOStatus read_partial_data_fd(int fd, TPMat &result) {
 
 template<class TPMat>
 inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t stripe_idx) {
-    int cnt=-1;
+    ssize_t cnt=-1;
 
     const uint32_t n_samples = result.n_samples;
 
@@ -2073,7 +2073,7 @@ inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t strip
         }
 
         cnt = read(fd,cmp_buf_size_p , sizeof(uint32_t) );
-        if (cnt != sizeof(uint32_t) ) {free(cmp_buf); return magic_incompatible;}
+        if (cnt != ssize_t(sizeof(uint32_t)) ) {free(cmp_buf); return magic_incompatible;}
 
         uint32_t cmp_size = *cmp_buf_size_p;
         uint32_t read_size = cmp_size;
@@ -2089,7 +2089,7 @@ inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t strip
       }
 
       cnt = read(fd,cmp_buf_size_p , sizeof(uint32_t) );
-      if (cnt != sizeof(uint32_t) ) {free(cmp_buf); return magic_incompatible;}
+      if (cnt != ssize_t(sizeof(uint32_t)) ) {free(cmp_buf); return magic_incompatible;}
 
       {
         uint32_t cmp_size = *cmp_buf_size_p;
@@ -2097,7 +2097,7 @@ inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t strip
         uint32_t read_size = cmp_size;
 
         cnt = read(fd,cmp_buf , read_size );
-        if (cnt != read_size) {free(cmp_buf); return magic_incompatible;}
+        if (cnt != ssize_t(read_size)) {free(cmp_buf); return magic_incompatible;}
 
         result.stripes[stripe_idx] = (double *) malloc(sizeof(double) * n_samples);
         if(result.stripes[stripe_idx] == NULL) {
@@ -2105,7 +2105,7 @@ inline IOStatus read_partial_one_stripe_fd(int fd, TPMat &result, uint32_t strip
             exit(1);
         }
         cnt = LZ4_decompress_safe(cmp_buf, (char *) result.stripes[stripe_idx],cmp_size,sizeof(double) * n_samples);
-        if (cnt != ( sizeof(double) * n_samples ) ) {free(cmp_buf); return magic_incompatible;}
+        if (cnt != ssize_t( sizeof(double) * n_samples ) ) {free(cmp_buf); return magic_incompatible;}
       }
 
       free(cmp_buf);
@@ -2132,8 +2132,8 @@ IOStatus read_partial(const char* input_filename, partial_mat_t** result_out) {
       /* sanity check the footer */
       uint32_t header[1];
       header[0] = 0;
-      int cnt = read(fd,header,sizeof(uint32_t));
-      if (cnt != (sizeof(uint32_t))) {sts= magic_incompatible;}
+      ssize_t cnt = read(fd,header,sizeof(uint32_t));
+      if (cnt != ssize_t(sizeof(uint32_t))) {sts= magic_incompatible;}
     
       if (sts==read_okay) {
         if ( header[0] != PARTIAL_MAGIC_V2) {sts= magic_incompatible;}
