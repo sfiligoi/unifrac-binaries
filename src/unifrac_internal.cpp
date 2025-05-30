@@ -9,7 +9,6 @@
 
 #include "tree.hpp"
 #include "biom_interface.hpp"
-#include "affinity.hpp"
 #include <cstdlib>
 #include <thread>
 #include <signal.h>
