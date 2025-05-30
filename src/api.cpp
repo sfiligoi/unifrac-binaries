@@ -1337,7 +1337,7 @@ public:
       if (save_dist) {
          // save the matrix
          {
-           sprintf(fmtstr,"matrix:%d",n_results);
+           snprintf(fmtstr,63,"matrix:%d",n_results);
            herr_t status = write_hdf5_array2D<TReal>(output_file_id,real_id,
                             fmtstr, n_samples, n_samples, result->matrix);
            if (status<0) throw "Matrix write failed";
@@ -1357,9 +1357,9 @@ public:
 
          char fmtstr2[64];
          char fmtstr3[64];
-         sprintf(fmtstr,"pcoa_eigvals:%d",n_results);
-         sprintf(fmtstr2,"pcoa_samples:%d",n_results);
-         sprintf(fmtstr3,"pcoa_proportion_explained:%d",n_results);
+         snprintf(fmtstr,63,"pcoa_eigvals:%d",n_results);
+         snprintf(fmtstr2,63,"pcoa_samples:%d",n_results);
+         snprintf(fmtstr3,63,"pcoa_proportion_explained:%d",n_results);
          IOStatus rc = append_hdf5_pcoa(output_file_id, real_id, pcoa_dims, n_samples,
                              fmtstr, fmtstr2, fmtstr3,
                              eigenvalues, samples,  proportion_explained);
@@ -1502,7 +1502,7 @@ compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
             TDBG_STEP("permanova computed")
 
             char fmtstr[32];
-            sprintf(fmtstr,":%d",i);
+            snprintf(fmtstr,31,":%d",i);
             for (unsigned int j=0; j<n_columns;j ++) {
               const unsigned int idx = i*n_columns + j;
 
