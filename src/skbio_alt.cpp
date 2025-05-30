@@ -775,7 +775,9 @@ inline void permanova_perm_fp_sW_T(const TFloat * mat, const uint32_t n_dims,
                                    const uint32_t *group_sizes, uint32_t n_groups,
                                    const uint32_t n_perm,
                                    TFloat *permutted_sWs) {
+#if defined(UNIFRAC_ENABLE_ACC_NV) || defined(UNIFRAC_ENABLE_ACC_AMD)
   const uint64_t mat_size = uint64_t(n_dims)*uint64_t(n_dims);
+#endif
 
   // There is acc-specific logic here, initialize skbio_use_acc ASAP
   skbio_check_acc();
