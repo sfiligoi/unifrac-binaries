@@ -87,7 +87,7 @@
                                                                              table.get_obs_ids().end());            \
                                      su::BPTree tree_sheared = tree.shear(to_keep).collapse();
 
-#define VALIDATE_TREE_TABLE(tree, table)                if(table.n_samples <= 0 | table.n_obs <= 0) {                            \
+#define VALIDATE_TREE_TABLE(tree, table)                if( (table.n_samples <= 0) || (table.n_obs <= 0) ) {                     \
                                                             return table_empty;                                                  \
                                                         }                                                                        \
                                                         std::string bad_id = su::test_table_ids_are_subset_of_tree(table, tree); \
@@ -795,7 +795,7 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
         return rc;
     }
 
-    if(table_data->n_samples <= 0 | table_data->n_obs <= 0) {
+    if( (table_data->n_samples <= 0) || (table_data->n_obs <= 0) ) {
 	return table_empty;
     }
 
@@ -843,7 +843,7 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
         return rc;
     }
 
-    if(table_data->n_samples <= 0 | table_data->n_obs <= 0) {
+    if( (table_data->n_samples <= 0) || (table_data->n_obs <= 0) ) {
 	return table_empty;
     }
 
