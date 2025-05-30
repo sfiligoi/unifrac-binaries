@@ -492,7 +492,7 @@ compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tr
     std::vector<double*> dm_stripes_total(stripe_stop);
 
     if(nthreads > dm_stripes.size()) {
-        fprintf(stderr, "More threads were requested than stripes. Using %d threads.\n", dm_stripes.size());
+        fprintf(stderr, "More threads were requested than stripes. Using %zd threads.\n", long(dm_stripes.size()));
         nthreads = dm_stripes.size();
     }
 
@@ -534,7 +534,7 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
     std::vector<double*> dm_stripes_total((table.n_samples + 1) / 2);
 
     if(nthreads > dm_stripes.size()) {
-        fprintf(stderr, "More threads were requested than stripes. Using %d threads.\n", dm_stripes.size());
+        fprintf(stderr, "More threads were requested than stripes. Using %zd threads.\n", long(dm_stripes.size()));
         nthreads = dm_stripes.size();
     }
 
