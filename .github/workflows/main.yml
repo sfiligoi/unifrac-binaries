@@ -39,13 +39,13 @@ jobs:
         df -h .
         if [[ "$(uname -s)" == "Linux" ]];
         then
-          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda gxx_linux-64 hdf5 lz4 zlib hdf5-static scikit-bio-binaries make curl
+          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge gxx_linux-64 hdf5 lz4 zlib hdf5-static scikit-bio-binaries make curl
         else
          if [[ "x`conda info |awk '/platform/{print $3}'`" == "xosx-64" ]];
          then
-          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda clangxx_osx-64 hdf5 lz4 hdf5-static scikit-bio-binaries make curl
+          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge clangxx_osx-64 hdf5 lz4 hdf5-static scikit-bio-binaries make curl
          else
-          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda clangxx_osx-arm64 hdf5 lz4 hdf5-static scikit-bio-binaries make curl
+          conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge clangxx_osx-arm64 hdf5 lz4 hdf5-static scikit-bio-binaries make curl
          fi
         fi 
         conda clean --yes -t

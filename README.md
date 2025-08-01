@@ -61,13 +61,13 @@ To install, first the binary needs to be compiled. This assumes that the HDF5 to
 
 On Linux:
 ```
-conda create --strict-channel-priority -n unifrac-binaries -c conda-forge -c bioconda gxx_linux-64 hdf5 lz4 zlib hdf5-static scikit-bio-binaries make curl
+conda create --strict-channel-priority -n unifrac-binaries -c conda-forge gxx_linux-64 hdf5 lz4 zlib hdf5-static scikit-bio-binaries make curl
 conda activate unifrac-binaries
 ```
 
 On MacOs:
 ```
-conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge -c bioconda clangxx_osx-arm64 hdf5 lz4 hdf5-static scikit-bio-binaries make curl
+conda create -q --yes --strict-channel-priority -n unifrac -c conda-forge clangxx_osx-arm64 hdf5 lz4 hdf5-static scikit-bio-binaries make curl
 conda activate unifrac-binaries
 
 ```
