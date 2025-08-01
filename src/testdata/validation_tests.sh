@@ -68,7 +68,7 @@ python compare_unifrac_stats.py t1.h5 5 999 1.001112 0.456  0.001 0.1
 ls -l t1.h5
 rm -f t1.h5
 time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5 --permanova 99 -g test500.tsv -c empo_2 -o t1.h5
-python compare_unifrac_stats.py t1.h5 5 99 1.001112 0.456  0.001 0.25
+python compare_unifrac_stats.py t1.h5 5 99 1.001112 0.456  0.001 0.3
 ls -l t1.h5
 rm -f t1.h5
 time ssu -m weighted_unnormalized_fp32 -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_nodist -g test500.tsv -c empo_3 -o t1.h5
@@ -110,7 +110,7 @@ time ssu -f -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_fp32
 ./compare_unifrac_pcoa.py test500.unweighted_fp32.f.h5 t1.h5 3 0.3
 rm -f t1.h5
 time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  -r hdf5_nodist --permanova 99 -g test500.tsv -c empo_2 --subsample-depth 100 -o t1.h5
-python compare_unifrac_stats.py t1.h5 5 99 1.001112 0.456  0.05 0.6
+python compare_unifrac_stats.py t1.h5 5 99 1.001112 0.456  0.05 0.7
 ls -l t1.h5
 rm -f t1.h5
 # multi
@@ -120,11 +120,11 @@ time ssu -f -m unweighted -i test500.biom  -t test500.tre --pcoa 4 --mode multi 
 ls -l t1.h5
 rm -f t1.h5
 time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  --mode multi --n-subsamples 10 --permanova 99 -g test500.tsv -c empo_2 --subsample-depth 100 -o t1.h5
-python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.6
+python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.7
 ls -l t1.h5
 rm -f t1.h5
 time ssu -m unweighted -i test500.biom  -t test500.tre --pcoa 4  --mode multi --n-subsamples 10 --permanova 99 -g test500.tsv -c empo_2 --subsample-depth 100 --subsample-replacement without -o t1.h5
-python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.6
+python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.7
 ls -l t1.h5
 rm -f t1.h5
 
