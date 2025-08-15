@@ -664,10 +664,10 @@ namespace SUCMP_NM {
                     const double * _sample_counts,
                     unsigned int _max_embs, const su::task_parameters* _task_p)
         : UnifracTaskBase<TFloat,TEmb>(_dm_stripes, _dm_stripes_total, _max_embs, _task_p)
-        , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize))
+        , embedded_counts((TFloat *) malloc(sizeof(TFloat)*this->embsize*this->dm_stripes.n_samples_r))
         , sample_total_counts(initialize_sample_counts(this->dm_stripes.n_samples, this->dm_stripes.n_samples_r, _task_p, _sample_counts))
         {
-          acc_create_buf(embedded_counts, 0, this->embsize);
+          acc_create_buf(embedded_counts, 0, this->embsize*this->dm_stripes.n_samples_r);
           acc_copyin_buf(const_cast<TFloat *>(sample_total_counts), 0 , this->dm_stripes.n_samples_r); // const after the contructor
         }
 
@@ -677,7 +677,7 @@ namespace SUCMP_NM {
        virtual ~UnifracVawTask() 
        {
           acc_destroy_buf(const_cast<TFloat *>(sample_total_counts), 0 , this->dm_stripes.n_samples_r);
-          acc_destroy_buf(embedded_counts, 0, this->embsize);
+          acc_destroy_buf(embedded_counts, 0, this->embsize*this->dm_stripes.n_samples_r);
 
           free(const_cast<TFloat *>(sample_total_counts)); // while const for the life of this, not const past its lifetime
           free(embedded_counts);
