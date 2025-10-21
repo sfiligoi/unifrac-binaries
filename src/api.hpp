@@ -914,6 +914,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
                unsigned int stripe_start,
                unsigned int stripe_stop,
                bool bypass_tips,
+               bool normalize_sample_counts,
                unsigned int n_tasks);
 
 #endif
