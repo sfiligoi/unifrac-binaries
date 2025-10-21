@@ -20,7 +20,8 @@
            unsigned int start;          // starting stripe
            unsigned int stop;           // stopping stripe
            unsigned int tid;            // thread ID
-           bool bypass_tips;    // avoid compute at tips 
+           bool bypass_tips;            // avoid compute at tips 
+           bool normalize_sample_counts; // normalize sample counts in set_proportions 
            
            // task specific arguments below
            double g_unifrac_alpha;      // generalized unifrac alpha

@@ -1336,7 +1336,7 @@ void test_unnormalized_weighted_unifrac() {
     std::vector<double*> strides_total = su::make_strides(6);
 
     su::task_parameters task_p;
-    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false;
+    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false; task_p.normalize_sample_counts = true;
 
     std::vector<su::task_parameters> tasks;
     tasks.push_back(task_p);
@@ -1396,7 +1396,7 @@ void test_generalized_unifrac() {
     std::vector<double*> w_strides = su::make_strides(6);
     std::vector<double*> w_strides_total = su::make_strides(6);
     su::task_parameters w_task_p;
-    w_task_p.start = 0; w_task_p.stop = 3; w_task_p.tid = 0; w_task_p.n_samples = 6; w_task_p.bypass_tips = false;
+    w_task_p.start = 0; w_task_p.stop = 3; w_task_p.tid = 0; w_task_p.n_samples = 6; w_task_p.bypass_tips = false; w_task_p.normalize_sample_counts = true;
     w_task_p.g_unifrac_alpha = 1.0;
 
     std::vector<su::task_parameters> tasks;
@@ -1430,7 +1430,7 @@ void test_generalized_unifrac() {
     std::vector<double*> d0_strides = su::make_strides(6);
     std::vector<double*> d0_strides_total = su::make_strides(6);
     su::task_parameters d0_task_p;
-    d0_task_p.start = 0; d0_task_p.stop = 3; d0_task_p.tid = 0; d0_task_p.n_samples = 6; d0_task_p.bypass_tips = false;
+    d0_task_p.start = 0; d0_task_p.stop = 3; d0_task_p.tid = 0; d0_task_p.n_samples = 6; d0_task_p.bypass_tips = false; d0_task_p.normalize_sample_counts = true;
     d0_task_p.g_unifrac_alpha = 0.0;
 
     tasks.clear();
@@ -1464,7 +1464,7 @@ void test_generalized_unifrac() {
     std::vector<double*> d05_strides = su::make_strides(6);
     std::vector<double*> d05_strides_total = su::make_strides(6);
     su::task_parameters d05_task_p;
-    d05_task_p.start = 0; d05_task_p.stop = 3; d05_task_p.tid = 0; d05_task_p.n_samples = 6; d05_task_p.bypass_tips = false;
+    d05_task_p.start = 0; d05_task_p.stop = 3; d05_task_p.tid = 0; d05_task_p.n_samples = 6; d05_task_p.bypass_tips = false; d05_task_p.normalize_sample_counts = true;
     d05_task_p.g_unifrac_alpha = 0.5;
 
     tasks.clear();
@@ -1566,7 +1566,7 @@ void test_vaw_unifrac_weighted_normalized() {
     std::vector<double*> w_strides = su::make_strides(6);
     std::vector<double*> w_strides_total = su::make_strides(6);
     su::task_parameters w_task_p;
-    w_task_p.start = 0; w_task_p.stop = 3; w_task_p.tid = 0; w_task_p.n_samples = 6; w_task_p.bypass_tips = false;
+    w_task_p.start = 0; w_task_p.stop = 3; w_task_p.tid = 0; w_task_p.n_samples = 6; w_task_p.bypass_tips = false; w_task_p.normalize_sample_counts = true;
     w_task_p.g_unifrac_alpha = 1.0;
 
     std::vector<su::task_parameters> tasks;
@@ -1720,7 +1720,7 @@ void test_unweighted_unifrac() {
     std::vector<double*> strides_total = su::make_strides(6);
 
     su::task_parameters task_p;
-    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false;
+    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false; task_p.normalize_sample_counts = true;
 
     std::vector<su::task_parameters> tasks;
     tasks.push_back(task_p);
@@ -1779,7 +1779,7 @@ void test_unweighted_unifrac_fast() {
     std::vector<double*> strides_total = su::make_strides(6);
 
     su::task_parameters task_p;
-    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = true;
+    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = true; task_p.normalize_sample_counts = true;
 
     std::vector<su::task_parameters> tasks;
     tasks.push_back(task_p);
@@ -1838,7 +1838,7 @@ void test_unnormalized_unweighted_unifrac() {
     std::vector<double*> strides_total = su::make_strides(6);
 
     su::task_parameters task_p;
-    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false;
+    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false; task_p.normalize_sample_counts = true;
 
     std::vector<su::task_parameters> tasks;
     tasks.push_back(task_p);
@@ -1897,7 +1897,7 @@ void test_normalized_weighted_unifrac() {
     std::vector<double*> strides_total = su::make_strides(6);
 
     su::task_parameters task_p;
-    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false;
+    task_p.start = 0; task_p.stop = 3; task_p.tid = 0; task_p.n_samples = 6; task_p.bypass_tips = false; task_p.normalize_sample_counts = true;
 
 
     std::vector<su::task_parameters> tasks;

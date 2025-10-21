@@ -448,6 +448,9 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
                bool bypass_tips,
                unsigned int n_tasks) {
 
+    // TODO: Make this a parameter
+    bool normalize_sample_counts = true;
+
     // compute from start to the max possible stripe if stop doesn't make sense
     if(stripe_stop <= stripe_start)
         stripe_stop = (n_samples + 1) / 2;
@@ -470,6 +473,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
         tasks[tid].tid = tid;
         tasks[tid].start = start; // stripe start
         tasks[tid].bypass_tips = bypass_tips;
+        tasks[tid].normalize_sample_counts = normalize_sample_counts;
 
         if(tid < n_fullbins) {
             tasks[tid].stop = start + fullchunk;  // stripe end
