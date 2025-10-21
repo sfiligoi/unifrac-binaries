@@ -446,10 +446,8 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
                unsigned int stripe_start,
                unsigned int stripe_stop,
                bool bypass_tips,
+	       bool normalize_sample_counts,
                unsigned int n_tasks) {
-
-    // TODO: Make this a parameter
-    bool normalize_sample_counts = true;
 
     // compute from start to the max possible stripe if stop doesn't make sense
     if(stripe_stop <= stripe_start)
@@ -508,7 +506,9 @@ compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tr
     std::vector<su::task_parameters> tasks(nthreads);
     std::vector<std::thread> threads(nthreads);
 
-    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
+    // TODO: Make this a parameter
+    bool normalize_sample_counts = true;
+    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, normalize_sample_counts, nthreads);
     su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
     TDBG_STEP("process_stripes")
@@ -555,7 +555,9 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
         exit(EXIT_FAILURE);
     }
 
-    set_tasks(tasks, alpha, table.n_samples, stripe_start, stripe_stop, bypass_tips, nthreads);
+    // TODO: Make this a parameter
+    bool normalize_sample_counts = true;
+    set_tasks(tasks, alpha, table.n_samples, stripe_start, stripe_stop, bypass_tips, normalize_sample_counts, nthreads);
     su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
     TDBG_STEP("process_stripes")
@@ -656,7 +658,9 @@ compute_status one_off_matrix_T(su::biom_interface &table, const su::BPTree &tre
       std::vector<su::task_parameters> tasks(nthreads);
       std::vector<std::thread> threads(nthreads);
 
-      set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, nthreads);
+      // TODO: Make this a parameter
+      bool normalize_sample_counts = true;
+      set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, normalize_sample_counts, nthreads);
       su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
 
       TDBG_STEP("process_stripes")
