@@ -488,7 +488,7 @@ void set_tasks(std::vector<su::task_parameters> &tasks,
 
 compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tree,
                              const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int nthreads, mat_t** result) {
+                             bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, mat_t** result) {
     SETUP_TDBG("one_off_inmem")
     SYNC_TREE_TABLE(tree, table)
     TDBG_STEP("sync_tree_table")
@@ -498,22 +498,19 @@ compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tr
     std::vector<double*> dm_stripes(stripe_stop);
     std::vector<double*> dm_stripes_total(stripe_stop);
 
-    if(nthreads > dm_stripes.size()) {
-        fprintf(stderr, "More threads were requested than stripes. Using %zd threads.\n", long(dm_stripes.size()));
-        nthreads = dm_stripes.size();
+    if(n_substeps > dm_stripes.size()) {
+        fprintf(stderr, "More substeps were requested than stripes. Using %zd substeps.\n", long(dm_stripes.size()));
+        n_substeps = dm_stripes.size();
     }
 
-    std::vector<su::task_parameters> tasks(nthreads);
-    std::vector<std::thread> threads(nthreads);
+    std::vector<su::task_parameters> tasks(n_substeps);
 
-    // TODO: Make this a parameter
-    bool normalize_sample_counts = true;
-    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, normalize_sample_counts, nthreads);
-    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
+    set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, normalize_sample_counts, n_substeps);
+    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, tasks);
 
     TDBG_STEP("process_stripes")
     initialize_mat(*result, table, true);  // true -> is_upper_triangle
-    for(unsigned int tid = 0; tid < threads.size(); tid++) {
+    for(unsigned int tid = 0; tid < n_substeps; tid++) {
         su::stripes_to_condensed_form(dm_stripes,table.n_samples,(*result)->condensed_form,tasks[tid].start,tasks[tid].stop);
     }
 
@@ -523,10 +520,10 @@ compute_status one_off_inmem_cpp(su::biom_interface &table, const su::BPTree &tr
     return okay;
 }
 
-compute_status partial(const char* biom_filename, const char* tree_filename,
-                       const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
-                       unsigned int nthreads, unsigned int stripe_start, unsigned int stripe_stop,
-                       partial_mat_t** result) {
+compute_status partial_v3(const char* biom_filename, const char* tree_filename,
+                          const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips, bool normalize_sample_counts,
+                          unsigned int n_substeps, unsigned int stripe_start, unsigned int stripe_stop,
+                          partial_mat_t** result) {
 
     SETUP_TDBG("partial")
     CHECK_FILE(biom_filename, table_missing)
@@ -542,23 +539,20 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
     std::vector<double*> dm_stripes((table.n_samples + 1) / 2);
     std::vector<double*> dm_stripes_total((table.n_samples + 1) / 2);
 
-    if(nthreads > dm_stripes.size()) {
-        fprintf(stderr, "More threads were requested than stripes. Using %zd threads.\n", long(dm_stripes.size()));
-        nthreads = dm_stripes.size();
+    if(n_substeps > dm_stripes.size()) {
+        fprintf(stderr, "More substeps were requested than stripes. Using %zd substeps.\n", long(dm_stripes.size()));
+        n_substeps = dm_stripes.size();
     }
 
-    std::vector<su::task_parameters> tasks(nthreads);
-    std::vector<std::thread> threads(nthreads);
+    std::vector<su::task_parameters> tasks(n_substeps);
 
     if(((table.n_samples + 1) / 2) < stripe_stop) {
         fprintf(stderr, "Stopping stripe is out-of-bounds, max %d\n", (table.n_samples + 1) / 2);
         exit(EXIT_FAILURE);
     }
 
-    // TODO: Make this a parameter
-    bool normalize_sample_counts = true;
-    set_tasks(tasks, alpha, table.n_samples, stripe_start, stripe_stop, bypass_tips, normalize_sample_counts, nthreads);
-    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
+    set_tasks(tasks, alpha, table.n_samples, stripe_start, stripe_stop, bypass_tips, normalize_sample_counts, n_substeps);
+    su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, tasks);
 
     TDBG_STEP("process_stripes")
     initialize_partial_mat(*result, table, dm_stripes, stripe_start, stripe_stop, true);  // true -> is_upper_triangle
@@ -566,6 +560,16 @@ compute_status partial(const char* biom_filename, const char* tree_filename,
     destroy_stripes(dm_stripes, dm_stripes_total, table.n_samples, stripe_start, stripe_stop);
 
     return okay;
+}
+
+compute_status partial(const char* biom_filename, const char* tree_filename,
+                       const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
+                       unsigned int n_substeps, unsigned int stripe_start, unsigned int stripe_stop,
+                       partial_mat_t** result) {
+  const bool normalize_sample_counts = true;
+  return partial_v3(biom_filename, tree_filename, unifrac_method,
+		    variance_adjust, alpha, bypass_tips, normalize_sample_counts, n_substeps,
+		    stripe_start, stripe_stop, result);
 }
 
 compute_status faith_pd_one_off(const char* biom_filename, const char* tree_filename,
@@ -604,9 +608,9 @@ compute_status faith_pd_one_off(const char* biom_filename, const char* tree_file
     return okay;
 }
 
-compute_status one_off(const char* biom_filename, const char* tree_filename,
-                       const char* unifrac_method, bool variance_adjust, double alpha,
-                       bool bypass_tips, unsigned int nthreads, mat_t** result) {
+compute_status one_off_v3(const char* biom_filename, const char* tree_filename,
+                          const char* unifrac_method, bool variance_adjust, double alpha,
+                          bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, mat_t** result) {
     SETUP_TDBG("one_off")
     CHECK_FILE(biom_filename, table_missing)
     CHECK_FILE(tree_filename, tree_missing)
@@ -614,12 +618,19 @@ compute_status one_off(const char* biom_filename, const char* tree_filename,
 
     TDBG_STEP("load_files")
     // condensed form
-    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads, result);
+    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, normalize_sample_counts, n_substeps, result);
 }
 
-compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+compute_status one_off(const char* biom_filename, const char* tree_filename,
+                       const char* unifrac_method, bool variance_adjust, double alpha,
+                       bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+    const bool normalize_sample_counts = true;
+    return one_off_v3(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,result);
+}
+
+compute_status one_off_wtree_v3(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                const char* unifrac_method, bool variance_adjust, double alpha,
+                                bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, mat_t** result) {
     SETUP_TDBG("one_off_wtree")
     if (tree_data==NULL) return tree_missing;
     CHECK_FILE(biom_filename, table_missing)
@@ -629,14 +640,25 @@ compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* t
 
     TDBG_STEP("load_files")
     // condensed form
-    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, n_substeps, result);
+    return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, normalize_sample_counts, n_substeps, result);
 }
+
+compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
+                             const char* unifrac_method, bool variance_adjust, double alpha,
+                             bool bypass_tips, unsigned int n_substeps, mat_t** result) {
+    const bool normalize_sample_counts = true;
+    return one_off_wtree_v3(biom_filename,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,result);
+}
+
+/*
+ * ==============================   one_off_matrix
+ */
 
 // TMat mat_full_fp32_t
 template<class TReal, class TMat>
 compute_status one_off_matrix_T(su::biom_interface &table, const su::BPTree &tree,
                                 const char* unifrac_method, bool variance_adjust, double alpha,
-                                bool bypass_tips, unsigned int nthreads,
+                                bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                 const char *mmap_dir,  
                                 TMat** result) {
     SETUP_TDBG("one_off_matrix_inmem")
@@ -655,13 +677,10 @@ compute_status one_off_matrix_T(su::biom_interface &table, const su::BPTree &tre
       std::vector<double*> dm_stripes(stripe_stop);
       std::vector<double*> dm_stripes_total(stripe_stop);
 
-      std::vector<su::task_parameters> tasks(nthreads);
-      std::vector<std::thread> threads(nthreads);
+      std::vector<su::task_parameters> tasks(n_substeps);
 
-      // TODO: Make this a parameter
-      bool normalize_sample_counts = true;
-      set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, normalize_sample_counts, nthreads);
-      su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, threads, tasks);
+      set_tasks(tasks, alpha, table.n_samples, 0, stripe_stop, bypass_tips, normalize_sample_counts, n_substeps);
+      su::process_stripes(table, tree_sheared, method, variance_adjust, dm_stripes, dm_stripes_total, tasks);
 
       TDBG_STEP("process_stripes")
       initialize_partial_mat(partial_mat, table, dm_stripes, 0, stripe_stop, true);  // true -> is_upper_triangle
@@ -698,27 +717,27 @@ compute_status one_off_matrix_T(su::biom_interface &table, const su::BPTree &tre
 
 
 template<class TReal, class TMat>
-compute_status one_off_matrix_v2_T(su::biom_inmem &table, const su::BPTree &tree,
+compute_status one_off_matrix_v3_T(su::biom_inmem &table, const su::BPTree &tree,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
-                                   bool bypass_tips, unsigned int nthreads,
+                                   bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                    unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                    TMat** result) {
-    SETUP_TDBG("one_off_matrix_inmem_v2")
+    SETUP_TDBG("one_off_matrix_inmem_v3")
     if (subsample_depth>0) {
         su::skbio_biom_subsampled table_subsampled(table, subsample_with_replacement, subsample_depth);
         if ((table_subsampled.n_samples==0) || (table_subsampled.n_obs==0)) {
            return table_empty;
         }
         TDBG_STEP("subsample")
-        return one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
+        return one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,mmap_dir,result);
     } else {
-        return one_off_matrix_T<TReal,TMat>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,mmap_dir,result);
+        return one_off_matrix_T<TReal,TMat>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,mmap_dir,result);
     }
 }
 
-compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
+compute_status one_off_matrix_v3(const char* biom_filename, const char* tree_filename,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                 bool bypass_tips, unsigned int nthreads,
+                                 bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                  mat_full_fp64_t** result) {
     SETUP_TDBG("one_off_matrix")
@@ -726,12 +745,21 @@ compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_fil
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
-    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+    return one_off_matrix_v3_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
-compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
+compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, unsigned int n_substeps,
+                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                 mat_full_fp64_t** result) {
+    bool normalize_sample_counts = true;
+    return one_off_matrix_v3(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_fp32_v3(const char* biom_filename, const char* tree_filename,
                                       const char* unifrac_method, bool variance_adjust, double alpha,
-                                      bool bypass_tips, unsigned int nthreads,
+                                      bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                       mat_full_fp32_t** result) {
     SETUP_TDBG("one_off_matrix_fp32")
@@ -739,13 +767,22 @@ compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tre
     CHECK_FILE(tree_filename, tree_missing)
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
-    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+    return one_off_matrix_v3_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, unsigned int n_substeps,
+                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                      mat_full_fp32_t** result) {
+    bool normalize_sample_counts = true;
+    return one_off_matrix_fp32_v3(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 /* As above, but from a pre-loaded tree object */
-compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+compute_status one_off_matrix_v3t(const char* biom_filename, const opaque_bptree_t* tree_data,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                 bool bypass_tips, unsigned int nthreads,
+                                 bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                  mat_full_fp64_t** result) {
     SETUP_TDBG("one_off_matrix_wtree")
@@ -755,12 +792,21 @@ compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")
-    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+    return one_off_matrix_v3_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
-compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, unsigned int n_substeps,
+                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                 mat_full_fp64_t** result) {
+    bool normalize_sample_counts = true;
+    return one_off_matrix_v3t(biom_filename,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_fp32_v3t(const char* biom_filename, const opaque_bptree_t* tree_data,
                                       const char* unifrac_method, bool variance_adjust, double alpha,
-                                      bool bypass_tips, unsigned int nthreads,
+                                      bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                       mat_full_fp32_t** result) {
     SETUP_TDBG("one_off_matrix_fp32_wtree")
@@ -770,7 +816,16 @@ compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_b
     su::biom table(biom_filename);
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")
-    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+    return one_off_matrix_v3_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, unsigned int n_substeps,
+                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                      mat_full_fp32_t** result) {
+    bool normalize_sample_counts = true;
+    return one_off_matrix_fp32_v3t(biom_filename,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 // Old interface
@@ -791,9 +846,9 @@ compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_f
     return one_off_matrix_fp32_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
 }
 
-compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+compute_status one_off_matrix_inmem_v3(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                        const char* unifrac_method, bool variance_adjust, double alpha,
-                                       bool bypass_tips, unsigned int nthreads,
+                                       bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                        mat_full_fp64_t** result) {
     SETUP_TDBG("one_off_matrix_inmem")
@@ -827,7 +882,16 @@ compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const s
 
     VALIDATE_TREE_TABLE(tree,table)
 
-    return one_off_matrix_v2_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+    return one_off_matrix_v3_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, unsigned int n_substeps,
+                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                       mat_full_fp64_t** result) {
+    bool normalize_sample_counts = true;
+    return one_off_matrix_inmem_v3(table_data,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 // Old interface
@@ -839,9 +903,9 @@ compute_status one_off_inmem(const support_biom_t *table_data, const support_bpt
                                    result);
 }
 
-compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+compute_status one_off_matrix_inmem_fp32_v3(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                             const char* unifrac_method, bool variance_adjust, double alpha,
-                                            bool bypass_tips, unsigned int nthreads,
+                                            bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                             mat_full_fp32_t** result) {
     SETUP_TDBG("one_off_matrix_inmem_fp32")
@@ -875,7 +939,16 @@ compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, co
 
     VALIDATE_TREE_TABLE(tree,table)
 
-    return one_off_matrix_v2_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,subsample_depth,subsample_with_replacement,mmap_dir,result);
+    return one_off_matrix_v3_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
+}
+
+compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, unsigned int n_substeps,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            mat_full_fp32_t** result) {
+    bool normalize_sample_counts = true;
+    return one_off_matrix_inmem_fp32_v3(table_data,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 // Old interface
@@ -887,11 +960,15 @@ compute_status one_off_inmem_fp32(const support_biom_t *table_data, const suppor
                                         result);
 }
 
+/*
+ * ==============================   one_dense_pair
+ */
+
 /* Compute UniFrac from a pair of dense vectors */
-inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+static inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
 		                  const su::BPTree &tree,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, double* result) {
+                                  bool bypass_tips, bool normalize_sample_counts, double* result) {
     SETUP_TDBG("one_dense_pair")
     bool fp64;
     compute_status rc = is_fp64_method(unifrac_method, fp64);
@@ -911,14 +988,14 @@ inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, 
     TDBG_STEP("load_files")
     if (fp64) {
       mat_full_fp64_t* matrix_result = NULL;
-      rc = one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,1,NULL,&matrix_result);
+      rc = one_off_matrix_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,1,NULL,&matrix_result);
       if (rc==okay) {
          *result = matrix_result->matrix[1];
 	 destroy_mat_full_fp64(&matrix_result);
       }
     } else {
       mat_full_fp32_t* matrix_result = NULL;
-      rc = one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,1,NULL,&matrix_result);
+      rc = one_off_matrix_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,1,NULL,&matrix_result);
       if (rc==okay) {
          *result = matrix_result->matrix[1];
 	 destroy_mat_full_fp32(&matrix_result);
@@ -927,21 +1004,29 @@ inline compute_status one_dense_pair(unsigned int n_obs, const char ** obs_ids, 
     return rc;
 }
 
-compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+compute_status one_dense_pair_v3t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
 		                  const opaque_bptree_t* tree_data,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, double* result) {
+                                  bool bypass_tips, bool normalize_sample_counts, double* result) {
     if (tree_data==NULL) return tree_missing;
     const su::BPTree &tree = *( (const su::BPTree*) tree_data);
     return one_dense_pair(n_obs,obs_ids,sample1,sample2,
                           tree,
-                          unifrac_method,variance_adjust,alpha,bypass_tips,result);
+                          unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
 }
 
-compute_status one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                  const opaque_bptree_t* tree_data,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, double* result) {
+    bool normalize_sample_counts = true;
+    return one_dense_pair_v3t(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
+}
+
+compute_status one_dense_pair_v3(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
 		                 const support_bptree_t* tree_data,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                 bool bypass_tips, double* result) {
+                                 bool bypass_tips, bool normalize_sample_counts, double* result) {
     if (tree_data==NULL) return tree_missing;
     su::BPTree tree(tree_data->structure,
                     tree_data->lengths,
@@ -950,7 +1035,15 @@ compute_status one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, cons
 
     return one_dense_pair(n_obs,obs_ids,sample1,sample2,
                           tree,
-                          unifrac_method,variance_adjust,alpha,bypass_tips,result);
+                          unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
+}
+
+compute_status one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                 const support_bptree_t* tree_data,
+                                 const char* unifrac_method, bool variance_adjust, double alpha,
+                                 bool bypass_tips, double* result) {
+    bool normalize_sample_counts = true;
+    return one_dense_pair_v3(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
 }
 
 // Internal 
@@ -1019,9 +1112,9 @@ compute_status compute_permanova_fp32(const char *grouping_filename, unsigned in
   return compute_permanova_T<float,mat_full_fp32_t>(grouping_filename,n_columns,columns,result,permanova_perms,fstats,pvalues,n_groups);
 }
 
-compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+compute_status unifrac_to_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                   const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, unsigned int threads, const char* format,
+                                  bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, const char* format,
                                   unsigned int subsample_depth, bool subsample_with_replacement,
                                   unsigned int pcoa_dims,
                                   unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
@@ -1036,9 +1129,9 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
     if (rc==okay) {
       if (fp64) {
         mat_full_fp64_t* result = NULL;
-        rc = one_off_matrix_v2(biom_filename, tree_filename,
+        rc = one_off_matrix_v3(biom_filename, tree_filename,
                                unifrac_method, variance_adjust, alpha,
-                               bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
+                               bypass_tips, normalize_sample_counts, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir,
                                &result);
         TDBG_STEP("matrix_fp64 computed")
 
@@ -1090,9 +1183,9 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
         }
       } else {
         mat_full_fp32_t* result = NULL;
-        rc = one_off_matrix_fp32_v2(biom_filename, tree_filename,
+        rc = one_off_matrix_fp32_v3(biom_filename, tree_filename,
                                     unifrac_method, variance_adjust, alpha,
-                                    bypass_tips, threads, subsample_depth, subsample_with_replacement, mmap_dir,
+                                    bypass_tips, normalize_sample_counts, n_substeps, subsample_depth, subsample_with_replacement, mmap_dir,
                                     &result);
         TDBG_STEP("matrix_fp32 computed")
      
@@ -1150,6 +1243,19 @@ compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_fi
 }
 
 // for backwards compatibility
+compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                  bool bypass_tips, unsigned int n_substeps, const char* format,
+                                  unsigned int subsample_depth, bool subsample_with_replacement,
+                                  unsigned int pcoa_dims,
+                                  unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                  const char *mmap_dir) {
+  bool normalize_sample_counts = true;
+  return unifrac_to_file_v3(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,
+		            bypass_tips,normalize_sample_counts,n_substeps,format,subsample_depth,subsample_with_replacement,
+			    pcoa_dims,pcoa_dims,grouping_filename,grouping_columns,mmap_dir);
+}
+
 compute_status unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                const char* unifrac_method, bool variance_adjust, double alpha,
                                bool bypass_tips, unsigned int threads, const char* format,
@@ -1438,7 +1544,7 @@ template<class TReal, class TMat>
 compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
                                         const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
-                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
+                                        bool bypass_tips, bool normalize_sample_counts, unsigned int nsubsteps, const char* format,
                                         unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
                                         unsigned int pcoa_dims,
                                         unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
@@ -1495,7 +1601,7 @@ compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
         TDBG_STEP("subsampled")
 
         TMat* result = NULL;
-        rc = one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,nsubsteps,mmap_dir,&result);
+        rc = one_off_matrix_T<TReal,TMat>(table_subsampled,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,nsubsteps,mmap_dir,&result);
         if (rc!=okay) break;
         TDBG_STEP("matrix computed")
 
@@ -1556,9 +1662,9 @@ compute_status unifrac_multi_to_file_T(hid_t real_id, const bool save_dist,
     return rc;
 }
 
-compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+compute_status unifrac_multi_to_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
-                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
+                                        bool bypass_tips, bool normalize_sample_counts, unsigned int nsubsteps, const char* format,
                                         unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
                                         unsigned int pcoa_dims,
                                         unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
@@ -1576,7 +1682,7 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
       rc = unifrac_multi_to_file_T<double,mat_full_fp64_t>(H5T_IEEE_F64LE, save_dist,
                                      biom_filename, tree_filename, out_filename,
                                      unifrac_method, variance_adjust, alpha,
-                                     bypass_tips, nsubsteps, format,
+                                     bypass_tips, normalize_sample_counts, nsubsteps, format,
                                      n_subsamples, subsample_depth, subsample_with_replacement,
                                      pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                                      mmap_dir);
@@ -1584,7 +1690,7 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
       rc = unifrac_multi_to_file_T<float,mat_full_fp32_t>(H5T_IEEE_F32LE, save_dist,
                                      biom_filename, tree_filename, out_filename,
                                      unifrac_method, variance_adjust, alpha,
-                                     bypass_tips, nsubsteps, format,
+                                     bypass_tips, normalize_sample_counts, nsubsteps, format,
                                      n_subsamples, subsample_depth, subsample_with_replacement,
                                      pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
                                      mmap_dir);
@@ -1593,6 +1699,17 @@ compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* t
    return rc;
 }
 
+compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
+                                        unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir) {
+    bool normalize_sample_counts = true;
+    return unifrac_multi_to_file_v3(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,nsubsteps,format,
+		                    n_subsamples,subsample_depth,subsample_with_replacement,pcoa_dims,permanova_perms,grouping_filename,grouping_columns,mmap_dir);
+}
 
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
