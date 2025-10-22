@@ -562,16 +562,6 @@ compute_status partial_v3(const char* biom_filename, const char* tree_filename,
     return okay;
 }
 
-compute_status partial(const char* biom_filename, const char* tree_filename,
-                       const char* unifrac_method, bool variance_adjust, double alpha, bool bypass_tips,
-                       unsigned int n_substeps, unsigned int stripe_start, unsigned int stripe_stop,
-                       partial_mat_t** result) {
-  const bool normalize_sample_counts = true;
-  return partial_v3(biom_filename, tree_filename, unifrac_method,
-		    variance_adjust, alpha, bypass_tips, normalize_sample_counts, n_substeps,
-		    stripe_start, stripe_stop, result);
-}
-
 compute_status faith_pd_one_off(const char* biom_filename, const char* tree_filename,
                                 r_vec** result){
     SETUP_TDBG("faith_pd_one_off")
@@ -621,13 +611,6 @@ compute_status one_off_v3(const char* biom_filename, const char* tree_filename,
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, normalize_sample_counts, n_substeps, result);
 }
 
-compute_status one_off(const char* biom_filename, const char* tree_filename,
-                       const char* unifrac_method, bool variance_adjust, double alpha,
-                       bool bypass_tips, unsigned int n_substeps, mat_t** result) {
-    const bool normalize_sample_counts = true;
-    return one_off_v3(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,result);
-}
-
 compute_status one_off_wtree_v3(const char* biom_filename, const opaque_bptree_t* tree_data,
                                 const char* unifrac_method, bool variance_adjust, double alpha,
                                 bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, mat_t** result) {
@@ -641,13 +624,6 @@ compute_status one_off_wtree_v3(const char* biom_filename, const opaque_bptree_t
     TDBG_STEP("load_files")
     // condensed form
     return one_off_inmem_cpp(table, tree, unifrac_method, variance_adjust, alpha, bypass_tips, normalize_sample_counts, n_substeps, result);
-}
-
-compute_status one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int n_substeps, mat_t** result) {
-    const bool normalize_sample_counts = true;
-    return one_off_wtree_v3(biom_filename,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,result);
 }
 
 /*
@@ -748,15 +724,6 @@ compute_status one_off_matrix_v3(const char* biom_filename, const char* tree_fil
     return one_off_matrix_v3_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
-compute_status one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
-                                 const char* unifrac_method, bool variance_adjust, double alpha,
-                                 bool bypass_tips, unsigned int n_substeps,
-                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                 mat_full_fp64_t** result) {
-    bool normalize_sample_counts = true;
-    return one_off_matrix_v3(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
 compute_status one_off_matrix_fp32_v3(const char* biom_filename, const char* tree_filename,
                                       const char* unifrac_method, bool variance_adjust, double alpha,
                                       bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
@@ -768,15 +735,6 @@ compute_status one_off_matrix_fp32_v3(const char* biom_filename, const char* tre
     PARSE_TREE_TABLE(tree_filename, biom_filename)
     TDBG_STEP("load_files")
     return one_off_matrix_v3_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
-compute_status one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
-                                      const char* unifrac_method, bool variance_adjust, double alpha,
-                                      bool bypass_tips, unsigned int n_substeps,
-                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                      mat_full_fp32_t** result) {
-    bool normalize_sample_counts = true;
-    return one_off_matrix_fp32_v3(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
 /* As above, but from a pre-loaded tree object */
@@ -795,15 +753,6 @@ compute_status one_off_matrix_v3t(const char* biom_filename, const opaque_bptree
     return one_off_matrix_v3_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
-compute_status one_off_matrix_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
-                                 const char* unifrac_method, bool variance_adjust, double alpha,
-                                 bool bypass_tips, unsigned int n_substeps,
-                                 unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                 mat_full_fp64_t** result) {
-    bool normalize_sample_counts = true;
-    return one_off_matrix_v3t(biom_filename,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
 compute_status one_off_matrix_fp32_v3t(const char* biom_filename, const opaque_bptree_t* tree_data,
                                       const char* unifrac_method, bool variance_adjust, double alpha,
                                       bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
@@ -817,33 +766,6 @@ compute_status one_off_matrix_fp32_v3t(const char* biom_filename, const opaque_b
     VALIDATE_TREE_TABLE(tree, table)
     TDBG_STEP("load_files")
     return one_off_matrix_v3_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
-compute_status one_off_matrix_fp32_v2t(const char* biom_filename, const opaque_bptree_t* tree_data,
-                                      const char* unifrac_method, bool variance_adjust, double alpha,
-                                      bool bypass_tips, unsigned int n_substeps,
-                                      unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                      mat_full_fp32_t** result) {
-    bool normalize_sample_counts = true;
-    return one_off_matrix_fp32_v3t(biom_filename,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
-// Old interface
-compute_status one_off_matrix(const char* biom_filename, const char* tree_filename,
-                              const char* unifrac_method, bool variance_adjust, double alpha,
-                              bool bypass_tips, unsigned int nthreads,
-                              const char *mmap_dir,
-                              mat_full_fp64_t** result) {
-    return one_off_matrix_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
-}
-
-// Old interface
-compute_status one_off_matrix_fp32(const char* biom_filename, const char* tree_filename,
-                                   const char* unifrac_method, bool variance_adjust, double alpha,
-                                   bool bypass_tips, unsigned int nthreads,
-                                   const char *mmap_dir,
-                                   mat_full_fp32_t** result) {
-    return one_off_matrix_fp32_v2(biom_filename,tree_filename,unifrac_method,variance_adjust,alpha,bypass_tips,nthreads,0,true,mmap_dir,result);
 }
 
 compute_status one_off_matrix_inmem_v3(const support_biom_t *table_data, const support_bptree_t *tree_data,
@@ -885,24 +807,6 @@ compute_status one_off_matrix_inmem_v3(const support_biom_t *table_data, const s
     return one_off_matrix_v3_T<double,mat_full_fp64_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
 }
 
-compute_status one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                                       const char* unifrac_method, bool variance_adjust, double alpha,
-                                       bool bypass_tips, unsigned int n_substeps,
-                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                       mat_full_fp64_t** result) {
-    bool normalize_sample_counts = true;
-    return one_off_matrix_inmem_v3(table_data,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
-// Old interface
-compute_status one_off_inmem(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                             const char* unifrac_method, bool variance_adjust, double alpha,
-                             bool bypass_tips, unsigned int nthreads, mat_full_fp64_t** result) {
-    return one_off_matrix_inmem_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
-                                   0, true,  NULL,
-                                   result);
-}
-
 compute_status one_off_matrix_inmem_fp32_v3(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                             const char* unifrac_method, bool variance_adjust, double alpha,
                                             bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
@@ -940,24 +844,6 @@ compute_status one_off_matrix_inmem_fp32_v3(const support_biom_t *table_data, co
     VALIDATE_TREE_TABLE(tree,table)
 
     return one_off_matrix_v3_T<float,mat_full_fp32_t>(table,tree,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
-compute_status one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                                            const char* unifrac_method, bool variance_adjust, double alpha,
-                                            bool bypass_tips, unsigned int n_substeps,
-                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
-                                            mat_full_fp32_t** result) {
-    bool normalize_sample_counts = true;
-    return one_off_matrix_inmem_fp32_v3(table_data,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,n_substeps,subsample_depth,subsample_with_replacement,mmap_dir,result);
-}
-
-// Old interface
-compute_status one_off_inmem_fp32(const support_biom_t *table_data, const support_bptree_t *tree_data,
-                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, unsigned int nthreads, mat_full_fp32_t** result) {
-    return one_off_matrix_inmem_fp32_v2(table_data, tree_data, unifrac_method, variance_adjust, alpha, bypass_tips, nthreads,
-                                        0, true,  NULL,
-                                        result);
 }
 
 /*
@@ -1015,14 +901,6 @@ compute_status one_dense_pair_v3t(unsigned int n_obs, const char ** obs_ids, con
                           unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
 }
 
-compute_status one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
-		                  const opaque_bptree_t* tree_data,
-                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, double* result) {
-    bool normalize_sample_counts = true;
-    return one_dense_pair_v3t(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
-}
-
 compute_status one_dense_pair_v3(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
 		                 const support_bptree_t* tree_data,
                                  const char* unifrac_method, bool variance_adjust, double alpha,
@@ -1036,14 +914,6 @@ compute_status one_dense_pair_v3(unsigned int n_obs, const char ** obs_ids, cons
     return one_dense_pair(n_obs,obs_ids,sample1,sample2,
                           tree,
                           unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
-}
-
-compute_status one_dense_pair_v2(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
-		                 const support_bptree_t* tree_data,
-                                 const char* unifrac_method, bool variance_adjust, double alpha,
-                                 bool bypass_tips, double* result) {
-    bool normalize_sample_counts = true;
-    return one_dense_pair_v3(n_obs,obs_ids,sample1,sample2,tree_data,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,result);
 }
 
 // Internal 
@@ -1240,28 +1110,6 @@ compute_status unifrac_to_file_v3(const char* biom_filename, const char* tree_fi
     }
 
     return rc;
-}
-
-// for backwards compatibility
-compute_status unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
-                                  const char* unifrac_method, bool variance_adjust, double alpha,
-                                  bool bypass_tips, unsigned int n_substeps, const char* format,
-                                  unsigned int subsample_depth, bool subsample_with_replacement,
-                                  unsigned int pcoa_dims,
-                                  unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
-                                  const char *mmap_dir) {
-  bool normalize_sample_counts = true;
-  return unifrac_to_file_v3(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,
-		            bypass_tips,normalize_sample_counts,n_substeps,format,subsample_depth,subsample_with_replacement,
-			    pcoa_dims,pcoa_dims,grouping_filename,grouping_columns,mmap_dir);
-}
-
-compute_status unifrac_to_file(const char* biom_filename, const char* tree_filename, const char* out_filename,
-                               const char* unifrac_method, bool variance_adjust, double alpha,
-                               bool bypass_tips, unsigned int threads, const char* format,
-                               unsigned int pcoa_dims, const char *mmap_dir) {
-  return unifrac_to_file_v2(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,bypass_tips,
-                            threads,format,0,true,pcoa_dims,0,NULL,NULL,mmap_dir);
 }
 
 herr_t write_hdf5_string(hid_t output_file_id,const char *dname, const char *str)
@@ -1699,18 +1547,6 @@ compute_status unifrac_multi_to_file_v3(const char* biom_filename, const char* t
    return rc;
 }
 
-compute_status unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
-                                        const char* unifrac_method, bool variance_adjust, double alpha,
-                                        bool bypass_tips, unsigned int nsubsteps, const char* format,
-                                        unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
-                                        unsigned int pcoa_dims,
-                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
-                                        const char *mmap_dir) {
-    bool normalize_sample_counts = true;
-    return unifrac_multi_to_file_v3(biom_filename,tree_filename,out_filename,unifrac_method,variance_adjust,alpha,bypass_tips,normalize_sample_counts,nsubsteps,format,
-		                    n_subsamples,subsample_depth,subsample_with_replacement,pcoa_dims,permanova_perms,grouping_filename,grouping_columns,mmap_dir);
-}
-
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
     output.open(output_filename);
@@ -1939,18 +1775,6 @@ IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_ful
                                             const char*  *stat_group_name_arr, const unsigned int *stat_group_count_arr) {
   return write_mat_from_matrix_hdf5_T<float,mat_full_fp32_t>(output_filename,result,H5T_IEEE_F32LE,pcoa_dims,save_dist,
                         stat_n_vals,stat_method_arr,stat_name_arr,stat_val_arr,stat_pval_arr,stat_perm_count_arr,stat_group_name_arr,stat_group_count_arr);
-}
-
-// Backwards compatibility
-IOStatus write_mat_from_matrix_hdf5_fp64(const char* output_filename, mat_full_fp64_t* result, unsigned int pcoa_dims, int save_dist) {
-  return write_mat_from_matrix_hdf5_fp64_v2(output_filename,result,pcoa_dims,save_dist,
-                             0,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
-}
-
-// Backwards compatibility
-IOStatus write_mat_from_matrix_hdf5_fp32(const char* output_filename, mat_full_fp32_t* result, unsigned int pcoa_dims, int save_dist) {
-  return write_mat_from_matrix_hdf5_fp32_v2(output_filename,result,pcoa_dims,save_dist,
-                             0,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 }
 
 IOStatus write_vec(const char* output_filename, r_vec* result) {
@@ -2486,6 +2310,9 @@ MergeStatus merge_partial_to_mmap_matrix_fp32(partial_dyn_mat_t* * partial_mats,
   return merge_partial_to_matrix_T<float,mat_full_fp32_t>(partial_mats, n_partials, mmap_dir, result);
 }
 
+// compat versions
+
+#include "api_compat.cpp"
 
 // skbio_alt pass-thoughs
 
