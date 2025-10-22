@@ -524,7 +524,6 @@ void su::process_stripes(biom_interface &table,
                          bool variance_adjust,
                          std::vector<double*> &dm_stripes,
                          std::vector<double*> &dm_stripes_total,
-                         std::vector<std::thread> &threads,
                          std::vector<su::task_parameters> &tasks) {
 
     // register a signal handler so we can ask the master thread for its
@@ -532,7 +531,7 @@ void su::process_stripes(biom_interface &table,
     register_report_status();
 
     // cannot use threading with openacc or openmp
-    for(unsigned int tid = 0; tid < threads.size(); tid++) {
+    for(unsigned int tid = 0; tid < tasks.size(); tid++) {
         if(variance_adjust)
             su::unifrac_vaw(
                                        std::ref(table),

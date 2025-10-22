@@ -105,7 +105,6 @@
                              bool variance_adjust,
                              std::vector<double*> &dm_stripes, 
                              std::vector<double*> &dm_stripes_total,
-                             std::vector<std::thread> &threads,
                              std::vector<su::task_parameters> &tasks);
     }
 #define __UNIFRAC 1

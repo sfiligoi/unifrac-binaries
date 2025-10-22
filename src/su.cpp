@@ -16,7 +16,7 @@ void usage() {
     std::cout << "usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-a alpha] [-f]  [--vaw]" << std::endl;
     std::cout << "    [--mode MODE] [--start starting-stripe] [--stop stopping-stripe] [--partial-pattern <glob>]" << std::endl;
     std::cout << "    [--n-partials number_of_partitions] [--report-bare] [--format|-r out-mode]" << std::endl;
-    std::cout << "    [--n-substeps n] [--pcoa dims] [--diskbuf path]" << std::endl;
+    std::cout << "    [--normalize-sample-counts true|false] [--n-substeps n] [--pcoa dims] [--diskbuf path]" << std::endl;
     std::cout << std::endl;
     std::cout << "    -i\t\tThe input BIOM table." << std::endl;
     std::cout << "    -t\t\tThe input phylogeny in newick." << std::endl;
@@ -44,6 +44,9 @@ void usage() {
     std::cout << "    --n-partials\t[OPTIONAL] If mode==partial-report, the number of partitions to compute." << std::endl;
     std::cout << "    --report-bare\t[OPTIONAL] If mode==partial-report, produce barebones output." << std::endl;
     std::cout << "    --n-substeps\t[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1." << std::endl;
+    std::cout << "    --normalize-sample-counts\t[OPTIONAL] Should it normalize sample counts?:" << std::endl;
+    std::cout << "    \t\t    true  : [DEFAULT] Do normalize, i.e. standard unifrac." << std::endl;
+    std::cout << "    \t\t    false : Do not normalize, i.e. absolute quant mode." << std::endl;
     std::cout << "    --format|-r\t[OPTIONAL]  Output format:" << std::endl;
     std::cout << "    \t\t    ascii : Original ASCII format. (default if mode==one-off)" << std::endl;
     std::cout << "    \t\t    hdf5 : HFD5 format.  May be fp32 or fp64, depending on method." << std::endl;
@@ -343,7 +346,7 @@ int mode_check_partial(const std::string &partial_pattern) {
 
 int mode_partial(std::string table_filename, std::string tree_filename, 
                  std::string output_filename, std::string method_string,
-                 bool vaw, double g_unifrac_alpha, bool bypass_tips, 
+                 bool vaw, double g_unifrac_alpha, bool bypass_tips, bool normalize_sample_counts,
                  unsigned int nsubsteps, int start_stripe, int stop_stripe) {
     if(output_filename.empty()) {
         err("output filename missing");
@@ -376,8 +379,9 @@ int mode_partial(std::string table_filename, std::string tree_filename,
 
     partial_mat_t *result = NULL;
     compute_status status;
-    status = partial(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                     vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe, &result);
+    status = partial_v3(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
+                        vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts,
+			nsubsteps, start_stripe, stop_stripe, &result);
     if(status != okay || result == NULL) {
         fprintf(stderr, "Compute failed in partial: %s\n", compute_status_messages[status]);
         exit(EXIT_FAILURE);
@@ -398,7 +402,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
                  const std::string &output_filename, const std::string &format_str, Format format_val, 
                  const std::string &method_string, unsigned int subsample_depth, bool subsample_with_replacement, unsigned int pcoa_dims,
                  unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
-                 bool vaw, double g_unifrac_alpha, bool bypass_tips,
+                 bool vaw, double g_unifrac_alpha, bool bypass_tips, bool normalize_sample_counts,
                  unsigned int nsubsteps, const std::string &mmap_dir) {
     if(output_filename.empty()) {
         err("output filename missing");
@@ -438,8 +442,8 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
         err("Subsampling not supported with ASCII output.");
         return EXIT_FAILURE;
       }
-      status = one_off(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                       vaw, g_unifrac_alpha, bypass_tips, nsubsteps, &result);
+      status = one_off_v3(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
+                          vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts, nsubsteps, &result);
       if(status != okay || result == NULL) {
         fprintf(stderr, "Compute failed in one_off: %s\n", compute_status_messages[status]);
         exit(EXIT_FAILURE);
@@ -458,8 +462,9 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
       const char * grouping_c = (permanova_perms>0) ? grouping_filename.c_str() : NULL ;
       const char * columns_c = (permanova_perms>0) ? grouping_columns.c_str() : NULL ;
 
-      status = unifrac_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
-                                  method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
+      status = unifrac_to_file_v3(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
+                                  method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts, 
+				  nsubsteps, format_str.c_str(),
                                   subsample_depth, subsample_with_replacement,
                                   pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
@@ -477,7 +482,7 @@ int mode_multi(const std::string &table_filename, const std::string &tree_filena
                unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement,
                unsigned int pcoa_dims,
                unsigned int permanova_perms, const std::string &grouping_filename, const std::string &grouping_columns,
-               bool vaw, double g_unifrac_alpha, bool bypass_tips,
+               bool vaw, double g_unifrac_alpha, bool bypass_tips, bool normalize_sample_counts,
                unsigned int nsubsteps, const std::string &mmap_dir) {
     if(output_filename.empty()) {
         err("output filename missing");
@@ -530,8 +535,9 @@ int mode_multi(const std::string &table_filename, const std::string &tree_filena
       const char * grouping_c = (permanova_perms>0) ? grouping_filename.c_str() : NULL ;
       const char * columns_c = (permanova_perms>0) ? grouping_columns.c_str() : NULL ;
 
-      status = unifrac_multi_to_file_v2(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
-                                        method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, nsubsteps, format_str.c_str(),
+      status = unifrac_multi_to_file_v3(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
+                                        method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts,
+					nsubsteps, format_str.c_str(),
                                         n_subsamples, subsample_depth, subsample_with_replacement,
                                         pcoa_dims, permanova_perms, grouping_c, columns_c, mmap_dir_c);
 
@@ -612,6 +618,7 @@ int main(int argc, char **argv){
     std::string stop_arg = input.getCmdOption("--stop");
     std::string partial_pattern = input.getCmdOption("--partial-pattern");
     std::string npartials = input.getCmdOption("--n-partials");
+    std::string normsc_arg = input.getCmdOption("--normalize-sample-counts");
     std::string report_bare = input.getCmdOption("--report-bare");
     std::string format_arg = input.getCmdOption("--format");
     std::string sformat_arg = input.getCmdOption("-r");
@@ -664,6 +671,18 @@ int main(int argc, char **argv){
     }
      if(n_partials>1000000000) {
         err("--n-partials cannot be > 1G");
+        return EXIT_FAILURE;
+    }
+
+    bool normalize_sample_counts;
+    if(normsc_arg.empty()) {
+        normalize_sample_counts = true;
+    } else if (normsc_arg=="true") {
+        normalize_sample_counts = true;
+    } else if (normsc_arg=="false") {
+        normalize_sample_counts = true;
+    } else {
+        err("Invalid normalize-sample-counts, must be true or false");
         return EXIT_FAILURE;
     }
 
@@ -739,13 +758,14 @@ int main(int argc, char **argv){
         return mode_one_off(table_filename, tree_filename, output_filename,  format2str(format_val), format_val, method_string,
                             subsample_depth, !subsample_without_replacement,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
-                            vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
+                            vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts, nsubsteps, diskbuf_arg);
     else if(mode_arg == "partial") {
         if (subsample_depth>0) {
           err("Cannot subsample in partial mode.");
           return EXIT_FAILURE;
         }
-        return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha, bypass_tips, nsubsteps, start_stripe, stop_stripe);
+        return mode_partial(table_filename, tree_filename, output_filename, method_string, vaw, g_unifrac_alpha,
+			    bypass_tips, normalize_sample_counts, nsubsteps, start_stripe, stop_stripe);
     } else if(mode_arg == "merge-partial")
         return mode_merge_partial(output_filename, format_val,
                                   pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
@@ -758,7 +778,7 @@ int main(int argc, char **argv){
         return mode_multi(table_filename, tree_filename, output_filename, format2str(format_val), format_val, method_string,
                             n_subsamples,subsample_depth, !subsample_without_replacement,
                             pcoa_dims, permanova_perms, grouping_filename, grouping_columns,
-                            vaw, g_unifrac_alpha, bypass_tips, nsubsteps, diskbuf_arg);
+                            vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts, nsubsteps, diskbuf_arg);
     else 
         err("Unknown mode. Valid options are: one-off, partial, merge-partial, check-partial, partial-report, multi");
 

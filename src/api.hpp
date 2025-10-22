@@ -213,6 +213,7 @@ EXTERN int get_bptree_opaque_els(opaque_bptree_t* tree_data);
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps to use.
  * result <mat_t**> the resulting distance matrix in condensed form, this is initialized within the method so using **
  *
@@ -224,12 +225,20 @@ EXTERN int get_bptree_opaque_els(opaque_bptree_t* tree_data);
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_v3(const char* biom_filename, const char* tree_filename,
+                                const char* unifrac_method, bool variance_adjust, double alpha,
+                                bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, mat_t** result);
+
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_wtree_v3(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, mat_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, mat_t** result);
 
-
-/* As above, but from a pre-loaded tree object */
 EXTERN ComputeStatus one_off_wtree(const char* biom_filename, const opaque_bptree_t* tree_data,
                                    const char* unifrac_method, bool variance_adjust, double alpha,
                                    bool bypass_tips, unsigned int n_substeps, mat_t** result);
@@ -243,6 +252,7 @@ EXTERN ComputeStatus one_off_wtree(const char* biom_filename, const opaque_bptre
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps to use.
  * subsample_depth <uint> Depth of subsampling, if >0
  * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
@@ -255,6 +265,13 @@ EXTERN ComputeStatus one_off_wtree(const char* biom_filename, const opaque_bptre
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_matrix_inmem_v3(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp64_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_inmem_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                              const char* unifrac_method, bool variance_adjust, double alpha,
                                              bool bypass_tips, unsigned int n_substeps,
@@ -274,6 +291,7 @@ EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const suppo
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps to use.
  * subsample_depth <uint> Depth of subsampling, if >0
  * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
@@ -286,6 +304,13 @@ EXTERN ComputeStatus one_off_inmem(const support_biom_t *table_data, const suppo
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_matrix_inmem_fp32_v3(const support_biom_t *table_data, const support_bptree_t *tree_data,
+                                                  const char* unifrac_method, bool variance_adjust, double alpha,
+                                                  bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                                  unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                                  mat_full_fp32_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_inmem_fp32_v2(const support_biom_t *table_data, const support_bptree_t *tree_data,
                                                   const char* unifrac_method, bool variance_adjust, double alpha,
                                                   bool bypass_tips, unsigned int n_substeps,
@@ -305,6 +330,7 @@ EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const 
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps/blocks to use.
  * subsample_depth <uint> Depth of subsampling, if >0
  * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
@@ -319,6 +345,20 @@ EXTERN ComputeStatus one_off_inmem_fp32(const support_biom_t *table_data, const 
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_matrix_v3(const char* biom_filename, const char* tree_filename,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                       unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                       mat_full_fp64_t** result);
+
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_matrix_v3t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                        mat_full_fp64_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_v2(const char* biom_filename, const char* tree_filename,
                                        const char* unifrac_method, bool variance_adjust, double alpha,
                                        bool bypass_tips, unsigned int n_substeps,
@@ -332,7 +372,6 @@ EXTERN ComputeStatus one_off_matrix_v2t(const char* biom_filename, const opaque_
                                         unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
                                         mat_full_fp64_t** result);
 
-/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_filename,
                                     const char* unifrac_method, bool variance_adjust, double alpha,
                                     bool bypass_tips, unsigned int n_substeps,
@@ -347,6 +386,7 @@ EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps/blocks to use.
  * subsample_depth <uint> Depth of subsampling, if >0
  * subsample_with_replacement <bool> Use subsampling with replacement? (only True supported)
@@ -361,6 +401,20 @@ EXTERN ComputeStatus one_off_matrix(const char* biom_filename, const char* tree_
  * unknown_method : the requested method is unknown.
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_off_matrix_fp32_v3(const char* biom_filename, const char* tree_filename,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                            unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                            mat_full_fp32_t** result);
+
+/* As above, but from a pre-loaded tree object */
+EXTERN ComputeStatus one_off_matrix_fp32_v3t(const char* biom_filename, const opaque_bptree_t* tree_data,
+                                             const char* unifrac_method, bool variance_adjust, double alpha,
+                                             bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                             unsigned int subsample_depth, bool subsample_with_replacement, const char *mmap_dir,
+                                             mat_full_fp32_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus one_off_matrix_fp32_v2(const char* biom_filename, const char* tree_filename,
                                             const char* unifrac_method, bool variance_adjust, double alpha,
                                             bool bypass_tips, unsigned int n_substeps,
@@ -391,13 +445,27 @@ EXTERN ComputeStatus one_off_matrix_fp32(const char* biom_filename, const char* 
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * result <double*> the resulting distance
  *
- * one_dense_pair_v2t returns the following error codes:
+ * one_dense_pair_v3t returns the following error codes:
  *
  * okay           : no problems encountered
  * table_empty    : the table does not have any entries
  */
+EXTERN ComputeStatus one_dense_pair_v3t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                        const opaque_bptree_t* tree_data,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, bool normalize_sample_counts, double* result);
+
+/* Same as above, but usign the explicit treee structure... slightly less efficient */
+EXTERN ComputeStatus one_dense_pair_v3(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
+		                       const support_bptree_t* tree_data,
+                                       const char* unifrac_method, bool variance_adjust, double alpha,
+                                       bool bypass_tips, bool normalize_sample_counts, double* result);
+
+/* Old variants, deprecated */
+
 EXTERN ComputeStatus one_dense_pair_v2t(unsigned int n_obs, const char ** obs_ids, const double* sample1, const double* sample2,
 		                        const opaque_bptree_t* tree_data,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
@@ -433,6 +501,7 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps to use.
  * format <const char*> output format to use.
  * subsample_depth <uint> Depth of subsampling, if >0
@@ -443,7 +512,7 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * grouping_columns <const char *> the columns to use for grouping
  * mmap_dir <const char*> if not empty, temp dir to use for disk-based memory 
  *
- * unifrac_to_file_v2 returns the following error codes:
+ * unifrac_to_file_v3 returns the following error codes:
  *
  * okay           : no problems encountered
  * table_missing  : the filename for the table does not exist
@@ -452,6 +521,15 @@ EXTERN ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tre
  * table_empty    : the table does not have any entries
  * output_error   : failed to properly write the output file
  */
+EXTERN ComputeStatus unifrac_to_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, const char* format,
+                                        unsigned int subsample_depth, bool subsample_with_replacement, 
+                                        unsigned int pcoa_dims,
+                                        unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                        const char *mmap_dir);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
                                         bool bypass_tips, unsigned int n_substeps, const char* format,
@@ -475,6 +553,7 @@ EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps to use.
  * format <const char*> output format to use.
  * n_subsamples <uint> Number of subsamples to compute.
@@ -486,7 +565,7 @@ EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree
  * grouping_columns <const char *> the columns to use for grouping
  * mmap_dir <const char*> if not empty, temp dir to use for disk-based memory 
  *
- * unifrac_multi_to_file_v2 returns the following error codes:
+ * unifrac_multi_to_file_v3 returns the following error codes:
  *
  * okay           : no problems encountered
  * table_missing  : the filename for the table does not exist
@@ -495,6 +574,15 @@ EXTERN ComputeStatus unifrac_to_file(const char* biom_filename, const char* tree
  * table_empty    : the table does not have any entries
  * output_error   : failed to properly write the output file
  */
+EXTERN ComputeStatus unifrac_multi_to_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                              const char* unifrac_method, bool variance_adjust, double alpha,
+                                              bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps, const char* format,
+                                              unsigned int n_subsamples, unsigned int subsample_depth, bool subsample_with_replacement, 
+                                              unsigned int pcoa_dims,
+                                              unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
+                                              const char *mmap_dir);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus unifrac_multi_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                               const char* unifrac_method, bool variance_adjust, double alpha,
                                               bool bypass_tips, unsigned int n_substeps, const char* format,
@@ -687,6 +775,7 @@ EXTERN IOStatus write_vec(const char* filename, r_vec* result);
  * variance_adjust <bool> whether to apply variance adjustment.
  * alpha <double> GUniFrac alpha, only relevant if method == generalized.
  * bypass_tips <bool> disregard tips, reduces compute by about 50%
+ * normalize_sample_counts <bool> normalize sample counts, use false for absolute quants mode
  * n_substeps <uint> the number of substeps to use.
  * stripe_start <uint> the starting stripe to compute
  * stripe_stop <uint> the last stripe to compute
@@ -704,6 +793,12 @@ EXTERN IOStatus write_vec(const char* filename, r_vec* result);
  * unknown_method : the requested method is unknown.
  */
 
+EXTERN ComputeStatus partial_v3(const char* biom_filename, const char* tree_filename,
+                                const char* unifrac_method, bool variance_adjust, double alpha,
+                                bool bypass_tips, bool normalize_sample_count, unsigned int n_substeps,
+				unsigned int stripe_start, unsigned int stripe_stop, partial_mat_t** result);
+
+/* Older version, will be deprecated in the future */
 EXTERN ComputeStatus partial(const char* biom_filename, const char* tree_filename,
                              const char* unifrac_method, bool variance_adjust, double alpha,
                              bool bypass_tips, unsigned int n_substeps, unsigned int stripe_start,
