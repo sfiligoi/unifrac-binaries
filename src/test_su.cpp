@@ -1319,7 +1319,6 @@ void test_unnormalized_weighted_unifrac() {
     SUITE_START("test unnormalized weighted unifrac");
 
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1346,7 +1345,6 @@ void test_unnormalized_weighted_unifrac() {
                         false,
                         std::ref(strides),
                         std::ref(strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
@@ -1379,7 +1377,6 @@ void test_generalized_unifrac() {
     SUITE_START("test generalized unifrac");
 
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1407,7 +1404,6 @@ void test_generalized_unifrac() {
                         false,
                         std::ref(w_strides),
                         std::ref(w_strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 #endif
 
@@ -1441,7 +1437,6 @@ void test_generalized_unifrac() {
                         false,
                         std::ref(d0_strides),
                         std::ref(d0_strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 #endif
 
@@ -1475,7 +1470,6 @@ void test_generalized_unifrac() {
                         false,
                         std::ref(d05_strides),
                         std::ref(d05_strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
@@ -1539,7 +1533,6 @@ void test_vaw_unifrac_weighted_normalized() {
     SUITE_START("test vaw weighted normalized unifrac");
 
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1577,7 +1570,6 @@ void test_vaw_unifrac_weighted_normalized() {
                         true,
                         std::ref(w_strides),
                         std::ref(w_strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
@@ -1703,7 +1695,6 @@ void test_faith_pd_shear(){
 void test_unweighted_unifrac() {
     SUITE_START("test unweighted unifrac");
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1730,7 +1721,6 @@ void test_unweighted_unifrac() {
                         false,
                         std::ref(strides),
                         std::ref(strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
@@ -1762,7 +1752,6 @@ void test_unweighted_unifrac() {
 void test_unweighted_unifrac_fast() {
     SUITE_START("test unweighted unifrac no tips");
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1789,7 +1778,6 @@ void test_unweighted_unifrac_fast() {
                         false,
                         std::ref(strides),
                         std::ref(strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
@@ -1821,7 +1809,6 @@ void test_unweighted_unifrac_fast() {
 void test_unnormalized_unweighted_unifrac() {
     SUITE_START("test unnormalized unweighted unifrac");
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1848,7 +1835,6 @@ void test_unnormalized_unweighted_unifrac() {
                         false,
                         std::ref(strides),
                         std::ref(strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
@@ -1880,7 +1866,6 @@ void test_unnormalized_unweighted_unifrac() {
 void test_normalized_weighted_unifrac() {
     SUITE_START("test normalized weighted unifrac");
 #ifndef API_ONLY
-    std::vector<std::thread> threads(1);
     su::BPTree tree("(GG_OTU_1:1,(GG_OTU_2:1,GG_OTU_3:1):1,(GG_OTU_5:1,GG_OTU_4:1):1);");
     su::biom table("test.biom");
 #endif
@@ -1908,7 +1893,6 @@ void test_normalized_weighted_unifrac() {
                         false,
                         std::ref(strides),
                         std::ref(strides_total),
-                        std::ref(threads),
                         std::ref(tasks));
 
     for(unsigned int i = 0; i < 3; i++) {
