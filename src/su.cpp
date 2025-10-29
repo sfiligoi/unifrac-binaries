@@ -680,7 +680,7 @@ int main(int argc, char **argv){
     } else if (normsc_arg=="true") {
         normalize_sample_counts = true;
     } else if (normsc_arg=="false") {
-        normalize_sample_counts = true;
+        normalize_sample_counts = false;
     } else {
         err("Invalid normalize-sample-counts, must be true or false");
         return EXIT_FAILURE;
