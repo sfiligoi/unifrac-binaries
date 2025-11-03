@@ -40,6 +40,7 @@ inline void unifracTT(const su::biom_interface &table,
         exit(EXIT_FAILURE);
     }
 
+    const bool normalize_sample_counts = task_p->normalize_sample_counts;
     su::PropStackMulti<TFloat> propstack_multi(table.n_samples);
 
     const unsigned int max_emb =  TaskT::RECOMMENDED_MAX_EMBS;
@@ -117,7 +118,7 @@ inline void unifracTT(const su::biom_interface &table,
               my_k++;
 
               TFloat *node_proportions = propstack.pop(node);
-              su::set_proportions_range(node_proportions, tree, node, table, tstart, tend, propstack);
+              su::set_proportions_range(node_proportions, tree, node, table, tstart, tend, propstack, normalize_sample_counts);
 
               if(task_p->bypass_tips && tree.isleaf(node))
                   continue;
@@ -209,6 +210,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
         exit(EXIT_FAILURE);
     }
 
+    const bool normalize_sample_counts = task_p->normalize_sample_counts;
     su::PropStackMulti<TFloat> propstack_multi(table.n_samples);
     su::PropStackMulti<TFloat> countstack_multi(table.n_samples);
 
@@ -245,7 +247,7 @@ inline void unifrac_vawTT(const su::biom_interface &table,
               TFloat *node_proportions = propstack.pop(node);
               TFloat *node_counts = countstack.pop(node);
 
-              su::set_proportions_range(node_proportions, tree, node, table, tstart, tend, propstack);
+              su::set_proportions_range(node_proportions, tree, node, table, tstart, tend, propstack, normalize_sample_counts);
               su::set_proportions_range(node_counts, tree, node, table, tstart, tend, countstack, false);
 
               if(task_p->bypass_tips && tree.isleaf(node))

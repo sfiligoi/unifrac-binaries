@@ -128,3 +128,23 @@ python compare_unifrac_stats_multi.py t1.h5 10 5 99 1.001112 0.456  0.08 0.7
 ls -l t1.h5
 rm -f t1.h5
 
+#
+# Absquant tests
+#
+
+time ssu -i absquant.biom -t absquant.tree -m weighted_normalized --normalize-sample-counts false -o t1.dm
+python compare_unifrac_dm.py test.absquant.wn.dm t1.dm 1.0e-5
+ls -l t1.dm
+rm -f t1.dm
+
+time ssu -i absquant.biom -t absquant.tree -m weighted_normalized --normalize-sample-counts true -o t1.dm
+python compare_unifrac_dm.py test.absquant_not.wn.dm t1.dm 1.0e-5
+ls -l t1.dm
+rm -f t1.dm
+
+time ssu -i absquant.biom -t absquant.tree -m weighted_normalized -o t1.dm
+python compare_unifrac_dm.py test.absquant_not.wn.dm t1.dm 1.0e-5
+ls -l t1.dm
+rm -f t1.dm
+
+

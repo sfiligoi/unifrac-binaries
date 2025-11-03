@@ -1,0 +1,4 @@
+	SampleA	SampleB	SampleC
+SampleA	0	0.646859	0.206144
+SampleB	0.646860	0	0.692871
+SampleC	0.206144	0.692871	0
