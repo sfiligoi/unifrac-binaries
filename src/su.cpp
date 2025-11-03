@@ -434,6 +434,7 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
         return EXIT_FAILURE;
     }
 
+    const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
     compute_status status = okay;
     if (format_val==format_ascii) {
       mat_t *result = NULL;
@@ -442,23 +443,15 @@ int mode_one_off(const std::string &table_filename, const std::string &tree_file
         err("Subsampling not supported with ASCII output.");
         return EXIT_FAILURE;
       }
-      status = one_off_v3(table_filename.c_str(), tree_filename.c_str(), method_string.c_str(), 
-                          vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts, nsubsteps, &result);
-      if(status != okay || result == NULL) {
+      status = unifrac_to_txt_file_v3(table_filename.c_str(), tree_filename.c_str(), output_filename.c_str(),
+                                      method_string.c_str(), vaw, g_unifrac_alpha, bypass_tips, normalize_sample_counts, 
+				      nsubsteps,
+                                      mmap_dir_c);
+
+      if (status != okay) {
         fprintf(stderr, "Compute failed in one_off: %s\n", compute_status_messages[status]);
-        exit(EXIT_FAILURE);
       }
-  
-      IOStatus iostatus = write_mat(output_filename.c_str(), result);
-      destroy_mat(&result);
-
-      if(iostatus!=write_okay) {
-        err("Failed to write output file.");
-        status = output_error;
-      }
-
     } else {
-      const char * mmap_dir_c = mmap_dir.empty() ? NULL : mmap_dir.c_str();
       const char * grouping_c = (permanova_perms>0) ? grouping_filename.c_str() : NULL ;
       const char * columns_c = (permanova_perms>0) ? grouping_columns.c_str() : NULL ;
 

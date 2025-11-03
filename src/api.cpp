@@ -1112,6 +1112,54 @@ compute_status unifrac_to_file_v3(const char* biom_filename, const char* tree_fi
     return rc;
 }
 
+compute_status unifrac_to_txt_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                      const char *mmap_dir)
+{
+    SETUP_TDBG("unifrac_to_txt_file")
+
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc==okay) {
+      if (fp64) {
+        mat_full_fp64_t* result = NULL;
+        rc = one_off_matrix_v3(biom_filename, tree_filename,
+                               unifrac_method, variance_adjust, alpha,
+                               bypass_tips, normalize_sample_counts, n_substeps,
+                               0, true, // not used, just pass disable flags
+                               mmap_dir,
+                               &result);
+        TDBG_STEP("matrix_fp64 computed")
+
+        if (rc==okay) {
+          IOStatus iostatus = write_mat_from_matrix_txt_fp64(out_filename, result);
+          if (iostatus!=write_okay) rc=output_error;
+          destroy_mat_full_fp64(&result);
+        }
+      } else {
+        mat_full_fp32_t* result = NULL;
+        rc = one_off_matrix_fp32_v3(biom_filename, tree_filename,
+                                    unifrac_method, variance_adjust, alpha,
+                                    bypass_tips, normalize_sample_counts, n_substeps,
+                                    0, true, // not used, just pass disable flags
+                                    mmap_dir,
+                                    &result);
+        TDBG_STEP("matrix_fp32 computed")
+     
+        if (rc==okay) {
+          IOStatus iostatus = write_mat_from_matrix_txt_fp32(out_filename, result);
+          if (iostatus!=write_okay) rc=output_error;
+          destroy_mat_full_fp32(&result);
+        }
+      }
+    }
+
+    TDBG_STEP("finished")
+    return rc;
+}
+
 herr_t write_hdf5_string(hid_t output_file_id,const char *dname, const char *str)
 {
   // this is the convoluted way to store a string
@@ -1549,7 +1597,7 @@ compute_status unifrac_multi_to_file_v3(const char* biom_filename, const char* t
 
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
-    SETUP_TDBG("unifrac_write_mat")
+    SETUP_TDBG("write_mat")
 
     output.open(output_filename);
 
@@ -1576,12 +1624,59 @@ IOStatus write_mat(const char* output_filename, mat_t* result) {
             }
             output << std::setprecision(16) << "\t" << v;
         }
-        output << std::endl;
+        output << "\n";
     }
     output.close();
     TDBG_STEP("file saved")
 
     return write_okay;
+}
+
+template<typename TMat>
+inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) {
+    SETUP_TDBG("write_mat_from_matrix_txt")
+
+    std::ofstream output;
+    output.open(filename);
+
+    const unsigned int n_samples = result->n_samples;
+
+    {
+      std::ostringstream line;
+      for(unsigned int i = 0; i < n_samples; i++)
+        line << "\t" << result->sample_ids[i];
+      output << line.str() << "\n";
+    }
+    TDBG_STEP("header saved")
+
+    {
+      // pre-allocate a line buffer, so we don't get constant re-allocations
+      std::string line_str;
+      line_str.reserve(128+n_samples*20); // we don't expect more than 20 characters per each value
+      for(unsigned int i = 0; i < n_samples; i++) {
+        // we will buffer full lines in memory
+        line_str.clear();
+        std::ostringstream line(line_str);  // use the same string all the time, to maximize memory reuse
+        line << result->sample_ids[i];
+        line << std::setprecision(std::is_same<TMat,mat_full_fp32_t>::value ? 7 : 14); // less digits needed for float
+        for(unsigned int j = 0; j < n_samples; j++) {
+            line << "\t" << result->matrix[i*n_samples+j];
+        }
+        output << line.str() << "\n";
+      }
+    }
+    output.close();
+    TDBG_STEP("file saved")
+
+    return write_okay;
+}
+
+IOStatus write_mat_from_matrix_txt_fp64(const char* filename, mat_full_fp64_t* result) {
+    return write_mat_from_matrix_txt_T(filename, result);
+}
+
+IOStatus write_mat_from_matrix_txt_fp32(const char* filename, mat_full_fp32_t* result) {
+    return write_mat_from_matrix_txt_T(filename, result);
 }
 
 IOStatus write_mat_from_matrix(const char* output_filename, mat_full_fp64_t* result) {
