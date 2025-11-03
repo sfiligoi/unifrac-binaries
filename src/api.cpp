@@ -2312,7 +2312,7 @@ MergeStatus merge_partial_to_mmap_matrix_fp32(partial_dyn_mat_t* * partial_mats,
 
 // compat versions
 
-#include "api_compat.cpp"
+#include "api_compat.hpp"
 
 // skbio_alt pass-thoughs
 

@@ -495,6 +495,6 @@ IOStatus write_partial(const char* filename, const partial_mat_t* result) {
 
 // compat versions
 
-#include "../src/api_compat.cpp"
+#include "../src/api_compat.hpp"
 
 
