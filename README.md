@@ -175,7 +175,7 @@ The methods can be used directly through the command line after install:
     usage: ssu -i <biom> -o <out.dm> -m [METHOD] -t <newick> [-a alpha] [-f]  [--vaw]
         [--mode MODE] [--start starting-stripe] [--stop stopping-stripe] [--partial-pattern <glob>]
         [--n-partials number_of_partitions] [--report-bare] [--format|-r out-mode]
-        [--n-substeps n] [--pcoa dims] [--diskbuf path]
+        [--normalize-sample-counts true|false] [--n-substeps n] [--pcoa dims] [--diskbuf path]
 
         -i		The input BIOM table.
         -t		The input phylogeny in newick.
@@ -202,6 +202,9 @@ The methods can be used directly through the command line after install:
         --n-partials 	[OPTIONAL] If mode==partial-report, the number of partitions to compute.
         --report-bare	[OPTIONAL] If mode==partial-report, produce barebones output.
         --n-substeps 	[OPTIONAL] Internally split the problem in n substeps for reduced memory footprint, default is 1.
+        --normalize-sample-counts	[OPTIONAL] Should it normalize sample counts?:
+                                 true  : [DEFAULT] Do normalize, i.e. standard unifrac.
+                                 false : Do not normalize, i.e. absolute quant mode.
         --format|-r	[OPTIONAL]  Output format:
                                  ascii : Original ASCII format. (default if mode==one-off)
                                  hdf5_nodist : HFD5 format, no distance matrix. (default if mode==multi)
