@@ -19,6 +19,9 @@
 #include <sys/mman.h>
 #include <lz4.h>
 #include <time.h>
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
@@ -1650,19 +1653,45 @@ inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) 
     TDBG_STEP("header saved")
 
     {
-      // pre-allocate a line buffer, so we don't get constant re-allocations
-      std::string line_str;
-      line_str.reserve(128+n_samples*20); // we don't expect more than 20 characters per each value
+#if defined(_OPENMP)
+      // allow all threads to create their lines in parallel
+      const unsigned int max_threads = omp_get_max_threads();
+      const unsigned int use_threads = std::min(4u,max_threads); // no benefit beyond 4 threads, since we have the IO serialization
+#else
+      const unsigned int max_threads = 1;
+#endif
+      // pre-allocate a line buffers, so we don't get constant re-allocations
+      std::vector<std::string> line_str_vect;
+      line_str_vect.resize(max_threads);
+      for(unsigned int t=0; t<max_threads; t++) {
+        line_str_vect[t].reserve(128+n_samples*20); // we don't expect more than 20 characters per each value
+      }
+
+#if defined(_OPENMP)
+#pragma omp parallel for ordered schedule(static,1) num_threads(use_threads)
+#endif
       for(unsigned int i = 0; i < n_samples; i++) {
+#if defined(_OPENMP)
+        const unsigned int my_thread = omp_get_thread_num();
+#else
+        const unsigned int my_thread = 0;
+#endif
         // we will buffer full lines in memory
+        std::string& line_str = line_str_vect[my_thread];
         line_str.clear();
-        std::ostringstream line(line_str);  // use the same string all the time, to maximize memory reuse
+        std::ostringstream line(line_str);  // use the same thread-specific string all the time, to maximize memory reuse
         line << result->sample_ids[i];
         line << std::setprecision(std::is_same<TMat,mat_full_fp32_t>::value ? 7 : 14); // less digits needed for float
         for(unsigned int j = 0; j < n_samples; j++) {
             line << "\t" << result->matrix[i*n_samples+j];
         }
-        output << line.str() << "\n";
+#if defined(_OPENMP)
+#pragma omp ordered
+        // compute lines independently, but then write them sequentially
+#endif
+        {
+          output << line.str() << "\n";
+        }
       }
     }
     output.close();
