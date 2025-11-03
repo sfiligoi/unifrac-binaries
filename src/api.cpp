@@ -1549,6 +1549,8 @@ compute_status unifrac_multi_to_file_v3(const char* biom_filename, const char* t
 
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
+    SETUP_TDBG("unifrac_write_mat")
+
     output.open(output_filename);
 
     uint64_t comb_N = su::comb_2(result->n_samples);
@@ -1558,6 +1560,7 @@ IOStatus write_mat(const char* output_filename, mat_t* result) {
     for(unsigned int i = 0; i < result->n_samples; i++)
         output << "\t" << result->sample_ids[i];
     output << std::endl;
+    TDBG_STEP("header saved")
 
     for(unsigned int i = 0; i < result->n_samples; i++) {
         output << result->sample_ids[i];
@@ -1576,6 +1579,7 @@ IOStatus write_mat(const char* output_filename, mat_t* result) {
         output << std::endl;
     }
     output.close();
+    TDBG_STEP("file saved")
 
     return write_okay;
 }
