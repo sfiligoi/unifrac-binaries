@@ -13,12 +13,16 @@
 #include <string> 
 #include <vector>
 #include <stdexcept>
+#include <charconv>
 
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <lz4.h>
 #include <time.h>
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 
 #define MMAP_FD_MASK 0x0fff
 #define MMAP_FLAG    0x1000
@@ -1112,6 +1116,54 @@ compute_status unifrac_to_file_v3(const char* biom_filename, const char* tree_fi
     return rc;
 }
 
+compute_status unifrac_to_txt_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                      const char* unifrac_method, bool variance_adjust, double alpha,
+                                      bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                      const char *mmap_dir)
+{
+    SETUP_TDBG("unifrac_to_txt_file")
+
+    bool fp64;
+    compute_status rc = is_fp64_method(unifrac_method, fp64);
+
+    if (rc==okay) {
+      if (fp64) {
+        mat_full_fp64_t* result = NULL;
+        rc = one_off_matrix_v3(biom_filename, tree_filename,
+                               unifrac_method, variance_adjust, alpha,
+                               bypass_tips, normalize_sample_counts, n_substeps,
+                               0, true, // not used, just pass disable flags
+                               mmap_dir,
+                               &result);
+        TDBG_STEP("matrix_fp64 computed")
+
+        if (rc==okay) {
+          IOStatus iostatus = write_mat_from_matrix(out_filename, result);
+          if (iostatus!=write_okay) rc=output_error;
+          destroy_mat_full_fp64(&result);
+        }
+      } else {
+        mat_full_fp32_t* result = NULL;
+        rc = one_off_matrix_fp32_v3(biom_filename, tree_filename,
+                                    unifrac_method, variance_adjust, alpha,
+                                    bypass_tips, normalize_sample_counts, n_substeps,
+                                    0, true, // not used, just pass disable flags
+                                    mmap_dir,
+                                    &result);
+        TDBG_STEP("matrix_fp32 computed")
+     
+        if (rc==okay) {
+          IOStatus iostatus = write_mat_from_matrix_fp32(out_filename, result);
+          if (iostatus!=write_okay) rc=output_error;
+          destroy_mat_full_fp32(&result);
+        }
+      }
+    }
+
+    TDBG_STEP("finished")
+    return rc;
+}
+
 herr_t write_hdf5_string(hid_t output_file_id,const char *dname, const char *str)
 {
   // this is the convoluted way to store a string
@@ -1549,6 +1601,8 @@ compute_status unifrac_multi_to_file_v3(const char* biom_filename, const char* t
 
 IOStatus write_mat(const char* output_filename, mat_t* result) {
     std::ofstream output;
+    SETUP_TDBG("write_mat")
+
     output.open(output_filename);
 
     uint64_t comb_N = su::comb_2(result->n_samples);
@@ -1558,6 +1612,7 @@ IOStatus write_mat(const char* output_filename, mat_t* result) {
     for(unsigned int i = 0; i < result->n_samples; i++)
         output << "\t" << result->sample_ids[i];
     output << std::endl;
+    TDBG_STEP("header saved")
 
     for(unsigned int i = 0; i < result->n_samples; i++) {
         output << result->sample_ids[i];
@@ -1573,37 +1628,158 @@ IOStatus write_mat(const char* output_filename, mat_t* result) {
             }
             output << std::setprecision(16) << "\t" << v;
         }
-        output << std::endl;
+        output << "\n";
     }
     output.close();
+    TDBG_STEP("file saved")
 
     return write_okay;
 }
 
-IOStatus write_mat_from_matrix(const char* output_filename, mat_full_fp64_t* result) {
-    const double *buf2d  = result->matrix;
+/*
+ * Note: std::ofstream is too slow for large files
+ *       Use lower-level routines and line caching for speed
+ */
+template<typename TMat>
+inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) {
+    SETUP_TDBG("write_mat_from_matrix_txt")
 
-    std::ofstream output;
-    output.open(output_filename);
+    IOStatus outrc = write_okay;
 
-    double v;
-    const uint64_t n_samples_64 = result->n_samples; // 64-bit to avoid overflow
+    FILE *output = fopen(filename,"w");
+    if (output==NULL) return write_error;
 
-    for(unsigned int i = 0; i < result->n_samples; i++)
-        output << "\t" << result->sample_ids[i];
-    output << std::endl;
+    const unsigned int n_samples = result->n_samples;
 
-    for(unsigned int i = 0; i < result->n_samples; i++) {
-        output << result->sample_ids[i];
-        for(unsigned int j = 0; j < result->n_samples; j++) {
-            v = buf2d[i*n_samples_64+j];
-            output << std::setprecision(16) << "\t" << v;
+    size_t max_id_len = 0;
+    size_t head_len = 24*n_samples; // don't expect ids to be more than 20 chars(+tab) in len on average
+    char *head_str = (char*) malloc(head_len);
+    {
+      // create header string in memory first
+      char *str_tail_p = head_str;
+      for(unsigned int i = 0; i < n_samples; i++) {
+        const char* sample_id = result->sample_ids[i];
+        size_t id_len =strlen(sample_id);
+        {
+          const size_t tail_offset = str_tail_p-head_str;
+          if ((tail_offset+id_len+4)>head_len) {
+            // not enough space, double the buffer
+            head_len *=2;
+            head_str = (char*) realloc(head_str,head_len);
+            str_tail_p = head_str + tail_offset; // everything moves
+          }
         }
-        output << std::endl;
+        str_tail_p[0] = '\t';
+        str_tail_p++;
+        memcpy(str_tail_p,sample_id,id_len);
+        str_tail_p+=id_len;
+        if (id_len>max_id_len) max_id_len = id_len;
+      }
+      str_tail_p[0] = '\n';
+      str_tail_p++;
+      str_tail_p[0] = 0; // just to be paranoid 
+      // now write to file
+      if (fwrite(head_str, str_tail_p-head_str,1,output)!=1) return write_error;
     }
-    output.close();
+    TDBG_STEP("header saved")
+
+    {
+#if defined(_OPENMP)
+      // allow all threads to create their lines in parallel
+      const unsigned int max_threads = omp_get_max_threads();
+      const unsigned int use_threads = std::min(8u,max_threads); // no benefit beyond 8 threads, since we have the IO serialization
+#else
+      const unsigned int max_threads = 1;
+#endif
+      // max number of chars per element
+      constexpr size_t fp_precision = std::is_same<TMat,mat_full_fp32_t>::value ? 12 : 20;
+
+      // pre-allocate a line buffers, so we don't get constant re-allocations
+      std::vector<char*>  line_str_vect;  // actual buffers
+      std::vector<size_t> line_len_vect;  // size of the buffer
+      line_str_vect.resize(max_threads);
+      line_len_vect.resize(max_threads);
+      line_str_vect[0] = head_str; // reuse the header buffer
+      line_len_vect[0] = head_len;
+      for(unsigned int t=1; t<max_threads; t++) {
+        // all others lazy initialize in loop
+        line_str_vect[t] = NULL;
+        line_len_vect[t] = 0;
+      }
+
+#if defined(_OPENMP)
+#pragma omp parallel for ordered schedule(static,1) num_threads(use_threads)
+#endif
+      for(unsigned int i = 0; i < n_samples; i++) {
+#if defined(_OPENMP)
+        const unsigned int my_thread = omp_get_thread_num();
+#else
+        const unsigned int my_thread = 0;
+#endif
+        auto &line_str = line_str_vect[my_thread];
+        auto &line_len = line_len_vect[my_thread];
+
+        if (line_str==NULL) {
+          // first time initialization
+          line_len = max_id_len+(fp_precision+4)*n_samples;
+          line_str = (char*) malloc(line_len);
+        }
+
+        // create line string in memory first
+        char *str_tail_p = line_str;
+        {  // we know we have enough buffer for at least the header
+          const char* sample_id = result->sample_ids[i];
+          size_t id_len =strlen(sample_id);
+          memcpy(str_tail_p,sample_id,id_len);
+          str_tail_p+=id_len;
+        }
+        for(unsigned int j = 0; j < n_samples; j++) {
+          {
+            const size_t tail_offset = str_tail_p-line_str;
+            if ((tail_offset+fp_precision+4)>line_len) {
+              // not enough space, double the buffer
+              line_len *=2;
+              line_str = (char*) realloc(line_str,line_len);
+              str_tail_p = line_str + tail_offset; // everything moves
+            }
+          }
+          str_tail_p[0] = '\t';
+          str_tail_p++;
+          std::to_chars_result tcrc = std::to_chars(str_tail_p, line_str+line_len, result->matrix[i*n_samples+j], std::chars_format::fixed);
+          str_tail_p = tcrc.ptr;
+        }
+        str_tail_p[0] = '\n';
+        str_tail_p++;
+        str_tail_p[0] = 0; // just to be paranoid 
+#if defined(_OPENMP)
+#pragma omp ordered
+        // compute lines independently, but then write them sequentially
+#endif
+        {
+          if (fwrite(line_str, str_tail_p-line_str,1,output)!=1) outrc = write_error; // cannot exit from OMP, will check outside
+        }
+      }
+      // free all buffers, inlcudeing head_str (==line_str_vect[0])
+      for(unsigned int t=0; t<max_threads; t++) {
+	if (line_str_vect[t]!=NULL) free(line_str_vect[t]);
+      }
+    }
+
+    fclose(output);
+    if (outrc!=write_okay) return outrc;
+
+
+    TDBG_STEP("file saved")
 
     return write_okay;
+}
+
+IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result) {
+    return write_mat_from_matrix_txt_T(filename, result);
+}
+
+IOStatus write_mat_from_matrix_fp32(const char* filename, mat_full_fp32_t* result) {
+    return write_mat_from_matrix_txt_T(filename, result);
 }
 
 // Internal: Make sure TReal and real_id match

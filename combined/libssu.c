@@ -290,6 +290,24 @@ ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tree_filen
 
 /*********************************************************************/
 
+static ComputeStatus (*dl_unifrac_to_txt_file_v3)(const char*, const char*, const char*,
+                                              const char*, bool, double,
+                                              bool, bool, unsigned int,
+                                              const char *) = NULL;
+
+ComputeStatus unifrac_to_txt_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                        const char* unifrac_method, bool variance_adjust, double alpha,
+                                        bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                        const char *mmap_dir){
+   cond_ssu_load("unifrac_to_txt_file_v3", (void **) &dl_unifrac_to_txt_file_v3);
+
+   return (*dl_unifrac_to_txt_file_v3)(biom_filename, tree_filename, out_filename, unifrac_method, variance_adjust, alpha,
+                            bypass_tips, normalize_sample_counts, n_substeps,
+                            mmap_dir);
+}
+
+/*********************************************************************/
+
 static ComputeStatus (*dl_unifrac_to_file_v3)(const char*, const char*, const char*, const char*, bool, double,
                                               bool, bool, unsigned int, const char*, unsigned int, bool, 
                                               unsigned int, unsigned int, const char *, const char *, const char *) = NULL;
@@ -351,6 +369,7 @@ ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int
 
 static IOStatus (*dl_write_mat)(const char*, mat_t*) = NULL;
 static IOStatus (*dl_write_mat_from_matrix)(const char*, mat_full_fp64_t*) = NULL;
+static IOStatus (*dl_write_mat_from_matrix_fp32)(const char*, mat_full_fp32_t*) = NULL;
 static IOStatus (*dl_write_vec)(const char*, r_vec*) = NULL;
 
 IOStatus write_mat(const char* filename, mat_t* result) {
@@ -363,6 +382,12 @@ IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result) {
    cond_ssu_load("write_mat_from_matrix", (void **) &dl_write_mat_from_matrix);
 
    return (*dl_write_mat_from_matrix)(filename, result);
+}
+
+IOStatus write_mat_from_matrix_fp32(const char* filename, mat_full_fp32_t* result) {
+   cond_ssu_load("write_mat_from_matrix_fp32", (void **) &dl_write_mat_from_matrix_fp32);
+
+   return (*dl_write_mat_from_matrix_fp32)(filename, result);
 }
 
 IOStatus write_vec(const char* filename, r_vec* result) {

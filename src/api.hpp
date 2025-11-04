@@ -529,6 +529,12 @@ EXTERN ComputeStatus unifrac_to_file_v3(const char* biom_filename, const char* t
                                         unsigned int permanova_perms, const char *grouping_filename, const char *grouping_columns,
                                         const char *mmap_dir);
 
+/* As above, but write using the text format */
+EXTERN ComputeStatus unifrac_to_txt_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
+                                            const char* unifrac_method, bool variance_adjust, double alpha,
+                                            bool bypass_tips, bool normalize_sample_counts, unsigned int n_substeps,
+                                            const char *mmap_dir);
+
 /* Older version, will be deprecated in the future */
 EXTERN ComputeStatus unifrac_to_file_v2(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
@@ -631,7 +637,7 @@ EXTERN ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsig
                                             mat_full_fp32_t * result, unsigned int permanova_perms,
                                             float *fstats, float *pvalues);
 
-/* Write a matrix object
+/* Write a matrix object using the text format
  *
  * filename <const char*> the file to write into
  * result <mat_t*> the results object
@@ -670,7 +676,7 @@ IOStatus write_mat_hdf5_fp64(const char* filename, mat_t* result, unsigned int p
 // backwards compatible version, deprecated
 IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int pcoa_dims, int save_dist);
 
-/* Write a matrix object
+/* Write a matrix object using the text format
  *
  * filename <const char*> the file to write into
  * result <mat_full_t*> the results object
@@ -680,6 +686,9 @@ IOStatus write_mat_hdf5_fp32(const char* filename, mat_t* result, unsigned int p
  * write_okay : no problems
  */
 EXTERN IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result);
+
+/* as above but fp32 */
+EXTERN IOStatus write_mat_from_matrix_fp32(const char* filename, mat_full_fp32_t* result);
 
 
 /* Write a matrix object from buffer using hdf5 format, using fp64 precision
