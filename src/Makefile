@@ -39,6 +39,7 @@ SKBBLIB=-lskbb
 ifeq ($(PLATFORM),Darwin)
 	AVX2 := $(shell sysctl -a | grep -c AVX2)
 	LDDFLAGS = -dynamiclib -install_name @rpath/lib$(SSU).so
+	CPPFLAGS+= -D_LIBCPP_DISABLE_AVAILABILITY
 	NOGPU := 1
 else
 	AVX2 := $(shell grep "^flags" /proc/cpuinfo | head -n 1 | grep -c avx2)
