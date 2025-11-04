@@ -13,6 +13,7 @@
 #include <string> 
 #include <vector>
 #include <stdexcept>
+#include <charconv>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -1635,20 +1636,50 @@ IOStatus write_mat(const char* output_filename, mat_t* result) {
     return write_okay;
 }
 
+/*
+ * Note: std::ofstream is too slow for large files
+ *       Use lower-level routines and line caching for speed
+ */
 template<typename TMat>
 inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) {
     SETUP_TDBG("write_mat_from_matrix_txt")
 
-    std::ofstream output;
-    output.open(filename);
+    IOStatus outrc = write_okay;
+
+    FILE *output = fopen(filename,"w");
+    if (output==NULL) return write_error;
 
     const unsigned int n_samples = result->n_samples;
 
+    size_t max_id_len = 0;
+    size_t head_len = 24*n_samples; // don't expect ids to be more than 20 chars(+tab) in len on average
+    char *head_str = (char*) malloc(head_len);
     {
-      std::ostringstream line;
-      for(unsigned int i = 0; i < n_samples; i++)
-        line << "\t" << result->sample_ids[i];
-      output << line.str() << "\n";
+      // create header string in memory first
+      char *str_tail_p = head_str;
+      for(unsigned int i = 0; i < n_samples; i++) {
+        const char* sample_id = result->sample_ids[i];
+        size_t id_len =strlen(sample_id);
+        {
+          const size_t tail_offset = str_tail_p-head_str;
+          if ((tail_offset+id_len+4)>head_len) {
+            // not enough space, double the buffer
+            head_len *=2;
+            head_str = (char*) realloc(head_str,head_len);
+            str_tail_p = head_str + tail_offset; // everything moves
+          }
+        }
+        str_tail_p[0] = '\t';
+        str_tail_p++;
+        memcpy(str_tail_p,sample_id,id_len);
+        str_tail_p+=id_len;
+        if (id_len>max_id_len) max_id_len = id_len;
+      }
+      str_tail_p[0] = '\n';
+      str_tail_p++;
+      str_tail_p[0] = 0; // just to be paranoid 
+      // now write to file
+      if (fwrite(head_str, str_tail_p-head_str,1,output)!=1) return write_error;
     }
     TDBG_STEP("header saved")
 
@@ -1656,15 +1687,24 @@ inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) 
 #if defined(_OPENMP)
       // allow all threads to create their lines in parallel
       const unsigned int max_threads = omp_get_max_threads();
-      const unsigned int use_threads = std::min(4u,max_threads); // no benefit beyond 4 threads, since we have the IO serialization
+      const unsigned int use_threads = std::min(8u,max_threads); // no benefit beyond 8 threads, since we have the IO serialization
 #else
       const unsigned int max_threads = 1;
 #endif
+      // max number of chars per element
+      constexpr size_t fp_precision = std::is_same<TMat,mat_full_fp32_t>::value ? 12 : 20;
+
       // pre-allocate a line buffers, so we don't get constant re-allocations
-      std::vector<std::string> line_str_vect;
+      std::vector<char*>  line_str_vect;  // actual buffers
+      std::vector<size_t> line_len_vect;  // size of the buffer
       line_str_vect.resize(max_threads);
-      for(unsigned int t=0; t<max_threads; t++) {
-        line_str_vect[t].reserve(128+n_samples*20); // we don't expect more than 20 characters per each value
+      line_len_vect.resize(max_threads);
+      line_str_vect[0] = head_str; // reuse the header buffer
+      line_len_vect[0] = head_len;
+      for(unsigned int t=1; t<max_threads; t++) {
+        // all others lazy initialize in loop
+        line_str_vect[t] = NULL;
+        line_len_vect[t] = 0;
       }
 
 #if defined(_OPENMP)
@@ -1676,25 +1716,59 @@ inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) 
 #else
         const unsigned int my_thread = 0;
 #endif
-        // we will buffer full lines in memory
-        std::string& line_str = line_str_vect[my_thread];
-        line_str.clear();
-        std::ostringstream line(line_str);  // use the same thread-specific string all the time, to maximize memory reuse
-        line << result->sample_ids[i];
-        line << std::setprecision(std::is_same<TMat,mat_full_fp32_t>::value ? 7 : 14); // less digits needed for float
-        for(unsigned int j = 0; j < n_samples; j++) {
-            line << "\t" << result->matrix[i*n_samples+j];
+        auto &line_str = line_str_vect[my_thread];
+        auto &line_len = line_len_vect[my_thread];
+
+        if (line_str==NULL) {
+          // first time initialization
+          line_len = max_id_len+(fp_precision+4)*n_samples;
+          line_str = (char*) malloc(line_len);
         }
+
+        // create line string in memory first
+        char *str_tail_p = line_str;
+        {  // we know we have enough buffer for at least the header
+          const char* sample_id = result->sample_ids[i];
+          size_t id_len =strlen(sample_id);
+          memcpy(str_tail_p,sample_id,id_len);
+          str_tail_p+=id_len;
+        }
+        for(unsigned int j = 0; j < n_samples; j++) {
+          {
+            const size_t tail_offset = str_tail_p-line_str;
+            if ((tail_offset+fp_precision+4)>line_len) {
+              // not enough space, double the buffer
+              line_len *=2;
+              line_str = (char*) realloc(line_str,line_len);
+              str_tail_p = line_str + tail_offset; // everything moves
+            }
+          }
+          str_tail_p[0] = '\t';
+          str_tail_p++;
+          std::to_chars_result tcrc = std::to_chars(str_tail_p, line_str+line_len, result->matrix[i*n_samples+j], std::chars_format::fixed);
+          str_tail_p = tcrc.ptr;
+        }
+        str_tail_p[0] = '\n';
+        str_tail_p++;
+        str_tail_p[0] = 0; // just to be paranoid 
 #if defined(_OPENMP)
 #pragma omp ordered
         // compute lines independently, but then write them sequentially
 #endif
         {
-          output << line.str() << "\n";
+          if (fwrite(line_str, str_tail_p-line_str,1,output)!=1) outrc = write_error; // cannot exit from OMP, will check outside
         }
       }
+      // free all buffers, inlcudeing head_str (==line_str_vect[0])
+      for(unsigned int t=0; t<max_threads; t++) {
+	if (line_str_vect[t]!=NULL) free(line_str_vect[t]);
+      }
     }
-    output.close();
+
+    fclose(output);
+    if (outrc!=write_okay) return outrc;
+
+
     TDBG_STEP("file saved")
 
     return write_okay;
