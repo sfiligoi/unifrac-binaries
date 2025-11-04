@@ -13,18 +13,18 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13, macos-14, linux-gpu-cuda]
+        os: [ubuntu-latest, macos-15, macos-15-intel, linux-gpu-cuda]
         offload: [cpu, acc, ompgpu]
         exclude:
           - os: linux-gpu-cuda
             offload: cpu
-          - os: macos-14
+          - os: macos-15
             offload: acc
-          - os: macos-14
+          - os: macos-15
             offload: ompgpu
-          - os: macos-13
+          - os: macos-15-intel
             offload: acc
-          - os: macos-13
+          - os: macos-15-intel
             offload: ompgpu
     runs-on: ${{ matrix.os }}
     steps:
