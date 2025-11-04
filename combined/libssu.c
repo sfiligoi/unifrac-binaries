@@ -426,6 +426,23 @@ IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_ful
 
 /*********************************************************************/
 
+static IOStatus (*dl_write_mat_from_matrix_txt_fp64)(const char*, mat_full_fp64_t*) = NULL;
+static IOStatus (*dl_write_mat_from_matrix_txt_fp32)(const char*, mat_full_fp32_t*) = NULL;
+
+IOStatus write_mat_from_matrix_txt_fp64(const char* output_filename, mat_full_fp64_t* result) {
+   cond_ssu_load("write_mat_from_matrix_txt_fp64", (void **) &dl_write_mat_from_matrix_txt_fp64);
+
+   return (*dl_write_mat_from_matrix_txt_fp64)(output_filename, result);
+}
+
+IOStatus write_mat_from_matrix_txt_fp32(const char* output_filename, mat_full_fp32_t* result) {
+   cond_ssu_load("write_mat_from_matrix_txt_fp32", (void **) &dl_write_mat_from_matrix_txt_fp32);
+
+   return (*dl_write_mat_from_matrix_txt_fp32)(output_filename, result);
+}
+
+/*********************************************************************/
+
 static ComputeStatus (*dl_one_dense_pair_v3t)(unsigned int, const char **, const double*,const double*,const opaque_bptree_t*,const char*, bool, double, bool, bool, double*) = NULL;
 static ComputeStatus (*dl_one_dense_pair_v3)(unsigned int, const char **, const double*,const double*,const support_bptree_t*,const char*, bool, double, bool, bool, double*) = NULL;
 
