@@ -290,9 +290,10 @@ ComputeStatus faith_pd_one_off(const char* biom_filename, const char* tree_filen
 
 /*********************************************************************/
 
-static ComputeStatus (*dl_unifrac_to_txt_file_v3)(const char*, const char*, const char*, const char*, bool, double,
-                                              bool, bool, unsigned int, const char*, unsigned int, bool, 
-                                              unsigned int, unsigned int, const char *, const char *, const char *) = NULL;
+static ComputeStatus (*dl_unifrac_to_txt_file_v3)(const char*, const char*, const char*,
+                                              const char*, bool, double,
+                                              bool, bool, unsigned int,
+                                              const char *) = NULL;
 
 ComputeStatus unifrac_to_txt_file_v3(const char* biom_filename, const char* tree_filename, const char* out_filename,
                                         const char* unifrac_method, bool variance_adjust, double alpha,
