@@ -369,6 +369,7 @@ ComputeStatus compute_permanova_fp32(const char *grouping_filename, unsigned int
 
 static IOStatus (*dl_write_mat)(const char*, mat_t*) = NULL;
 static IOStatus (*dl_write_mat_from_matrix)(const char*, mat_full_fp64_t*) = NULL;
+static IOStatus (*dl_write_mat_from_matrix_fp32)(const char*, mat_full_fp32_t*) = NULL;
 static IOStatus (*dl_write_vec)(const char*, r_vec*) = NULL;
 
 IOStatus write_mat(const char* filename, mat_t* result) {
@@ -381,6 +382,12 @@ IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result) {
    cond_ssu_load("write_mat_from_matrix", (void **) &dl_write_mat_from_matrix);
 
    return (*dl_write_mat_from_matrix)(filename, result);
+}
+
+IOStatus write_mat_from_matrix_fp32(const char* filename, mat_full_fp32_t* result) {
+   cond_ssu_load("write_mat_from_matrix_fp32", (void **) &dl_write_mat_from_matrix_fp32);
+
+   return (*dl_write_mat_from_matrix_fp32)(filename, result);
 }
 
 IOStatus write_vec(const char* filename, r_vec* result) {
@@ -422,23 +429,6 @@ IOStatus write_mat_from_matrix_hdf5_fp32_v2(const char* output_filename, mat_ful
    return (*dl_write_mat_from_matrix_hdf5_fp32_v2)(output_filename, result, pcoa_dims, save_dist, stat_n_vals,
                                             stat_method_arr, stat_name_arr, stat_val_arr, stat_pval_arr, stat_perm_count_arr,
                                             stat_group_name_arr, stat_group_count_arr);
-}
-
-/*********************************************************************/
-
-static IOStatus (*dl_write_mat_from_matrix_txt_fp64)(const char*, mat_full_fp64_t*) = NULL;
-static IOStatus (*dl_write_mat_from_matrix_txt_fp32)(const char*, mat_full_fp32_t*) = NULL;
-
-IOStatus write_mat_from_matrix_txt_fp64(const char* output_filename, mat_full_fp64_t* result) {
-   cond_ssu_load("write_mat_from_matrix_txt_fp64", (void **) &dl_write_mat_from_matrix_txt_fp64);
-
-   return (*dl_write_mat_from_matrix_txt_fp64)(output_filename, result);
-}
-
-IOStatus write_mat_from_matrix_txt_fp32(const char* output_filename, mat_full_fp32_t* result) {
-   cond_ssu_load("write_mat_from_matrix_txt_fp32", (void **) &dl_write_mat_from_matrix_txt_fp32);
-
-   return (*dl_write_mat_from_matrix_txt_fp32)(output_filename, result);
 }
 
 /*********************************************************************/

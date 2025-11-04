@@ -1137,7 +1137,7 @@ compute_status unifrac_to_txt_file_v3(const char* biom_filename, const char* tre
         TDBG_STEP("matrix_fp64 computed")
 
         if (rc==okay) {
-          IOStatus iostatus = write_mat_from_matrix_txt_fp64(out_filename, result);
+          IOStatus iostatus = write_mat_from_matrix(out_filename, result);
           if (iostatus!=write_okay) rc=output_error;
           destroy_mat_full_fp64(&result);
         }
@@ -1152,7 +1152,7 @@ compute_status unifrac_to_txt_file_v3(const char* biom_filename, const char* tre
         TDBG_STEP("matrix_fp32 computed")
      
         if (rc==okay) {
-          IOStatus iostatus = write_mat_from_matrix_txt_fp32(out_filename, result);
+          IOStatus iostatus = write_mat_from_matrix_fp32(out_filename, result);
           if (iostatus!=write_okay) rc=output_error;
           destroy_mat_full_fp32(&result);
         }
@@ -1700,38 +1700,12 @@ inline IOStatus write_mat_from_matrix_txt_T(const char* filename, TMat* result) 
     return write_okay;
 }
 
-IOStatus write_mat_from_matrix_txt_fp64(const char* filename, mat_full_fp64_t* result) {
+IOStatus write_mat_from_matrix(const char* filename, mat_full_fp64_t* result) {
     return write_mat_from_matrix_txt_T(filename, result);
 }
 
-IOStatus write_mat_from_matrix_txt_fp32(const char* filename, mat_full_fp32_t* result) {
+IOStatus write_mat_from_matrix_fp32(const char* filename, mat_full_fp32_t* result) {
     return write_mat_from_matrix_txt_T(filename, result);
-}
-
-IOStatus write_mat_from_matrix(const char* output_filename, mat_full_fp64_t* result) {
-    const double *buf2d  = result->matrix;
-
-    std::ofstream output;
-    output.open(output_filename);
-
-    double v;
-    const uint64_t n_samples_64 = result->n_samples; // 64-bit to avoid overflow
-
-    for(unsigned int i = 0; i < result->n_samples; i++)
-        output << "\t" << result->sample_ids[i];
-    output << std::endl;
-
-    for(unsigned int i = 0; i < result->n_samples; i++) {
-        output << result->sample_ids[i];
-        for(unsigned int j = 0; j < result->n_samples; j++) {
-            v = buf2d[i*n_samples_64+j];
-            output << std::setprecision(16) << "\t" << v;
-        }
-        output << std::endl;
-    }
-    output.close();
-
-    return write_okay;
 }
 
 // Internal: Make sure TReal and real_id match

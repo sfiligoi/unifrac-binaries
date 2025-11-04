@@ -221,7 +221,7 @@ int mode_merge_partial_fp64(const char * output_filename, Format format_val, uns
     if (format_val!=format_ascii) {
      iostatus = write_mat_from_matrix_hdf5_fp64(output_filename, result, pcoa_dims, format_val!=format_hdf5_nodist);
     } else {
-     iostatus = write_mat_from_matrix_txt_fp64(output_filename, result);
+     iostatus = write_mat_from_matrix(output_filename, result);
     }
     destroy_mat_full_fp64(&result);
 
