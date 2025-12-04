@@ -1,9 +1,6 @@
 .PHONY: test clean all clean_install
 
-# Note: This Makefile will NOT properly work with the -j option 
-
 PLATFORM := $(shell uname -s)
-COMPILER := $(shell ($(CXX) -v 2>&1) | tr A-Z a-z )
 
 ifeq ($(PLATFORM),Darwin)
 # only one optimization level and no GPU support for MacOS
@@ -22,6 +19,9 @@ clean_install:
 	-cd src && $(MAKE) clean_install
 
 else
+ARCH := $(shell h5c++ -dumpmachine)
+
+ifneq (,$(findstring x86_64,$(ARCH)))
 # Linux with several optimization levels and with optional GPU support
 
 all: 
@@ -74,7 +74,7 @@ all_cpu_x86_v4:
 	$(MAKE) api_cpu_x86_v4
 	$(MAKE) install_cpu_x86_v4
 
-all_acc: 
+all_acc:
 	$(MAKE) api_acc
 	$(MAKE) install_lib_acc
 
@@ -83,6 +83,29 @@ all_combined:
 	$(MAKE) install_combined
 	$(MAKE) main
 	$(MAKE) install_main
+
+else
+# only one optimization level for non-x86 architectores
+# no GPU support by default
+all:
+	$(MAKE) api
+	$(MAKE) install
+	$(MAKE) main
+	$(MAKE) install_main
+	$(MAKE) test_binaries
+
+all_acc:
+	$(MAKE) api_acc
+	$(MAKE) install_lib_acc
+
+clean:
+	-cd test && $(MAKE) clean
+	-cd src && $(MAKE) clean
+
+clean_install:
+	-cd src && $(MAKE) clean_install
+
+endif
 
 endif
 
