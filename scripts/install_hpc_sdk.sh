@@ -36,9 +36,9 @@ export PATH=$PWD/conda_nv_bins:$PATH
 # Install the NVIDIA HPC SDK
 
 # This link may need to be updated, as new compiler versions are released
-# Note: Verified that it works with v25.1
+# Note: Verified that it works with v25.11
 if [ "x${NV_URL}" == "x" ]; then
-  NV_URL=https://developer.download.nvidia.com/hpc-sdk/25.1/nvhpc_2025_251_Linux_x86_64_cuda_multi.tar.gz
+  NV_URL=https://developer.download.nvidia.com/hpc-sdk/25.11/nvhpc_2025_2511_Linux_x86_64_cuda_multi.tar.gz
 fi
 
 echo "Downloading the NVIDIA HPC SDK"
@@ -53,7 +53,7 @@ if [ "x${USE_CURL}" == "x" ]; then
     rm -f nvhpc.tgz
   else
     # Do not unpack things we do not use for unifrac
-    curl -s "${NV_URL}" | tar xpzf - --exclude '*libcublas*' --exclude '*libcufft*' --exclude '*libcusparse*' --exclude '*libcusolver*' --exclude '*libcurand*' --exclude '*profilers*' --exclude '*comm_libs*' --exclude '*/doc/*' --exclude '*/plugin*'
+    curl -s "${NV_URL}" | tar xpzf - --exclude '*libcublas*' --exclude '*libcufft*' --exclude '*libcusparse*' --exclude '*libcusolver*' --exclude '*libcurand*' --exclude '*cutensor*' --exclude '*profilers*' --exclude '*comm_libs*' --exclude '*/doc/*' --exclude '*/plugin*'
   fi
 elif [ "x${USE_ARIA2}" == "x" ]; then
   aria2c "${NV_URL}"

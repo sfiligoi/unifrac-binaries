@@ -22,7 +22,7 @@ else
 		OPT = -fast
 	else
 	  ifneq (,$(findstring gcc,$(COMPILER)))
-		OPT = -Ofast
+		OPT = -O3
 		TGTFLAGS = -fwhole-program
 	  else
 		OPT = -O3
@@ -103,6 +103,7 @@ ifndef NOGPU
 		NV_LDFLAGS += -shared -acc -Bstatic_pgi
 	endif
    endif
+   NV_CPPFLAGS += -Mfpapprox -Mfprelaxed -Mflushz
    # AMD GPUs
    UNIFRAC_FILES += unifrac_task_acc_amd.o unifrac_accapi_acc_amd.o unifrac_cmp_acc_amd.o 
    CPPFLAGS += -DUNIFRAC_ENABLE_ACC_AMD=1
