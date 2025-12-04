@@ -26,10 +26,6 @@ jobs:
             offload: acc
           - os: macos-15-intel
             offload: ompgpu
-          - os: ubuntu-24.04-arm
-            offload: acc
-          - os: ubuntu-24.04-arm
-            offload: ompgpu
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3

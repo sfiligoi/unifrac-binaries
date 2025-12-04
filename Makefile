@@ -86,10 +86,10 @@ all_combined:
 
 else
 # only one optimization level for non-x86 architectures
-# no GPU support by default
 
 all: 
 	$(MAKE) all_cpu
+	$(MAKE) all_acc
 	$(MAKE) test_binaries
 
 clean:
