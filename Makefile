@@ -127,7 +127,7 @@ api_cpu_x86_v4:
 	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; export BUILD_TUNE_OPTIMIZATION=znver4 ;cd src && $(MAKE) clean && $(MAKE) api
 
 api_acc:
-	export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) clean && $(MAKE) api_acc
+	cd src && $(MAKE) clean && $(MAKE) api_acc
 
 api_combined:
 	cd combined && $(MAKE) clean && $(MAKE) api
@@ -158,7 +158,7 @@ install_cpu_x86_v4:
 	export BUILD_VARIANT=cpu_x86_v4 ; export BUILD_FULL_OPTIMIZATION=x86-64-v4 ; cd src && $(MAKE) install_lib
 
 install_lib_acc:
-	export BUILD_FULL_OPTIMIZATION=False ; cd src && $(MAKE) install_lib_acc
+	cd src && $(MAKE) install_lib_acc
 
 install_combined:
 	cd combined && $(MAKE) install
