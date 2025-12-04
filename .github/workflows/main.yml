@@ -53,15 +53,9 @@ jobs:
         df -h .
         conda activate unifrac
         echo "$(uname -s)"
-        if [[ "$(uname -s)" == "Linux" ]];
-        then
-          which x86_64-conda-linux-gnu-gcc
-          x86_64-conda-linux-gnu-gcc -v
-          x86_64-conda-linux-gnu-g++ -v
-        else
-          which clang
-          clang -v
-        fi
+        which $CC
+        $CC -v
+        $CXX -v
         which h5c++
         export PERFORMING_CONDA_BUILD=True
         export BUILD_NV_OFFLOAD=${{ matrix.offload }}
