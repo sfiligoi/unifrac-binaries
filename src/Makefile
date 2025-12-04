@@ -131,9 +131,12 @@ ifeq ($(BUILD_FULL_OPTIMIZATION),False)
          	# no special tuning for the MacOS at this point
 	  	CPPFLAGS += 
 	else
-		# assuming x86 for now... may want to check for architecture
-		# x86-64 the most generic option avaialable in modern gcc
-		CPPFLAGS += -march=x86-64 -mtune=generic
+		ifneq (,$(findstring x86_64,$(ARCH)))
+			CPPFLAGS += -march=x86-64 -mtune=generic
+		else
+			# target server-class ARM processors
+			CPPFLAGS += -march=armv8.2-a -mtune=neoverse-n1
+		endif
 	endif
     endif
 else

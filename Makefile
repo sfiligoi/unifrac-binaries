@@ -85,25 +85,46 @@ all_combined:
 	$(MAKE) install_main
 
 else
-# only one optimization level for non-x86 architectores
+# only one optimization level for non-x86 architectures
 # no GPU support by default
-all:
-	$(MAKE) api
-	$(MAKE) install
-	$(MAKE) main
-	$(MAKE) install_main
+
+all: 
+	$(MAKE) all_cpu
 	$(MAKE) test_binaries
+
+clean:
+	$(MAKE) clean_cpu
+
+clean_install:
+	$(MAKE) clean_install_cpu
+
+all_cpu: 
+	$(MAKE) all_cpu_basic
+	$(MAKE) all_combined
+
+clean_cpu:
+	-cd test && $(MAKE) clean
+	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean
+	-cd combined && $(MAKE) clean
+
+clean_install_cpu:
+	-export BUILD_VARIANT=cpu_basic; cd src && $(MAKE) clean_install
+	-cd combined && $(MAKE) clean_install
+
+all_cpu_basic:
+	$(MAKE) api_cpu_basic
+	$(MAKE) install_cpu_basic
+
 
 all_acc:
 	$(MAKE) api_acc
 	$(MAKE) install_lib_acc
 
-clean:
-	-cd test && $(MAKE) clean
-	-cd src && $(MAKE) clean
-
-clean_install:
-	-cd src && $(MAKE) clean_install
+all_combined:
+	$(MAKE) api_combined
+	$(MAKE) install_combined
+	$(MAKE) main
+	$(MAKE) install_main
 
 endif
 
